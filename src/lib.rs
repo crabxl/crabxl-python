@@ -103,9 +103,7 @@ fn decode(py: Python<'_>, value: TaggedValue) -> PyResult<CellValue> {
         )),
         "array" | "table" => {
             let fields = value.cast::<PyDict>()?;
-            let reference = input_text(fields, "ref")?
-                .map(|reference| FormulaRange::from_xml(reference).map_err(failure))
-                .transpose()?;
+            let reference = input_text(fields, "ref")?.map(FormulaRange::from_literal);
             let mut metadata = FormulaMetadata {
                 kind: if kind == "array" {
                     FormulaType::Array
