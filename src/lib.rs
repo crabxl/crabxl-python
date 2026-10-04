@@ -1,10 +1,10 @@
 //! Optional adapter: foreign objects and naming stay outside the Rust core.
 use crabxl::{
-    Cell, CellAddress, CellRange, CellValue, ColumnIndex, DateEpoch, DateKind, EditLimits,
-    EditorOptions, Error, ErrorKind, ExactInteger, ExcelDateTime, Formula, MemoryPolicy,
-    ReadOptions, ResourceLimits, Row, RowIndex, SaveOptions, SheetId, StyleId, Workbook,
-    WorkbookEditor, WorkbookLimits, WorkbookReader, WorkbookWriter, Worksheet, WorksheetEditor,
-    WriteOptions,
+    Cell, CellAddress, CellRange, CellValue, ColumnIndex, DataTableOptions, DateEpoch, DateKind,
+    EditLimits, EditorOptions, Error, ErrorKind, ExactInteger, ExcelDateTime, Formula, FormulaFlag,
+    FormulaFlags, FormulaMetadata, FormulaRange, FormulaType, MemoryPolicy, ReadOptions,
+    ResourceLimits, Row, RowIndex, SaveOptions, SheetId, StyleId, Workbook, WorkbookEditor,
+    WorkbookLimits, WorkbookReader, WorkbookWriter, Worksheet, WorksheetEditor, WriteOptions,
 };
 use pyo3::{
     IntoPyObjectExt,
@@ -12,6 +12,7 @@ use pyo3::{
         PyKeyError, PyMemoryError, PyNotImplementedError, PyOSError, PyRuntimeError, PyValueError,
     },
     prelude::*,
+    types::PyDict,
 };
 use std::{
     fs::File,
@@ -45,6 +46,37 @@ fn lock<T>(value: &Mutex<T>) -> PyResult<MutexGuard<'_, T>> {
 fn closed() -> PyErr {
     PyValueError::new_err("Workbook is closed")
 }
+fn input_flag(fields: &Bound<'_, PyDict>, name: &str) -> PyResult<Option<FormulaFlag>> {
+    let Some(value) = fields.get_item(name)? else {
+        return Ok(None);
+    };
+    if value.is_none() {
+        return Ok(None);
+    }
+    if let Ok(boolean) = value.extract::<bool>() {
+        return Ok(Some(boolean.into()));
+    }
+    FormulaFlag::from_xml(value.extract::<String>()?)
+        .map(Some)
+        .map_err(failure)
+}
+fn input_text(fields: &Bound<'_, PyDict>, name: &str) -> PyResult<Option<Box<str>>> {
+    fields
+        .get_item(name)?
+        .filter(|value| !value.is_none())
+        .map(|value| value.extract::<String>().map(String::into_boxed_str))
+        .transpose()
+}
+fn output_flag(fields: &Bound<'_, PyDict>, name: &str, flag: Option<&FormulaFlag>) -> PyResult<()> {
+    if let Some(flag) = flag {
+        if let Some(source) = flag.source() {
+            fields.set_item(name, source)?;
+        } else {
+            fields.set_item(name, flag.value())?;
+        }
+    }
+    Ok(())
+}
 fn decode(py: Python<'_>, value: TaggedValue) -> PyResult<CellValue> {
     let (kind, value) = value;
     let value = value.bind(py);
@@ -72,8 +104,49 @@ fn decode(py: Python<'_>, value: TaggedValue) -> PyResult<CellValue> {
         "text" => CellValue::text(value.extract::<String>()?),
         "error" => CellValue::error(value.extract::<String>()?),
         "formula" => CellValue::Formula(Box::new(
-            Formula::new(value.extract::<String>()?, None).map_err(failure)?,
+            Formula::from_source(value.extract::<String>()?, None, None).map_err(failure)?,
         )),
+        "array" | "table" => {
+            let fields = value.cast::<PyDict>()?;
+            let reference: String = fields
+                .get_item("ref")?
+                .ok_or_else(|| PyValueError::new_err("Missing formula range"))?
+                .extract()?;
+            let mut metadata = FormulaMetadata {
+                kind: if kind == "array" {
+                    FormulaType::Array
+                } else {
+                    FormulaType::DataTable
+                },
+                reference: Some(FormulaRange::from_xml(reference).map_err(failure)?),
+                ..Default::default()
+            };
+            let expression = if kind == "array" {
+                fields
+                    .get_item("text")?
+                    .filter(|value| !value.is_none())
+                    .map(|value| value.extract::<String>())
+                    .transpose()?
+                    .unwrap_or_default()
+            } else {
+                metadata.flags = FormulaFlags {
+                    calculate_cell: input_flag(fields, "ca")?,
+                    ..Default::default()
+                };
+                metadata.data_table = Some(Box::new(DataTableOptions {
+                    two_dimensions: input_flag(fields, "dt2D")?,
+                    row_table: input_flag(fields, "dtr")?,
+                    deleted1: input_flag(fields, "del1")?,
+                    deleted2: input_flag(fields, "del2")?,
+                    input1: input_text(fields, "r1")?,
+                    input2: input_text(fields, "r2")?,
+                }));
+                String::new()
+            };
+            CellValue::Formula(Box::new(
+                Formula::with_metadata(expression, None, metadata).map_err(failure)?,
+            ))
+        }
         "date" => {
             let (year, month, day): (i32, u32, u32) = value.extract()?;
             CellValue::DateTime(Box::new(
@@ -112,7 +185,37 @@ fn encode(py: Python<'_>, value: &CellValue) -> PyResult<TaggedValue> {
         CellValue::Boolean(value) => ("b", value.into_py_any(py)?),
         CellValue::Text(value) => ("s", value.as_str().into_py_any(py)?),
         CellValue::Error(value) => ("e", value.as_str().into_py_any(py)?),
-        CellValue::Formula(value) => ("f", format!("={}", value.expression()).into_py_any(py)?),
+        CellValue::Formula(value) => match value.formula_type() {
+            FormulaType::Array | FormulaType::DataTable => {
+                let metadata = value
+                    .metadata()
+                    .ok_or_else(|| PyValueError::new_err("Missing structured formula metadata"))?;
+                let fields = PyDict::new(py);
+                if let Some(reference) = &metadata.reference {
+                    fields.set_item("ref", reference.spelling().as_ref())?;
+                }
+                if value.formula_type() == FormulaType::Array {
+                    fields.set_item("text", format!("={}", value.expression()))?;
+                    ("array", fields.into_any().unbind())
+                } else {
+                    output_flag(&fields, "ca", metadata.flags.calculate_cell.as_ref())?;
+                    if let Some(table) = &metadata.data_table {
+                        for (name, flag) in [
+                            ("dt2D", table.two_dimensions.as_ref()),
+                            ("dtr", table.row_table.as_ref()),
+                            ("del1", table.deleted1.as_ref()),
+                            ("del2", table.deleted2.as_ref()),
+                        ] {
+                            output_flag(&fields, name, flag)?;
+                        }
+                        fields.set_item("r1", table.input1.as_deref())?;
+                        fields.set_item("r2", table.input2.as_deref())?;
+                    }
+                    ("table", fields.into_any().unbind())
+                }
+            }
+            _ => ("f", format!("={}", value.expression()).into_py_any(py)?),
+        },
         CellValue::DateTime(value) => match value.kind() {
             DateKind::Date => (
                 "date",
