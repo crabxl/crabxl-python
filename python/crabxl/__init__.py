@@ -4,7 +4,6 @@ Compatibility is verified per capability. Unsupported features raise explicitly;
 this package never falls back to the Python openpyxl implementation.
 """
 from datetime import date, datetime, time, timedelta
-import math
 from pathlib import Path
 import re
 from weakref import WeakValueDictionary
@@ -55,8 +54,6 @@ def _encode(value):
     if isinstance(value, int):
         return "int", str(value)
     if isinstance(value, float):
-        if not math.isfinite(value):
-            raise NotImplementedError("Non-finite numeric compatibility is not implemented")
         return "float", value
     if isinstance(value, str):
         value = value[:32767]
