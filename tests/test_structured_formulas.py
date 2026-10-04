@@ -96,3 +96,55 @@ def test_adapter_formula_views_do_not_keep_workbooks_alive():
     assert sheet_ref() is None
     value.text = "=2"
     assert value.text == "=2"
+
+
+@pytest.mark.parametrize("flags", [
+    {},
+    {"dt2D": True, "dtr": False, "del1": False, "del2": True, "r1": "C1", "r2": "D1"},
+    {"dt2D": False, "dtr": False, "r1": ""},
+    {"dt2D": "0", "dtr": "false", "del1": "0"},
+])
+def test_all_data_table_properties_match_public_save_reload(engine, flags, tmp_path):
+    module = import_module(engine.__name__ + ".worksheet.formula")
+    reference = openpyxl.Workbook()
+    reference.active["A1"] = openpyxl.worksheet.formula.DataTableFormula(ref="A1:B2", **flags)
+    reference_path = tmp_path / "reference.xlsx"
+    reference.save(reference_path)
+    reference.close()
+    check = openpyxl.load_workbook(reference_path)
+    expected = vars(check.active["A1"].value)
+    check.close()
+    book = engine.Workbook()
+    book.active["A1"] = module.DataTableFormula(ref="A1:B2", **flags)
+    output = tmp_path / "native.xlsx"
+    book.save(output)
+    book.close()
+    loaded = engine.load_workbook(output)
+    assert vars(loaded.active["A1"].value) == expected
+    loaded.active["A1"].value.ref = "A1:B3"
+    edited = tmp_path / "edited.xlsx"
+    loaded.save(edited)
+    loaded.close()
+    check = openpyxl.load_workbook(edited)
+    assert vars(check.active["A1"].value) == {**expected, "ref": "A1:B3"}
+    check.close()
+
+@pytest.mark.parametrize("content, cached, expected", [
+    ('<c r="A1"><f t="future" ref="invalid">1+1</f><v>2</v></c>', True, 2),
+    ('<c r="A1" cm="1"><f t="array" ref="A1">_xlfn.SEQUENCE(1)</f><v>7</v></c>', True, 7),
+    ('<c r="A1" vm="not-an-index"><v>9</v></c>', False, 9),
+])
+def test_visible_metadata_and_discarded_formula_semantics(engine, content, cached, expected, tmp_path):
+    path = tmp_path / "projected.xlsx"
+    original = openpyxl.Workbook()
+    original.save(path)
+    original.close()
+    with zipfile.ZipFile(path) as archive:
+        parts = {name: archive.read(name) for name in archive.namelist()}
+    parts["xl/worksheets/sheet1.xml"] = ('<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1">' + content + '</row></sheetData></worksheet>').encode()
+    with zipfile.ZipFile(path, "w") as archive:
+        for name, payload in parts.items():
+            archive.writestr(name, payload)
+    book = engine.load_workbook(path, data_only=cached)
+    assert book.active["A1"].value == expected
+    book.close()
