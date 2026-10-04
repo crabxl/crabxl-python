@@ -616,3 +616,45 @@ def test_saved_temporal_default_formats_match_public_assignments(engine, value, 
     loaded = openpyxl.load_workbook(path)
     assert loaded.active['A1'].number_format == format_code
     loaded.close()
+
+
+@pytest.mark.parametrize('initial, format_code', [
+    (date(2024, 1, 2), 'yyyy-mm-dd'),
+    (datetime(2024, 1, 2, 3, 4, 5), 'yyyy-mm-dd h:mm:ss'),
+    (time(3, 4, 5), 'h:mm:ss'),
+    (timedelta(days=2, seconds=3), '[hh]:mm:ss'),
+])
+@pytest.mark.parametrize('replacement', [
+    date(2024, 2, 3), datetime(2024, 2, 3, 4, 5, 6),
+    time(4, 5, 6), timedelta(days=3, seconds=4), 42,
+])
+def test_replacing_temporal_value_retains_format_across_repeated_save(
+    engine, initial, format_code, replacement, tmp_path,
+):
+    book = engine.Workbook()
+    book.active['A1'] = initial
+    first = tmp_path / 'first.xlsx'
+    book.save(first)
+    book.active['A1'] = replacement
+    assert book.active['A1'].value == replacement
+    reference = openpyxl.Workbook()
+    reference.active['A1'] = initial
+    reference.active['A1'] = replacement
+    expected_path = tmp_path / 'expected.xlsx'
+    reference.save(expected_path)
+    reference.close()
+    expected = openpyxl.load_workbook(expected_path)
+    expected_value = expected.active['A1'].value
+    assert expected.active['A1'].number_format == format_code
+    expected.close()
+    for index in range(2):
+        path = tmp_path / f'replaced-{index}.xlsx'
+        book.save(path)
+        loaded = openpyxl.load_workbook(path)
+        assert loaded.active['A1'].number_format == format_code
+        assert loaded.active['A1'].value == expected_value
+        loaded.close()
+    original = openpyxl.load_workbook(first)
+    assert original.active['A1'].number_format == format_code
+    original.close()
+    book.close()
