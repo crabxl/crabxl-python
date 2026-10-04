@@ -103,26 +103,21 @@ fn decode(py: Python<'_>, value: TaggedValue) -> PyResult<CellValue> {
         )),
         "array" | "table" => {
             let fields = value.cast::<PyDict>()?;
-            let reference: String = fields
-                .get_item("ref")?
-                .ok_or_else(|| PyValueError::new_err("Missing formula range"))?
-                .extract()?;
+            let reference = input_text(fields, "ref")?
+                .map(|reference| FormulaRange::from_xml(reference).map_err(failure))
+                .transpose()?;
             let mut metadata = FormulaMetadata {
                 kind: if kind == "array" {
                     FormulaType::Array
                 } else {
                     FormulaType::DataTable
                 },
-                reference: Some(FormulaRange::from_xml(reference).map_err(failure)?),
+                reference,
                 ..Default::default()
             };
-            let expression = if kind == "array" {
-                fields
-                    .get_item("text")?
-                    .filter(|value| !value.is_none())
-                    .map(|value| value.extract::<String>())
-                    .transpose()?
-                    .unwrap_or_default()
+            let formula = if kind == "array" {
+                Formula::from_array_text(input_text(fields, "text")?, None, metadata)
+                    .map_err(failure)?
             } else {
                 metadata.flags = FormulaFlags {
                     calculate_cell: input_flag(fields, "ca")?,
@@ -136,11 +131,9 @@ fn decode(py: Python<'_>, value: TaggedValue) -> PyResult<CellValue> {
                     input1: input_text(fields, "r1")?,
                     input2: input_text(fields, "r2")?,
                 }));
-                String::new()
+                Formula::with_optional_expression(None, None, metadata).map_err(failure)?
             };
-            CellValue::Formula(Box::new(
-                Formula::with_metadata(expression, None, metadata).map_err(failure)?,
-            ))
+            CellValue::Formula(Box::new(formula))
         }
         "date" => {
             let (year, month, day): (i32, u32, u32) = value.extract()?;
@@ -186,11 +179,15 @@ fn encode(py: Python<'_>, value: &CellValue) -> PyResult<TaggedValue> {
                     .metadata()
                     .ok_or_else(|| PyValueError::new_err("Missing structured formula metadata"))?;
                 let fields = PyDict::new(py);
-                if let Some(reference) = &metadata.reference {
-                    fields.set_item("ref", reference.spelling().as_ref())?;
-                }
+                fields.set_item(
+                    "ref",
+                    metadata
+                        .reference
+                        .as_ref()
+                        .map(|reference| reference.spelling().into_owned()),
+                )?;
                 if value.formula_type() == FormulaType::Array {
-                    fields.set_item("text", format!("={}", value.expression()))?;
+                    fields.set_item("text", value.array_text().as_deref())?;
                     ("array", fields.into_any().unbind())
                 } else {
                     output_flag(&fields, "ca", metadata.flags.calculate_cell.as_ref())?;
