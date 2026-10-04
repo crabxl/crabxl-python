@@ -66,7 +66,7 @@ def _encode(value):
             raise TypeError("Excel does not support timezones in datetimes")
         return "datetime", (value.year, value.month, value.day, value.hour, value.minute, value.second, value.microsecond)
     if isinstance(value, date):
-        raise NotImplementedError("Date-only object/format compatibility is not implemented; datetime values are supported")
+        return "date", (value.year, value.month, value.day)
     if isinstance(value, time):
         if value.tzinfo is not None:
             raise TypeError("Excel does not support timezones in times")
@@ -80,6 +80,8 @@ def _decode(tagged):
     kind, value = tagged
     if kind == "bigint":
         return int(value)
+    if kind == "date":
+        return date.fromisoformat(value)
     if kind == "datetime":
         return datetime.fromisoformat(value)
     if kind == "time":
@@ -123,7 +125,7 @@ class Cell:
     @property
     def data_type(self):
         kind = self._tagged()[0]
-        return "d" if kind in ("datetime", "duration", "time") else "n" if kind == "bigint" else kind
+        return "d" if kind in ("date", "datetime", "duration", "time") else "n" if kind == "bigint" else kind
 
     @property
     def internal_value(self):
@@ -357,13 +359,14 @@ class Worksheet:
 
 class Workbook:
     """Workbook-compatible entry point; models and package editing remain Rust-owned."""
-    __slots__ = ("_max_bytes", "_closed", "_reader", "_editor", "data_only", "read_only", "write_only", "_active", "_sheets", "_book")
+    __slots__ = ("_max_bytes", "_closed", "_reader", "_editor", "data_only", "read_only", "write_only", "_active", "_sheets", "_book", "_iso_dates")
     def __init__(self, write_only=False, iso_dates=False, *, max_memory_bytes=None):
-        if write_only or iso_dates:
-            raise NotImplementedError("Write-only binding and ISO-date output are not implemented")
+        if write_only:
+            raise NotImplementedError("Write-only binding is not implemented")
         self._max_bytes = resolve_model_budget(max_memory_bytes)
         self._closed = False
         self._reader = self._editor = None
+        self._iso_dates = bool(iso_dates)
         self.data_only = self.read_only = self.write_only = False
         self._active = 0
         self._sheets = []
@@ -373,6 +376,27 @@ class Workbook:
     def _check_open(self):
         if self._closed:
             raise ValueError("Workbook is closed")
+
+    @property
+    def iso_dates(self): return self._iso_dates
+    @iso_dates.setter
+    def iso_dates(self, value):
+        if self._reader is not None and value:
+            raise NotImplementedError("Changing loaded date storage requires loaded bank integration")
+        self._iso_dates = bool(value)
+
+    @property
+    def epoch(self):
+        self._check_open()
+        mac = self._reader.date_1904() if self._reader is not None else self._book.date_1904()
+        return datetime(1904, 1, 1) if mac else datetime(1899, 12, 30)
+    @epoch.setter
+    def epoch(self, value):
+        if value not in (datetime(1899, 12, 30), datetime(1904, 1, 1)):
+            raise ValueError("The epoch must be either 1900 or 1904")
+        if self._reader is not None:
+            raise NotImplementedError("Changing a loaded workbook epoch is not implemented")
+        self._book.set_date_1904(value == datetime(1904, 1, 1))
 
     @property
     def worksheets(self): return list(self._sheets)
@@ -474,7 +498,7 @@ class Workbook:
                 raise NotImplementedError("Saving data-only loaded workbooks is not implemented")
             self._editor.save(Path(filename), False)
         else:
-            save_models(Path(filename), [sheet._model() for sheet in self._sheets], self.index(self.active) if self.active is not None else 0)
+            save_models(Path(filename), [sheet._model() for sheet in self._sheets], self.index(self.active) if self.active is not None else 0, self.iso_dates, self._book.date_1904())
 
     def close(self):
         if self._reader is not None:

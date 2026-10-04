@@ -555,3 +555,46 @@ def test_literal_date_clock_duration_precision_matches_reference(engine, tmp_pat
     loaded.close()
     expected.close()
     book.close()
+
+
+@pytest.mark.parametrize("iso", [False, True], ids=["numeric", "iso"])
+@pytest.mark.parametrize("mac", [False, True], ids=["windows", "mac"])
+def test_date_only_iso_creation_epoch_and_loaded_types(engine, tmp_path, iso, mac):
+    from datetime import date
+    from openpyxl.utils.datetime import CALENDAR_MAC_1904, CALENDAR_WINDOWS_1900
+    book = engine.Workbook(iso_dates=iso)
+    assert book.iso_dates == iso
+    assert book.epoch == CALENDAR_WINDOWS_1900
+    book.epoch = CALENDAR_MAC_1904 if mac else CALENDAR_WINDOWS_1900
+    values = (date(2024, 2, 29), datetime(2024, 2, 29, 12, 3, 4, 123456), time(12, 3, 4, 123456), timedelta(days=1, hours=6))
+    book.active.append(values)
+    assert list(book.active.values) == [values]
+    assert [book.active.cell(1, column).data_type for column in range(1, 5)] == ["d"] * 4
+    with pytest.raises(ValueError):
+        book.epoch = 1904
+    path = tmp_path / "date-mode.xlsx"
+    book.save(path)
+    loaded = engine.load_workbook(path)
+    assert loaded.epoch == book.epoch
+    expected = (date(2024, 2, 29) if iso else datetime(2024, 2, 29), datetime(2024, 2, 29, 12, 3, 4, 123000), time(12, 3, 4, 123000), timedelta(days=1, hours=6))
+    assert list(loaded.active.values) == [expected]
+    assert type(loaded.active["A1"].value) is (date if iso else datetime)
+    loaded.close()
+    book.close()
+
+
+def test_loaded_date_policy_changes_are_explicit_until_bank_integration(tmp_path):
+    path = tmp_path / "loaded-policy.xlsx"
+    book = openpyxl.Workbook()
+    book.active["A1"] = datetime(2024, 1, 1)
+    book.save(path)
+    book.close()
+    loaded = crabxl.load_workbook(path)
+    try:
+        with pytest.raises(NotImplementedError):
+            loaded.iso_dates = True
+        with pytest.raises(NotImplementedError):
+            loaded.epoch = datetime(1904, 1, 1)
+        assert loaded.iso_dates is False and loaded.epoch == datetime(1899, 12, 30)
+    finally:
+        loaded.close()
