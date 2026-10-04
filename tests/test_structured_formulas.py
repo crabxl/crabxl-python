@@ -187,3 +187,46 @@ def test_loaded_array_text_property_updates_use_canonical_literal_conversion(eng
     reloaded = engine.load_workbook(path)
     assert reloaded.active['A1'].value.text == '=' + (text or '')[1:]
     reloaded.close()
+
+
+@pytest.mark.parametrize('reference', ['', '$A$1:$B$2', 'Sheet1!A1:B2', 'not a range'])
+def test_literal_array_reference_properties_and_loaded_updates(engine, reference, tmp_path):
+    module = import_module(engine.__name__ + '.worksheet.formula')
+    book = engine.Workbook()
+    book.active['A1'] = module.ArrayFormula(reference, '=1')
+    assert book.active['A1'].value.ref == reference
+    path = tmp_path / 'literal-reference.xlsx'
+    book.save(path)
+    assert book.active['A1'].value.ref == reference
+    book.close()
+    loaded = engine.load_workbook(path)
+    assert loaded.active['A1'].value.ref == (reference or None)
+    loaded.active['A1'].value.ref = 'Sheet2!C1:D2'
+    loaded.save(path)
+    loaded.close()
+    checked = openpyxl.load_workbook(path)
+    assert checked.active['A1'].value.ref == 'Sheet2!C1:D2'
+    checked.close()
+
+
+@pytest.mark.parametrize('reference', ['A1:B2', 'Sheet1!A1:B2', 'opaque'])
+@pytest.mark.parametrize('input1', [None, '', 'C1', 'Sheet1!C1', 'input'])
+def test_literal_table_references_and_inputs_match_public_save(engine, reference, input1, tmp_path):
+    module = import_module(engine.__name__ + '.worksheet.formula')
+    book = engine.Workbook()
+    book.active['A1'] = module.DataTableFormula(reference, r1=input1, r2='')
+    assert book.active['A1'].value.ref == reference
+    assert book.active['A1'].value.r1 == input1
+    path = tmp_path / 'literal-table.xlsx'
+    book.save(path)
+    book.close()
+    loaded = engine.load_workbook(path)
+    assert loaded.active['A1'].value.ref == reference
+    assert loaded.active['A1'].value.r1 == (input1 or None)
+    assert loaded.active['A1'].value.r2 is None
+    loaded.active['A1'].value.r1 = 'updated input'
+    loaded.save(path)
+    loaded.close()
+    checked = openpyxl.load_workbook(path)
+    assert checked.active['A1'].value.r1 == 'updated input'
+    checked.close()

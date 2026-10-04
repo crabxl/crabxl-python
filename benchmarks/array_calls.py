@@ -62,10 +62,11 @@ def measure(command, directory):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--measure', type=Path, required=True, help='Compiled crabxl benchmarks/measure.c helper')
+    parser.add_argument('--output', type=Path, default=ROOT / 'benchmarks/results/array-calls.json')
     args = parser.parse_args()
     import openpyxl
     assert openpyxl.__version__ == '3.1.5'
-    report = {'reference': openpyxl.__version__, 'core': 'a3d957f992a90a174b0a81d0a2530203e1370bdd', 'platform': platform.platform(), 'python': sys.version, 'measurement': 'One warmup and five rotating serial cold-process wall/CPU/RSS samples including Python/import baseline; build and public readback excluded; temporary files sampled every 25ms with cleanup checked', 'semantics': 'Identical Workbook/cell/ArrayFormula/property/save calls retain an owned sheet in both engines. None, empty, equals and non-equals/Unicode prefixes are validated before save; ordinary/data-only readback is verified outside timing. No reference runtime fallback in adapter; this is supported array-call overlap, not full workbook parity. No prior adapter pin had all these property semantics, so no equivalent old baseline is fabricated.', 'cases': []}
+    report = {'reference': openpyxl.__version__, 'core': __import__('tomllib').loads((ROOT / 'Cargo.toml').read_text())['dependencies']['crabxl']['rev'], 'platform': platform.platform(), 'python': sys.version, 'measurement': 'One warmup and five rotating serial cold-process wall/CPU/RSS samples including Python/import baseline; build and public readback excluded; temporary files sampled every 25ms with cleanup checked', 'semantics': 'Identical Workbook/cell/ArrayFormula/property/save calls retain an owned sheet in both engines. None, empty, equals and non-equals/Unicode prefixes are validated before save; ordinary/data-only readback is verified outside timing. No reference runtime fallback in adapter; this is supported array-call overlap, not full workbook parity. No prior adapter pin had all these property semantics, so no equivalent old baseline is fabricated.', 'cases': []}
     with tempfile.TemporaryDirectory() as name:
         root = Path(name)
         temporary = root / 'temporary'
@@ -86,7 +87,7 @@ def main():
                     sample['output_bytes'] = paths[engine].stat().st_size
                     samples[engine].append(sample)
             report['cases'].append({'cells': count, 'samples': samples, 'medians': {engine: {key: statistics.median(sample[key] for sample in values) for key in ('seconds', 'cpu_seconds', 'peak_rss_kib', 'sampled_temp_peak_bytes')} for engine, values in samples.items()}})
-            (ROOT / 'benchmarks/results/array-calls.json').write_text(json.dumps(report, indent=2)+'\n')
+            args.output.write_text(json.dumps(report, indent=2)+'\n')
             print(count, report['cases'][-1]['medians'], flush=True)
 
 if __name__ == '__main__':

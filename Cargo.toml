@@ -12,7 +12,7 @@ name = "_native"
 crate-type = ["cdylib"]
 
 [dependencies]
-crabxl = { git = "https://github.com/crabxl/crabxl.git", rev = "a3d957f992a90a174b0a81d0a2530203e1370bdd" }
+crabxl = { git = "https://github.com/crabxl/crabxl.git", rev = "5ecb5bd6e032294d7c18ae461befe61f86d88b79" }
 pyo3 = { version = "0.26", features = ["extension-module"] }
 tempfile = "3.27"
 
