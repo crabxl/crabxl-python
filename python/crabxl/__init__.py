@@ -58,8 +58,6 @@ def _encode(value):
         if any(ord(char) < 32 and char not in "\t\n\r" for char in value):
             from .utils.exceptions import IllegalCharacterError
             raise IllegalCharacterError("Text contains an illegal XML character")
-        if re.search(r"_[xX][0-9a-fA-F]{4}_", value):
-            raise NotImplementedError("OOXML escape-aware text is not implemented")
         if value.startswith("=") and len(value) > 1:
             return "formula", value[1:]
         return ("error" if value in _ERRORS else "text"), value
