@@ -43,6 +43,11 @@ def _range(value):
 
 
 def _encode(value):
+    from .worksheet.formula import ArrayFormula, DataTableFormula
+    if isinstance(value, ArrayFormula):
+        return "array", {"ref": value.ref, "text": value.text}
+    if isinstance(value, DataTableFormula):
+        return "table", dict(vars(value))
     if value is None:
         return "empty", None
     if isinstance(value, bool):
@@ -78,6 +83,9 @@ def _encode(value):
 
 def _decode(tagged):
     kind, value = tagged
+    if kind in ("array", "table"):
+        from .worksheet.formula import ArrayFormula, DataTableFormula
+        return (ArrayFormula if kind == "array" else DataTableFormula)(**value)
     if kind == "bigint":
         return int(value)
     if kind == "date":
@@ -93,11 +101,12 @@ def _decode(tagged):
 
 class Cell:
     """A live Python view of a Rust-owned cell; coordinates are one-based."""
-    __slots__ = ("parent", "row", "column", "_detached", "__weakref__")
+    __slots__ = ("parent", "row", "column", "_detached", "_formula", "__weakref__")
 
     def __init__(self, worksheet, row, column):
         self.parent, self.row, self.column = worksheet, row, column
         self._detached = None
+        self._formula = None
 
     @property
     def coordinate(self):
@@ -109,7 +118,15 @@ class Cell:
 
     @property
     def value(self):
-        return _decode(self._tagged())
+        from .worksheet.formula import ArrayFormula, DataTableFormula, bind
+        value = _decode(self._tagged())
+        if isinstance(value, (ArrayFormula, DataTableFormula)):
+            if self._formula is not None and type(self._formula) is type(value) and vars(self._formula) == vars(value):
+                return self._formula
+            self._formula = bind(value, self)
+            return self._formula
+        self._formula = None
+        return value
 
     @value.setter
     def value(self, value):
@@ -125,7 +142,7 @@ class Cell:
     @property
     def data_type(self):
         kind = self._tagged()[0]
-        return "d" if kind in ("date", "datetime", "duration", "time") else "n" if kind == "bigint" else kind
+        return "f" if kind in ("array", "table") else "d" if kind in ("date", "datetime", "duration", "time") else "n" if kind == "bigint" else kind
 
     @property
     def internal_value(self):
@@ -137,12 +154,12 @@ class Cell:
 
 
 def _data_type(tag):
-    return {"empty": "n", "bool": "b", "int": "n", "float": "n", "text": "s", "error": "e", "formula": "f"}.get(tag[0], "d")
+    return {"empty": "n", "bool": "b", "int": "n", "float": "n", "text": "s", "error": "e", "formula": "f", "array": "f", "table": "f"}.get(tag[0], "d")
 
 
 class Worksheet:
     """Sparse worksheet using the same public call conventions as openpyxl."""
-    __slots__ = ("parent", "_title", "_existing", "_native", "_cells")
+    __slots__ = ("parent", "_title", "_existing", "_native", "_cells", "__weakref__")
 
     def __init__(self, parent, title=None, *, _existing=False, _native=None):
         self.parent = parent
