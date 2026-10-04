@@ -1,10 +1,9 @@
 //! Optional adapter: foreign objects and naming stay outside the Rust core.
 use crabxl::{
-    Cell, CellAddress, CellRange, CellValue, ColumnIndex, DateEpoch, DateKind, EditLimits,
-    EditorOptions, Error, ErrorKind, ExactInteger, ExcelDateTime, Formula, MemoryPolicy,
-    ReadOptions, ResourceLimits, Row, RowIndex, SaveOptions, SheetId, StyleId, Workbook,
-    WorkbookEditor, WorkbookLimits, WorkbookReader, WorkbookWriter, Worksheet, WorksheetEditor,
-    WriteOptions,
+    Cell, CellAddress, CellRange, CellValue, ColumnIndex, DateKind, EditLimits, EditorOptions,
+    Error, ErrorKind, ExactInteger, ExcelDateTime, Formula, MemoryPolicy, ReadOptions,
+    ResourceLimits, Row, RowIndex, SaveOptions, SheetId, StyleId, Workbook, WorkbookEditor,
+    WorkbookLimits, WorkbookReader, WorkbookWriter, Worksheet, WorksheetEditor, WriteOptions,
 };
 use pyo3::{
     IntoPyObjectExt,
@@ -75,25 +74,25 @@ fn decode(py: Python<'_>, value: TaggedValue) -> PyResult<CellValue> {
             Formula::new(value.extract::<String>()?, None).map_err(failure)?,
         )),
         "datetime" => {
-            let (y, m, d, h, minute, second, milli): (i32, u32, u32, u32, u32, u32, u32) =
+            let (y, m, d, h, minute, second, micro): (i32, u32, u32, u32, u32, u32, u32) =
                 value.extract()?;
             CellValue::DateTime(Box::new(
-                ExcelDateTime::from_ymd_hms_milli(y, m, d, h, minute, second, milli)
+                ExcelDateTime::from_ymd_hms_micro(y, m, d, h, minute, second, micro)
                     .map_err(failure)?,
             ))
         }
-        "time" | "duration" => CellValue::DateTime(Box::new(
-            ExcelDateTime::from_serial(
-                value.extract()?,
-                DateEpoch::Windows1900,
-                if kind == "time" {
-                    DateKind::Time
-                } else {
-                    DateKind::Duration
-                },
-            )
-            .map_err(failure)?,
-        )),
+        "time" => {
+            let (hour, minute, second, micro): (u32, u32, u32, u32) = value.extract()?;
+            CellValue::DateTime(Box::new(
+                ExcelDateTime::from_hms_micro(hour, minute, second, micro).map_err(failure)?,
+            ))
+        }
+        "duration" => {
+            let (days, seconds, micro): (i64, u32, u32) = value.extract()?;
+            CellValue::DateTime(Box::new(
+                ExcelDateTime::from_duration_parts(days, seconds, micro).map_err(failure)?,
+            ))
+        }
         _ => return Err(PyValueError::new_err("Unknown native value tag")),
     })
 }
@@ -116,8 +115,21 @@ fn encode(py: Python<'_>, value: &CellValue) -> PyResult<TaggedValue> {
                     .to_string()
                     .into_py_any(py)?,
             ),
-            DateKind::Time => ("time", value.serial().into_py_any(py)?),
-            DateKind::Duration => ("duration", value.serial().into_py_any(py)?),
+            DateKind::Time => (
+                "time",
+                value
+                    .to_time()
+                    .map_err(failure)?
+                    .to_string()
+                    .into_py_any(py)?,
+            ),
+            DateKind::Duration => {
+                let duration = value.to_duration().map_err(failure)?;
+                (
+                    "duration",
+                    (duration.num_seconds(), duration.subsec_micros()).into_py_any(py)?,
+                )
+            }
         },
         _ => return Err(PyNotImplementedError::new_err("Unsupported native value")),
     };

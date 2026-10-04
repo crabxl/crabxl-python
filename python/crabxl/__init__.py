@@ -64,17 +64,15 @@ def _encode(value):
     if isinstance(value, datetime):
         if value.tzinfo is not None:
             raise TypeError("Excel does not support timezones in datetimes")
-        if value.microsecond % 1000:
-            raise NotImplementedError("Sub-millisecond date creation is not implemented")
-        return "datetime", (value.year, value.month, value.day, value.hour, value.minute, value.second, value.microsecond // 1000)
+        return "datetime", (value.year, value.month, value.day, value.hour, value.minute, value.second, value.microsecond)
     if isinstance(value, date):
         raise NotImplementedError("Date-only object/format compatibility is not implemented; datetime values are supported")
     if isinstance(value, time):
         if value.tzinfo is not None:
             raise TypeError("Excel does not support timezones in times")
-        return "time", (value.hour * 3600 + value.minute * 60 + value.second + value.microsecond / 1000000) / 86400
+        return "time", (value.hour, value.minute, value.second, value.microsecond)
     if isinstance(value, timedelta):
-        return "duration", value.total_seconds() / 86400
+        return "duration", (value.days, value.seconds, value.microseconds)
     raise ValueError(f"Cannot convert {type(value).__name__} to Excel")
 
 
@@ -85,11 +83,9 @@ def _decode(tagged):
     if kind == "datetime":
         return datetime.fromisoformat(value)
     if kind == "time":
-        microseconds = round(value * 86400 * 1000000)
-        seconds, microseconds = divmod(microseconds, 1000000)
-        return time(seconds // 3600, seconds // 60 % 60, seconds % 60, microseconds)
+        return time.fromisoformat(value)
     if kind == "duration":
-        return timedelta(days=value)
+        return timedelta(seconds=value[0], microseconds=value[1])
     return value
 
 

@@ -1,6 +1,7 @@
 """One public-API test body runs against both implementations."""
 from datetime import datetime, time, timedelta
 import zipfile
+import warnings
 from contextlib import nullcontext
 
 import openpyxl
@@ -517,7 +518,7 @@ def test_loaded_numeric_dates_time_duration_and_formula_cache(engine, tmp_path, 
     book.close()
 
 
-@pytest.mark.parametrize("reference", [openpyxl, pytest.param(crabxl, marks=pytest.mark.xfail(strict=True, reason="Loaded clock/duration FFI still uses raw serial microseconds; canonical date precision integration remains required"))], ids=["openpyxl", "crabxl"])
+@pytest.mark.parametrize("reference", [openpyxl, crabxl], ids=["openpyxl", "crabxl"])
 @pytest.mark.parametrize("format_code,expected", [("hh:mm:ss.000", time(2, 57, 46, 667000)), ("[h]:mm:ss.000", timedelta(hours=2, minutes=57, seconds=46, milliseconds=667))])
 def test_loaded_fractional_clock_duration_baseline_rounding(reference, tmp_path, format_code, expected):
     source = tmp_path / "fractional-clock.xlsx"
@@ -531,3 +532,26 @@ def test_loaded_fractional_clock_duration_baseline_rounding(reference, tmp_path,
         assert loaded.active["A1"].value == expected
     finally:
         loaded.close()
+
+
+@pytest.mark.parametrize("value", [datetime(2024, 2, 29, 12, 3, 4, 123456), datetime(1899, 12, 31, 12, 0, 0, 123456), time(2, 57, 46, 666570), timedelta(microseconds=-1), timedelta(days=999999999, seconds=86399, microseconds=999999)])
+def test_literal_date_clock_duration_precision_matches_reference(engine, tmp_path, value):
+    book = engine.Workbook()
+    book.active["A1"] = value
+    assert book.active["A1"].value == value
+    assert book.active["A1"].data_type == "d"
+    path = tmp_path / "literal-precision.xlsx"
+    book.save(path)
+    reference = openpyxl.Workbook()
+    reference.active["A1"] = value
+    expected_path = tmp_path / "expected-precision.xlsx"
+    reference.save(expected_path)
+    reference.close()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        expected = openpyxl.load_workbook(expected_path)
+        loaded = openpyxl.load_workbook(path)
+    assert loaded.active["A1"].value == expected.active["A1"].value
+    loaded.close()
+    expected.close()
+    book.close()
