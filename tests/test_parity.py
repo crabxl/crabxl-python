@@ -3,11 +3,11 @@ from datetime import datetime, time, timedelta
 import zipfile
 
 import openpyxl
-import openrsxl
+import crabxl
 import pytest
 
 
-@pytest.fixture(params=[openpyxl, openrsxl], ids=["openpyxl", "openrsxl"])
+@pytest.fixture(params=[openpyxl, crabxl], ids=["openpyxl", "crabxl"])
 def engine(request):
     return request.param
 
@@ -111,7 +111,7 @@ def test_loaded_style_image_comment_and_unknown_parts_are_preserved(tmp_path):
     workbook.save(source)
     with zipfile.ZipFile(source, "a") as archive:
         archive.writestr("custom/unknown.xml", '<x xmlns="urn:custom">keep</x>')
-    loaded = openrsxl.load_workbook(source)
+    loaded = crabxl.load_workbook(source)
     loaded.active["A1"] = 9
     for filename in ("first.xlsx", "second.xlsx"):
         target = tmp_path / filename
@@ -128,7 +128,7 @@ def test_loaded_style_image_comment_and_unknown_parts_are_preserved(tmp_path):
 
 
 def test_adapter_limits_exact_integers_closed_sources_and_unsupported_operations(tmp_path):
-    workbook = openrsxl.Workbook(max_memory_bytes=1000)
+    workbook = crabxl.Workbook(max_memory_bytes=1000)
     sheet = workbook.active
     sheet["A1"] = 10**100
     assert sheet["A1"].value == 10**100
@@ -140,10 +140,10 @@ def test_adapter_limits_exact_integers_closed_sources_and_unsupported_operations
     with pytest.raises(AttributeError):
         sheet.freeze_panes = "A1"
     with pytest.raises(NotImplementedError):
-        openrsxl.Workbook(write_only=True)
+        crabxl.Workbook(write_only=True)
     source = tmp_path / "source.xlsx"
     workbook.save(source)
-    loaded = openrsxl.load_workbook(source)
+    loaded = crabxl.load_workbook(source)
     loaded.close()
     with pytest.raises(ValueError, match="closed"):
         loaded.active["A1"].value
@@ -153,7 +153,7 @@ def test_adapter_limits_exact_integers_closed_sources_and_unsupported_operations
 def test_atomic_new_output_failure_preserves_existing_target(tmp_path):
     target = tmp_path / "target.xlsx"
     target.write_bytes(b"original")
-    workbook = openrsxl.Workbook()
+    workbook = crabxl.Workbook()
     # All sheets removed is invalid for the writer. The target must survive.
     workbook.remove(workbook.active)
     with pytest.raises((ValueError, RuntimeError)):
@@ -198,7 +198,7 @@ def test_formula_move_translation_and_failure_atomicity(engine):
     sheet.move_range("B2", rows=1, cols=1, translate=True)
     assert sheet["C3"].value == "=D4+$D$4"
     assert sheet["B2"].value is None
-    if engine is openrsxl:
+    if engine is crabxl:
         sheet["C4"] = "=A1"
         before = tuple(sheet.values)
         with pytest.raises(ValueError):
@@ -272,7 +272,7 @@ def test_move_sheet_offsets_match_list_insertion(engine, offset):
 
 
 def test_python_bank_aggregate_limit_atomic_copy_and_freed_space():
-    workbook = openrsxl.Workbook(max_memory_bytes=1600)
+    workbook = crabxl.Workbook(max_memory_bytes=1600)
     first = workbook.active
     first["A1"] = 1
     second = workbook.create_sheet("B")
@@ -301,7 +301,7 @@ def test_python_bank_aggregate_limit_atomic_copy_and_freed_space():
 
 def test_native_bank_concurrent_copies_keep_owned_handles_valid():
     from concurrent.futures import ThreadPoolExecutor
-    from openrsxl._native import NativeBook
+    from crabxl._native import NativeBook
     book = NativeBook(10_000_000)
     source = book.create_sheet("Source")
     for row in range(400):

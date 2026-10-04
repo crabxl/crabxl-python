@@ -1,15 +1,15 @@
 # Optional Python compatibility adapter
 
-The public interface targets openpyxl-compatible migration, not a second Python API. Supported code can replace `import openpyxl` with `import openrsxl as openpyxl`. Full compatibility remains a staged requirement. This package never calls openpyxl at runtime.
+The public interface targets openpyxl-compatible migration, not a second Python API. Supported code can replace `import openpyxl` with `import crabxl as openpyxl`. Full compatibility remains a staged requirement. This package never calls openpyxl at runtime.
 
 ```sh
 python -m pip install maturin "pytest>=8,<9" "openpyxl==3.1.5" Pillow
-maturin build --release --locked --manifest-path bindings/python/Cargo.toml --out bindings/python/dist
-python -m pip install bindings/python/dist/*.whl
-python -m pytest bindings/python/tests -q
+maturin build --release --locked --manifest-path Cargo.toml --out dist
+python -m pip install dist/*.whl
+python -m pytest tests -q
 ```
 
-Builds require Rust 1.88 and Python 3.10 or newer. CPython 3.12 is locally verified; CI also checks 3.10. The adapter is excluded from the core Cargo workspace, has its own lockfile and can be relocated without making Rust crates depend on Python.
+Builds require Rust 1.88 and Python 3.10 or newer. CPython 3.12 is locally verified; CI also checks 3.10. This standalone repository has its own lockfile and pins the canonical Rust core by Git revision. No sibling checkout is required.
 
 Verified calls include Workbook, active selection and load/save readback, create_sheet/remove/index/move_sheet/copy_worksheet, sheetnames/indexing, Worksheet/Cell indexing, one-based cell(), value/data_type/coordinate, append with lists/dictionaries/generators, iter_rows/iter_cols/values, finite insert/delete/move, model titles and path save. Cached Cell views follow moves and detach on deletion/overwrite. Loaded load_workbook and scalar/formula cell assignment use the original-package editor, including sparse missing-cell insertion and repeatable saves preserving original assets.
 
@@ -19,12 +19,12 @@ New saves use bounded sequential XML spools plus an adjacent output ZIP; loaded 
 
 Still required: full style/date/shared/rich-string reading, date-only and sub-millisecond datetime compatibility, non-finite numbers, complete formula tokenizer, loaded append/structural/sheet mutation, read-only/write-only binding modes, file-like I/O, workbook views/properties and all advanced M5/M6 features. Unsupported arguments/properties fail explicitly. Macro input currently requires keep_vba=True; macro removal is staged. Saving a data-only loaded workbook is not implemented. These limits are not a reduced final feature scope.
 
-Tests contain 37 selected original openpyxl 3.1.5 worksheet methods, nine translator methods and 17 workbook test bodies, with unchanged assertions and adapted imports/fixtures. All selected cases pass; complete tokenizer-dependent cases remain staged. Shared public-API tests run against both engines, and separate failure/preservation tests cover adapter ownership and limits. [Test provenance](../../third_party/python-tests.json), [license](../../third_party/licenses/openpyxl-MIT.txt), [ADR](../../docs/decisions/0006-python-compatibility-adapter.md), [direct API benchmark](../../benchmarks/python-adapter.md).
+Tests contain 37 selected original openpyxl 3.1.5 worksheet methods, nine translator methods and 17 workbook test bodies, with unchanged assertions and adapted imports/fixtures. All selected cases pass; complete tokenizer-dependent cases remain staged. Shared public-API tests run against both engines, and separate failure/preservation tests cover adapter ownership and limits. [Test provenance](third_party/python-tests.json), [license](third_party/licenses/openpyxl-MIT.txt), [ADR](docs/decisions/0006-python-compatibility-adapter.md), [direct API benchmark](https://github.com/crabxl/crabxl/blob/main/benchmarks/python-adapter.md).
 
 Verify original test bodies with `python tools/verify_python_test_provenance.py --reference-checkout /path/to/pinned/openpyxl` from the repository root. The full upstream suite is not claimed to run unchanged.
 
-`move_range(..., translate=True)` and `openrsxl.formula.translate.Translator` now use bounded Rust A1 translation. Absolute axes, quoted sheet names/text and structured references retain context. Formula tools use baseline reference grammar separately from physical worksheet limits. `Translator.MAX_FORMULA_BYTES` configures its output allowance. Full tokenizer APIs and dynamic spill translation are not implemented.
+`move_range(..., translate=True)` and `crabxl.formula.translate.Translator` now use bounded Rust A1 translation. Absolute axes, quoted sheet names/text and structured references retain context. Formula tools use baseline reference grammar separately from physical worksheet limits. `Translator.MAX_FORMULA_BYTES` configures its output allowance. Full tokenizer APIs and dynamic spill translation are not implemented.
 
-Owned worksheet copies are independent scalar/formula models using the canonical Rust bank; unsupported feature graphs cannot be set and are not silently omitted. Removed worksheets remain usable through retained Python references. Public sheet insertion/movement and active-index behavior follow Python compatibility rules while stable Rust IDs remain internal. [Workbook test provenance](../../third_party/python-workbook-tests.json) records the additional original assertions.
+Owned worksheet copies are independent scalar/formula models using the canonical Rust bank; unsupported feature graphs cannot be set and are not silently omitted. Removed worksheets remain usable through retained Python references. Public sheet insertion/movement and active-index behavior follow Python compatibility rules while stable Rust IDs remain internal. [Workbook test provenance](third_party/python-workbook-tests.json) records the additional original assertions.
 
-Loaded scalar/formula edits discard a conventional derived calculation chain and its package declarations, matching the reference save behavior. Unchanged original chains remain available through the Rust editor. Unsafe incoming/extension relationships and signed-package edits still reject explicitly. [Policy and boundaries](../../docs/decisions/0008-derived-calculation-chain.md).
+Loaded scalar/formula edits discard a conventional derived calculation chain and its package declarations, matching the reference save behavior. Unchanged original chains remain available through the Rust editor. Unsafe incoming/extension relationships and signed-package edits still reject explicitly. [Policy and boundaries](https://github.com/crabxl/crabxl/blob/main/docs/decisions/0008-derived-calculation-chain.md).

@@ -1,5 +1,5 @@
 //! Optional adapter: foreign objects and naming stay outside the Rust core.
-use openrsxl::{
+use crabxl::{
     Cell, CellAddress, CellRange, CellValue, ColumnIndex, DateEpoch, DateKind, EditLimits,
     EditorOptions, Error, ErrorKind, ExactInteger, ExcelDateTime, Formula, MemoryPolicy,
     ReadOptions, ResourceLimits, Row, RowIndex, SaveOptions, SheetId, StyleId, Workbook,
@@ -581,15 +581,15 @@ fn translate_formula(
     columns: i64,
     max_bytes: usize,
 ) -> PyResult<String> {
-    openrsxl::translate_expression(expression, rows, columns, max_bytes).map_err(failure)
+    crabxl::translate_expression(expression, rows, columns, max_bytes).map_err(failure)
 }
 #[pyfunction]
 fn translate_axis(reference: &str, delta: i64, row: bool) -> PyResult<String> {
-    openrsxl::translate_axis(reference, delta, row).map_err(failure)
+    crabxl::translate_axis(reference, delta, row).map_err(failure)
 }
 #[pyfunction]
 fn formula_position(reference: &str) -> PyResult<(u64, u32)> {
-    openrsxl::formula_position(reference).map_err(failure)
+    crabxl::formula_position(reference).map_err(failure)
 }
 #[pyfunction]
 fn cell_address(reference: &str) -> PyResult<(u32, u32)> {
@@ -633,7 +633,7 @@ fn resolve_model_budget(max_bytes: Option<usize>) -> PyResult<usize> {
         }
         Ok(bytes)
     } else {
-        openrsxl::memory_allowance(MemoryPolicy::default(), ResourceLimits::default())
+        crabxl::memory_allowance(MemoryPolicy::default(), ResourceLimits::default())
             .map(|allowance| allowance.retained_data_bytes)
             .map_err(failure)
     }
@@ -667,7 +667,7 @@ fn save_models(
             .filter(|parent| !parent.as_os_str().is_empty())
             .unwrap_or_else(|| std::path::Path::new("."));
         let mut temporary = tempfile::Builder::new()
-            .prefix("openrsxl-python-")
+            .prefix("crabxl-python-")
             .tempfile_in(parent)
             .map_err(|error| PyOSError::new_err(error.to_string()))?;
         writer.finish(&mut temporary).map_err(failure)?;

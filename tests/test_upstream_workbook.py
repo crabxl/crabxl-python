@@ -2,7 +2,7 @@
 # Selected pinned test bodies and decorators are unchanged.
 # See third_party/python-workbook-tests.json.
 import pytest
-from openrsxl import Workbook as AdapterWorkbook, Worksheet
+from crabxl import Workbook as AdapterWorkbook, Worksheet
 
 @pytest.fixture
 def Workbook():
