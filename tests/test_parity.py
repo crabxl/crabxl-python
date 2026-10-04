@@ -406,3 +406,67 @@ def test_plain_shared_string_read_edit_and_repeat_save(engine, value, tmp_path):
             assert verified.active["B1"].value == expected
         verified.close()
     book.close()
+
+
+@pytest.mark.parametrize("location", ["inline", "shared"])
+@pytest.mark.parametrize("content,inline,shared", [
+    ('<r><rPr><b/></rPr><t xml:space="preserve">  rich &amp; text </t></r><r><t>tail</t></r>', '  rich & text tail', '  rich & text tail'),
+    ('<r><rPr><b/></rPr><t>_x005F_x0041_</t></r>', '_x005F_x0041_', '_x0041_'),
+    ('<r><rPr><b/></rPr><t>_x005F</t></r><r><t>_x0041_</t></r>', '_x005F_x0041_', '_x0041_'),
+    ('<r><t xml:space="preserve">  </t></r><r><rPr><i/></rPr><t></t></r>', '  ', '  '),
+])
+def test_default_rich_projection_edit_and_repeated_save(engine, location, content, inline, shared, tmp_path):
+    source = tmp_path / "rich-source.xlsx"
+    initial = openpyxl.Workbook()
+    initial.active["A1"] = initial.active["B1"] = "placeholder"
+    initial.save(source)
+    with zipfile.ZipFile(source) as archive:
+        parts = {name: archive.read(name) for name in archive.namelist()}
+    main = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    if location == "shared":
+        parts["xl/sharedStrings.xml"] = f'<sst xmlns="{main}"><si>{content}</si></sst>'.encode()
+        parts["xl/_rels/workbook.xml.rels"] = parts["xl/_rels/workbook.xml.rels"].replace(b'</Relationships>', f'<Relationship Id="shared" Type="{rel}/sharedStrings" Target="sharedStrings.xml"/></Relationships>'.encode())
+        parts["[Content_Types].xml"] = parts["[Content_Types].xml"].replace(b'</Types>', b'<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>')
+        cell = lambda address: f'<c r="{address}" t="s"><v>0</v></c>'
+    else:
+        cell = lambda address: f'<c r="{address}" t="inlineStr"><is>{content}</is></c>'
+    parts["xl/worksheets/sheet1.xml"] = f'<worksheet xmlns="{main}"><dimension ref="A1:B1"/><sheetData><row r="1">{cell("A1")}{cell("B1")}</row></sheetData></worksheet>'.encode()
+    with zipfile.ZipFile(source, "w") as archive:
+        for name, data in parts.items():
+            archive.writestr(name, data)
+    expected = inline if location == "inline" else shared
+    book = engine.load_workbook(source, rich_text=False)
+    assert list(book.active.values) == [(expected, expected)]
+    book.active["A1"] = "changed"
+    for index in range(2):
+        target = tmp_path / f"rich-edited-{index}.xlsx"
+        book.save(target)
+        checked = openpyxl.load_workbook(target, rich_text=False)
+        assert list(checked.active.values) == [("changed", expected)]
+        checked.close()
+    book.close()
+
+
+def test_preserving_rich_runs_is_separate_from_default_text_projection(tmp_path):
+    from openpyxl.cell.rich_text import CellRichText, TextBlock
+    from openpyxl.cell.text import InlineFont
+    original = CellRichText(TextBlock(InlineFont(b=True, color="80445566"), "formatted"), " tail")
+    source = tmp_path / "preserving-rich.xlsx"
+    reference = openpyxl.Workbook()
+    reference.active["A1"] = original
+    reference.active["B1"] = 1
+    reference.save(source)
+    book = crabxl.load_workbook(source)
+    assert book.active["A1"].value == "formatted tail"
+    book.active["B1"] = 2
+    for index in range(2):
+        target = tmp_path / f"preserved-{index}.xlsx"
+        book.save(target)
+        checked = openpyxl.load_workbook(target, rich_text=True)
+        assert checked.active["A1"].value == original
+        assert checked.active["B1"].value == 2
+        checked.close()
+    book.close()
+    with pytest.raises(NotImplementedError):
+        crabxl.load_workbook(source, rich_text=True)
