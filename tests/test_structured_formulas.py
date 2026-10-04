@@ -230,3 +230,49 @@ def test_literal_table_references_and_inputs_match_public_save(engine, reference
     checked = openpyxl.load_workbook(path)
     assert checked.active['A1'].value.r1 == 'updated input'
     checked.close()
+
+
+@pytest.mark.parametrize('literal', ['', 'false', '0', 'invalid', ' true ', 'quoted & value'])
+def test_literal_table_flags_preserve_public_properties_and_save_rules(engine, literal, tmp_path):
+    module = import_module(engine.__name__ + '.worksheet.formula')
+    fields = ['ca', 'dt2D', 'dtr', 'del1', 'del2']
+    book = engine.Workbook()
+    book.active['A1'] = module.DataTableFormula('A1:B2', **dict.fromkeys(fields, literal))
+    assert all(getattr(book.active['A1'].value, name) == literal for name in fields)
+    path = tmp_path / 'literal-flags.xlsx'
+    book.save(path)
+    book.close()
+    loaded = engine.load_workbook(path)
+    assert all(getattr(loaded.active['A1'].value, name) == (literal if literal else False) for name in fields)
+    loaded.active['A1'].value.ca = 'updated flag'
+    loaded.save(path)
+    loaded.close()
+    checked = openpyxl.load_workbook(path)
+    assert checked.active['A1'].value.ca == 'updated flag'
+    checked.close()
+
+
+@pytest.mark.parametrize('attributes, expected', [
+    ('t="future" ref="invalid"', '=A1+1'),
+    ('ca="invalid" si="invalid" r1="opaque" t="normal"', '=A1+1'),
+    ('unknown="value" t="normal"', '=A1+1'),
+    ('ca="invalid" unknown="value" si="3" ref="opaque" t="shared"', '=A1+1'),
+    ('t="array" ref="opaque" aca="invalid" r1="unused" unknown="value"', {'ref': 'opaque', 'text': '=A1+1'}),
+    ('t="dataTable" ref="opaque" ca="invalid" unknown="value"', {'ref': 'opaque', 'ca': 'invalid', 'dt2D': False, 'dtr': False, 'r1': None, 'r2': None, 'del1': False, 'del2': False}),
+])
+@pytest.mark.parametrize('cached', [False, True])
+def test_compatible_source_formula_headers_match_visible_public_values(engine, attributes, expected, cached, tmp_path):
+    path = tmp_path / 'header.xlsx'
+    source = openpyxl.Workbook()
+    source.save(path)
+    source.close()
+    with zipfile.ZipFile(path) as archive:
+        parts = {name: archive.read(name) for name in archive.namelist()}
+    parts['xl/worksheets/sheet1.xml'] = ('<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><f ' + attributes + '>A1+1</f><v>2</v></c></row></sheetData></worksheet>').encode()
+    with zipfile.ZipFile(path, 'w') as archive:
+        for name, value in parts.items():
+            archive.writestr(name, value)
+    book = engine.load_workbook(path, data_only=cached)
+    value = book.active['A1'].value
+    assert (vars(value) if isinstance(expected, dict) and not cached else value) == (2 if cached else expected)
+    book.close()

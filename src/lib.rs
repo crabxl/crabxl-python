@@ -56,9 +56,7 @@ fn input_flag(fields: &Bound<'_, PyDict>, name: &str) -> PyResult<Option<Formula
     if let Ok(boolean) = value.extract::<bool>() {
         return Ok(Some(boolean.into()));
     }
-    FormulaFlag::from_xml(value.extract::<String>()?)
-        .map(Some)
-        .map_err(failure)
+    Ok(Some(FormulaFlag::from_literal(value.extract::<String>()?)))
 }
 fn input_text(fields: &Bound<'_, PyDict>, name: &str) -> PyResult<Option<Box<str>>> {
     fields
