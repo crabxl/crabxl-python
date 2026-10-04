@@ -1,9 +1,10 @@
 //! Optional adapter: foreign objects and naming stay outside the Rust core.
 use crabxl::{
-    Cell, CellAddress, CellRange, CellValue, ColumnIndex, DateKind, EditLimits, EditorOptions,
-    Error, ErrorKind, ExactInteger, ExcelDateTime, Formula, MemoryPolicy, ReadOptions,
-    ResourceLimits, Row, RowIndex, SaveOptions, SheetId, StyleId, Workbook, WorkbookEditor,
-    WorkbookLimits, WorkbookReader, WorkbookWriter, Worksheet, WorksheetEditor, WriteOptions,
+    Cell, CellAddress, CellRange, CellValue, ColumnIndex, DateEpoch, DateKind, EditLimits,
+    EditorOptions, Error, ErrorKind, ExactInteger, ExcelDateTime, Formula, MemoryPolicy,
+    ReadOptions, ResourceLimits, Row, RowIndex, SaveOptions, SheetId, StyleId, Workbook,
+    WorkbookEditor, WorkbookLimits, WorkbookReader, WorkbookWriter, Worksheet, WorksheetEditor,
+    WriteOptions,
 };
 use pyo3::{
     IntoPyObjectExt,
@@ -73,6 +74,12 @@ fn decode(py: Python<'_>, value: TaggedValue) -> PyResult<CellValue> {
         "formula" => CellValue::Formula(Box::new(
             Formula::new(value.extract::<String>()?, None).map_err(failure)?,
         )),
+        "date" => {
+            let (year, month, day): (i32, u32, u32) = value.extract()?;
+            CellValue::DateTime(Box::new(
+                ExcelDateTime::from_ymd(year, month, day).map_err(failure)?,
+            ))
+        }
         "datetime" => {
             let (y, m, d, h, minute, second, micro): (i32, u32, u32, u32, u32, u32, u32) =
                 value.extract()?;
@@ -107,6 +114,14 @@ fn encode(py: Python<'_>, value: &CellValue) -> PyResult<TaggedValue> {
         CellValue::Error(value) => ("e", value.as_str().into_py_any(py)?),
         CellValue::Formula(value) => ("f", format!("={}", value.expression()).into_py_any(py)?),
         CellValue::DateTime(value) => match value.kind() {
+            DateKind::Date => (
+                "date",
+                value
+                    .to_date()
+                    .map_err(failure)?
+                    .to_string()
+                    .into_py_any(py)?,
+            ),
             DateKind::DateTime => (
                 "datetime",
                 value
@@ -388,6 +403,17 @@ impl NativeBook {
         *storage = SheetStorage::Standalone(removed);
         Ok(())
     }
+    fn date_1904(&self) -> PyResult<bool> {
+        Ok(lock(&self.book)?.epoch() == DateEpoch::Mac1904)
+    }
+    fn set_date_1904(&self, value: bool) -> PyResult<()> {
+        lock(&self.book)?.set_epoch(if value {
+            DateEpoch::Mac1904
+        } else {
+            DateEpoch::Windows1900
+        });
+        Ok(())
+    }
     fn charged_bytes(&self) -> PyResult<usize> {
         Ok(lock(&self.book)?.charged_bytes())
     }
@@ -430,6 +456,9 @@ impl NativeReader {
             .iter()
             .map(|sheet| sheet.name().into())
             .collect())
+    }
+    fn date_1904(&self) -> PyResult<bool> {
+        Ok(lock(&self.reader)?.as_ref().ok_or_else(closed)?.date_1904())
     }
     fn active_index(&self) -> PyResult<Option<usize>> {
         Ok(lock(&self.reader)?
@@ -659,12 +688,14 @@ fn resolve_model_budget(max_bytes: Option<usize>) -> PyResult<usize> {
     }
 }
 #[pyfunction]
-#[pyo3(signature = (path, sheets, active_sheet=0))]
+#[pyo3(signature = (path, sheets, active_sheet=0, iso_dates=false, date_1904=false))]
 fn save_models(
     py: Python<'_>,
     path: PathBuf,
     sheets: Vec<Py<NativeSheet>>,
     active_sheet: usize,
+    iso_dates: bool,
+    date_1904: bool,
 ) -> PyResult<()> {
     let sheets = sheets
         .iter()
@@ -673,6 +704,8 @@ fn save_models(
     py.detach(move || {
         let mut writer = WorkbookWriter::new(WriteOptions {
             active_sheet,
+            iso_dates,
+            date_1904,
             ..WriteOptions::default()
         })
         .map_err(failure)?;
