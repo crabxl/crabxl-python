@@ -3,7 +3,7 @@ requires = ["maturin>=1.9,<2"]
 build-backend = "maturin"
 
 [project]
-name = "openrsxl"
+name = "crabxl"
 version = "0.1.0"
 requires-python = ">=3.10"
 description = "Rust spreadsheet processing with an openpyxl-compatible Python surface"
@@ -14,4 +14,4 @@ test = ["pytest>=8,<9", "openpyxl==3.1.5", "Pillow>=10"]
 
 [tool.maturin]
 python-source = "python"
-module-name = "openrsxl._native"
+module-name = "crabxl._native"

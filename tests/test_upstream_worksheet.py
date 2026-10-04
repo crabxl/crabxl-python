@@ -1,11 +1,11 @@
 # Copyright (c) 2010-2024 openpyxl. MIT License.
 # Selected release tests; exact methods/assertions/decorators retained.
-# Imports/fixture construction target openrsxl instead of reference internals.
+# Imports/fixture construction target crabxl instead of reference internals.
 # See third_party/python-tests.json and third_party/licenses/openpyxl-MIT.txt.
 import pytest
 from itertools import islice
-from openrsxl import Workbook, Worksheet as NativeWorksheet, Cell
-from openrsxl.worksheet.cell_range import CellRange
+from crabxl import Workbook, Worksheet as NativeWorksheet, Cell
+from crabxl.worksheet.cell_range import CellRange
 
 @pytest.fixture
 def Worksheet():

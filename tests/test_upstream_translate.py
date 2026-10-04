@@ -2,7 +2,7 @@
 # Pinned release tests; only imports/fixtures target the optional adapter.
 # See third_party/python-formula-tests.json and licenses/openpyxl-MIT.txt.
 import pytest
-from openrsxl.formula.translate import Translator as AdapterTranslator, TranslatorError as AdapterError
+from crabxl.formula.translate import Translator as AdapterTranslator, TranslatorError as AdapterError
 
 @pytest.fixture
 def Translator(): return AdapterTranslator
