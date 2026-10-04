@@ -1,0 +1,7 @@
+# ADR 0010: Raw formula flags and compatible visible headers
+
+The adapter pins published core a090dc45d90e1b506eaf50df8d2482bd9c935bae. Public string flags convert to canonical FormulaFlag literals; Boolean meaning is optional and opaque strings are not fabricated Booleans. The adapter emits retained strings or typed values, while constructor defaults supply the public absent-property view. All parsing, serialization, XML preflight and replacement policy live in core.
+
+Shared tests cover six literal strings across all five table flags, assigned getters, saved defaults and loaded-property updates. Visible normal/shared/array/table header fixtures compare ordinary and data-only calls against the public reference. Known loaded structured records permit raw flag edits; unknown source types/attributes and shared-group replacements keep core safety restrictions rather than being silently discarded during editing.
+
+All 439 tests pass using the installed locked release wheel. All 63 selected original reference bodies/parameter sets remain unchanged and verified at the pinned source. New cases are original public behavior comparisons, with no added implementation reading. Same-call owned table creation/property/save is measured separately from Rust lazy editing and streaming reads; see benchmarks/table-calls.md. These checkpoints do not complete the Rust milestones or the full Python public surface.
