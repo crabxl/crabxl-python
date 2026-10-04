@@ -1,6 +1,7 @@
 """One public-API test body runs against both implementations."""
 from datetime import datetime, time, timedelta
 import zipfile
+from contextlib import nullcontext
 
 import openpyxl
 import crabxl
@@ -470,3 +471,63 @@ def test_preserving_rich_runs_is_separate_from_default_text_projection(tmp_path)
     book.close()
     with pytest.raises(NotImplementedError):
         crabxl.load_workbook(source, rich_text=True)
+
+
+@pytest.mark.parametrize("mac", [False, True], ids=["windows", "mac"])
+@pytest.mark.parametrize("data_only", [False, True], ids=["formula", "cached"])
+def test_loaded_numeric_dates_time_duration_and_formula_cache(engine, tmp_path, mac, data_only):
+    from openpyxl.utils.datetime import CALENDAR_MAC_1904, CALENDAR_WINDOWS_1900
+    source = tmp_path / "styled-numeric.xlsx"
+    reference = openpyxl.Workbook()
+    reference.epoch = CALENDAR_MAC_1904 if mac else CALENDAR_WINDOWS_1900
+    sheet = reference.active
+    for row, value in enumerate([0, .5, 59, 60, 61, -.5, 2958466, 45292.123456789], 1):
+        sheet.cell(row, 1, value).number_format = "yyyy-mm-dd hh:mm:ss.000"
+    sheet["B1"] = 1.25
+    sheet["B1"].number_format = "[h]:mm:ss.000"
+    sheet["B2"] = True
+    sheet["B2"].number_format = "yyyy-mm-dd"
+    sheet["B3"] = "text"
+    sheet["B3"].number_format = "yyyy-mm-dd"
+    sheet["C1"] = "=1"
+    sheet["C1"].number_format = "yyyy-mm-dd"
+    reference.save(source)
+    reference.close()
+    with zipfile.ZipFile(source) as archive:
+        parts = {name: archive.read(name) for name in archive.namelist()}
+    parts["xl/worksheets/sheet1.xml"] = parts["xl/worksheets/sheet1.xml"].replace(b"<f>1</f><v></v>", b"<f>1</f><v>61</v>")
+    assert b"<f>1</f><v>61</v>" in parts["xl/worksheets/sheet1.xml"]
+    with zipfile.ZipFile(source, "w") as archive:
+        for name, content in parts.items():
+            archive.writestr(name, content)
+    with pytest.warns(UserWarning) if engine is openpyxl else nullcontext():
+        book = engine.load_workbook(source, data_only=data_only)
+    sheet = book.active
+    assert sheet["A1"].value == time(0)
+    assert sheet["A2"].value == time(12)
+    assert sheet["A3"].value == (datetime(1904, 2, 29) if mac else datetime(1900, 2, 28))
+    assert sheet["A4"].value == (datetime(1904, 3, 1) if mac else datetime(1900, 2, 28))
+    assert sheet["A5"].value == (datetime(1904, 3, 2) if mac else datetime(1900, 3, 1))
+    assert sheet["A6"].value == (datetime(1903, 12, 31, 12) if mac else datetime(1899, 12, 29, 12))
+    assert sheet["A7"].value == "#VALUE!" and sheet["A7"].data_type == "e"
+    assert sheet["A8"].value == (datetime(2028, 1, 2, 2, 57, 46, 667000) if mac else datetime(2024, 1, 1, 2, 57, 46, 667000))
+    assert sheet["B1"].value == timedelta(days=1, hours=6)
+    assert sheet["B2"].value is True and sheet["B3"].value == "text"
+    assert sheet["C1"].value == (sheet["A5"].value if data_only else "=1")
+    book.close()
+
+
+@pytest.mark.parametrize("reference", [openpyxl, pytest.param(crabxl, marks=pytest.mark.xfail(strict=True, reason="Loaded clock/duration FFI still uses raw serial microseconds; canonical date precision integration remains required"))], ids=["openpyxl", "crabxl"])
+@pytest.mark.parametrize("format_code,expected", [("hh:mm:ss.000", time(2, 57, 46, 667000)), ("[h]:mm:ss.000", timedelta(hours=2, minutes=57, seconds=46, milliseconds=667))])
+def test_loaded_fractional_clock_duration_baseline_rounding(reference, tmp_path, format_code, expected):
+    source = tmp_path / "fractional-clock.xlsx"
+    book = openpyxl.Workbook()
+    book.active["A1"] = .123456789
+    book.active["A1"].number_format = format_code
+    book.save(source)
+    book.close()
+    loaded = reference.load_workbook(source)
+    try:
+        assert loaded.active["A1"].value == expected
+    finally:
+        loaded.close()
