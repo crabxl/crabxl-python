@@ -319,7 +319,13 @@ impl NativeSheet {
             value: decode(py, value)?,
             style: StyleId::new(0),
         };
-        self.with_mut(|sheet| sheet.set(cell).map_err(failure))
+        self.with_mut(|sheet| {
+            let mut cell = cell;
+            cell.style = sheet
+                .get(cell.address)
+                .map_or(StyleId::new(0), |old| old.style);
+            sheet.set(cell).map_err(failure)
+        })
     }
     fn remove(&self, row: u32, column: u32) -> PyResult<()> {
         let address = CellAddress::new(row, column).map_err(failure)?;

@@ -6,3 +6,5 @@ Literal formula reference/input tests are original public constructor/save/reloa
 Raw flag and compatible formula-header comparisons are original public API tests. The 63 selected pinned test bodies/parameters remain unchanged and verified. No additional reference implementation is copied or inspected. See ADR 0010.
 
 Temporal default-format readback cases are original shared public API comparisons. The canonical format defaults and style variants live in Rust core. All 63 selected original test bodies/parameters remain unchanged. See ADR 0011.
+
+Temporal replacement/repeated-save tests and same-call benchmarks are original public API comparisons. Canonical temporal assignment and style ownership live in Rust core; the adapter only carries existing IDs. All 63 selected original test bodies and parameters remain unchanged. See ADR 0012.
