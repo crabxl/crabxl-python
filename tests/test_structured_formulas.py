@@ -148,3 +148,42 @@ def test_visible_metadata_and_discarded_formula_semantics(engine, content, cache
     book = engine.load_workbook(path, data_only=cached)
     assert book.active["A1"].value == expected
     book.close()
+
+@pytest.mark.parametrize('reference', [None, 'A1:B2'])
+@pytest.mark.parametrize('text', [None, '', '=', '=1', '1', 'abc', '==1', '\u03b1x'])
+def test_literal_array_text_presence_and_source_body_match_public_calls(engine, reference, text, tmp_path):
+    module = import_module(engine.__name__ + '.worksheet.formula')
+    book = engine.Workbook()
+    book.active['A1'] = module.ArrayFormula(reference, text)
+    assert vars(book.active['A1'].value) == {'ref': reference, 'text': text}
+    path = tmp_path / 'literal-array.xlsx'
+    book.save(path)
+    assert vars(book.active['A1'].value) == {'ref': reference, 'text': text}
+    book.save(path)
+    book.close()
+    loaded = engine.load_workbook(path)
+    assert vars(loaded.active['A1'].value) == {'ref': reference, 'text': '=' + (text or '')[1:]}
+    loaded.close()
+    cached = engine.load_workbook(path, data_only=True)
+    assert cached.active['A1'].value is None
+    cached.close()
+
+
+@pytest.mark.parametrize('text', [None, '', 'abc', '\u03b1x'])
+def test_loaded_array_text_property_updates_use_canonical_literal_conversion(engine, text, tmp_path):
+    module = import_module(engine.__name__ + '.worksheet.formula')
+    book = engine.Workbook()
+    book.active['A1'] = module.ArrayFormula('A1:B2', '=1')
+    path = tmp_path / 'loaded-array-text.xlsx'
+    book.save(path)
+    book.close()
+    loaded = engine.load_workbook(path)
+    value = loaded.active['A1'].value
+    value.text = text
+    assert loaded.active['A1'].value.text == text
+    loaded.save(path)
+    loaded.save(path)
+    loaded.close()
+    reloaded = engine.load_workbook(path)
+    assert reloaded.active['A1'].value.text == '=' + (text or '')[1:]
+    reloaded.close()

@@ -1,0 +1,196 @@
+{
+  "reference": "3.1.5",
+  "core": "a3d957f992a90a174b0a81d0a2530203e1370bdd",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "measurement": "One warmup and five rotating serial cold-process wall/CPU/RSS samples including Python/import baseline; build and public readback excluded; temporary files sampled every 25ms with cleanup checked",
+  "semantics": "Identical Workbook/cell/ArrayFormula/property/save calls retain an owned sheet in both engines. None, empty, equals and non-equals/Unicode prefixes are validated before save; ordinary/data-only readback is verified outside timing. No reference runtime fallback in adapter; this is supported array-call overlap, not full workbook parity. No prior adapter pin had all these property semantics, so no equivalent old baseline is fabricated.",
+  "cases": [
+    {
+      "cells": 1000,
+      "samples": {
+        "crabxl": [
+          {
+            "seconds": 0.047934302,
+            "cpu_seconds": 0.047803,
+            "peak_rss_kib": 15232,
+            "sampled_temp_peak_bytes": 0,
+            "output_bytes": 11179
+          },
+          {
+            "seconds": 0.04937417,
+            "cpu_seconds": 0.049294,
+            "peak_rss_kib": 15308,
+            "sampled_temp_peak_bytes": 0,
+            "output_bytes": 11179
+          },
+          {
+            "seconds": 0.053788675,
+            "cpu_seconds": 0.053666,
+            "peak_rss_kib": 15208,
+            "sampled_temp_peak_bytes": 0,
+            "output_bytes": 11179
+          },
+          {
+            "seconds": 0.047334518,
+            "cpu_seconds": 0.047236,
+            "peak_rss_kib": 15328,
+            "sampled_temp_peak_bytes": 0,
+            "output_bytes": 11179
+          },
+          {
+            "seconds": 0.084743254,
+            "cpu_seconds": 0.084606,
+            "peak_rss_kib": 15344,
+            "sampled_temp_peak_bytes": 0,
+            "output_bytes": 11179
+          }
+        ],
+        "openpyxl": [
+          {
+            "seconds": 0.196308544,
+            "cpu_seconds": 0.316642,
+            "peak_rss_kib": 35180,
+            "sampled_temp_peak_bytes": 20531,
+            "output_bytes": 13461
+          },
+          {
+            "seconds": 0.169840512,
+            "cpu_seconds": 0.35823,
+            "peak_rss_kib": 35184,
+            "sampled_temp_peak_bytes": 0,
+            "output_bytes": 13461
+          },
+          {
+            "seconds": 0.198988714,
+            "cpu_seconds": 0.327325,
+            "peak_rss_kib": 35184,
+            "sampled_temp_peak_bytes": 0,
+            "output_bytes": 13461
+          },
+          {
+            "seconds": 0.191936224,
+            "cpu_seconds": 0.380052,
+            "peak_rss_kib": 35184,
+            "sampled_temp_peak_bytes": 0,
+            "output_bytes": 13461
+          },
+          {
+            "seconds": 0.163296539,
+            "cpu_seconds": 0.369614,
+            "peak_rss_kib": 35176,
+            "sampled_temp_peak_bytes": 0,
+            "output_bytes": 13461
+          }
+        ]
+      },
+      "medians": {
+        "crabxl": {
+          "seconds": 0.04937417,
+          "cpu_seconds": 0.049294,
+          "peak_rss_kib": 15308,
+          "sampled_temp_peak_bytes": 0
+        },
+        "openpyxl": {
+          "seconds": 0.191936224,
+          "cpu_seconds": 0.35823,
+          "peak_rss_kib": 35184,
+          "sampled_temp_peak_bytes": 0
+        }
+      }
+    },
+    {
+      "cells": 10000,
+      "samples": {
+        "crabxl": [
+          {
+            "seconds": 0.12854705,
+            "cpu_seconds": 0.128467,
+            "peak_rss_kib": 17336,
+            "sampled_temp_peak_bytes": 0,
+            "output_bytes": 72951
+          },
+          {
+            "seconds": 0.126296236,
+            "cpu_seconds": 0.126216,
+            "peak_rss_kib": 17340,
+            "sampled_temp_peak_bytes": 0,
+            "output_bytes": 72951
+          },
+          {
+            "seconds": 0.12717771,
+            "cpu_seconds": 0.127068,
+            "peak_rss_kib": 17376,
+            "sampled_temp_peak_bytes": 0,
+            "output_bytes": 72951
+          },
+          {
+            "seconds": 0.136718812,
+            "cpu_seconds": 0.136608,
+            "peak_rss_kib": 17392,
+            "sampled_temp_peak_bytes": 666848,
+            "output_bytes": 72951
+          },
+          {
+            "seconds": 0.140399122,
+            "cpu_seconds": 0.140249,
+            "peak_rss_kib": 17372,
+            "sampled_temp_peak_bytes": 666848,
+            "output_bytes": 72951
+          }
+        ],
+        "openpyxl": [
+          {
+            "seconds": 0.289288069,
+            "cpu_seconds": 0.418928,
+            "peak_rss_kib": 40140,
+            "sampled_temp_peak_bytes": 657935,
+            "output_bytes": 89669
+          },
+          {
+            "seconds": 0.252408381,
+            "cpu_seconds": 0.440865,
+            "peak_rss_kib": 40136,
+            "sampled_temp_peak_bytes": 550999,
+            "output_bytes": 89666
+          },
+          {
+            "seconds": 0.279397265,
+            "cpu_seconds": 0.434485,
+            "peak_rss_kib": 40132,
+            "sampled_temp_peak_bytes": 563337,
+            "output_bytes": 89666
+          },
+          {
+            "seconds": 0.283662049,
+            "cpu_seconds": 0.444176,
+            "peak_rss_kib": 40128,
+            "sampled_temp_peak_bytes": 559224,
+            "output_bytes": 89666
+          },
+          {
+            "seconds": 0.294461338,
+            "cpu_seconds": 0.414592,
+            "peak_rss_kib": 40136,
+            "sampled_temp_peak_bytes": 737145,
+            "output_bytes": 89665
+          }
+        ]
+      },
+      "medians": {
+        "crabxl": {
+          "seconds": 0.12854705,
+          "cpu_seconds": 0.128467,
+          "peak_rss_kib": 17372,
+          "sampled_temp_peak_bytes": 0
+        },
+        "openpyxl": {
+          "seconds": 0.283662049,
+          "cpu_seconds": 0.434485,
+          "peak_rss_kib": 40136,
+          "sampled_temp_peak_bytes": 563337
+        }
+      }
+    }
+  ]
+}
