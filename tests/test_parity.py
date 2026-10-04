@@ -1,5 +1,5 @@
 """One public-API test body runs against both implementations."""
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 import zipfile
 import warnings
 from contextlib import nullcontext
@@ -598,3 +598,21 @@ def test_loaded_date_policy_changes_are_explicit_until_bank_integration(tmp_path
         assert loaded.iso_dates is False and loaded.epoch == datetime(1899, 12, 30)
     finally:
         loaded.close()
+
+
+@pytest.mark.parametrize('value, format_code', [
+    (date(2024, 1, 2), 'yyyy-mm-dd'),
+    (datetime(2024, 1, 2, 3, 4, 5, 678900), 'yyyy-mm-dd h:mm:ss'),
+    (time(3, 4, 5, 678900), 'h:mm:ss'),
+    (timedelta(days=2, seconds=3, microseconds=678900), '[hh]:mm:ss'),
+])
+def test_saved_temporal_default_formats_match_public_assignments(engine, value, format_code, tmp_path):
+    book = engine.Workbook()
+    book.active['A1'] = value
+    assert book.active['A1'].value == value
+    path = tmp_path / 'temporal-format.xlsx'
+    book.save(path)
+    book.close()
+    loaded = openpyxl.load_workbook(path)
+    assert loaded.active['A1'].number_format == format_code
+    loaded.close()
