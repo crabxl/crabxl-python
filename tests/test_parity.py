@@ -348,3 +348,61 @@ def test_loaded_calculation_chain_edit_removes_derived_parts(engine, tmp_path):
         assert verified.active["A1"].value == 7 and verified.active["B1"].value == "=A1+1"
         verified.close()
     loaded.close()
+
+
+@pytest.mark.parametrize("value", ["_x0041_", "_x005F_x0041_", "_x005F__x0041_", "_x000D_", "_xD83D__xDE00_", "😀_x005f_<&>\r\n "])
+def test_inline_ooxml_looking_literals_preserve_reference_spelling(engine, value, tmp_path):
+    book = engine.Workbook()
+    book.active["A1"] = value
+    assert book.active["A1"].value == value
+    target = tmp_path / "literal.xlsx"
+    book.save(target)
+    checked = openpyxl.load_workbook(target)
+    assert checked.active["A1"].value == value
+    checked.close()
+    own = engine.load_workbook(target)
+    assert own.active["A1"].value == value
+    own.active["B2"] = value
+    own.save(tmp_path / "edited.xlsx")
+    own.close()
+    checked = openpyxl.load_workbook(tmp_path / "edited.xlsx")
+    assert checked.active["A1"].value == checked.active["B2"].value == value
+    checked.close()
+
+
+@pytest.mark.parametrize("value", ["literal", "  a & b  ", "_x005F_x0041_", "", "🦀"])
+def test_plain_shared_string_read_edit_and_repeat_save(engine, value, tmp_path):
+    from xml.sax.saxutils import escape
+    source = tmp_path / "shared-source.xlsx"
+    initial = openpyxl.Workbook()
+    initial.active["A1"] = "placeholder"
+    initial.active["B1"] = "placeholder"
+    initial.save(source)
+    with zipfile.ZipFile(source) as archive:
+        parts = {name: archive.read(name) for name in archive.namelist()}
+    main = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    parts["xl/sharedStrings.xml"] = f'<sst xmlns="{main}" uniqueCount="1"><si><t>{escape(value)}</t></si></sst>'.encode()
+    parts["xl/_rels/workbook.xml.rels"] = parts["xl/_rels/workbook.xml.rels"].replace(b'</Relationships>', f'<Relationship Id="shared" Type="{rel}/sharedStrings" Target="sharedStrings.xml"/></Relationships>'.encode())
+    parts["[Content_Types].xml"] = parts["[Content_Types].xml"].replace(b'</Types>', b'<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>')
+    parts["xl/worksheets/sheet1.xml"] = f'<worksheet xmlns="{main}"><dimension ref="A1:B1"/><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>0</v></c></row></sheetData></worksheet>'.encode()
+    with zipfile.ZipFile(source, "w") as archive:
+        for name, data in parts.items():
+            archive.writestr(name, data)
+    expected = value.replace("x005F_", "")
+    book = engine.load_workbook(source)
+    assert list(book.active.values) == [(expected, expected)]
+    book.active["A1"] = "changed"
+    for index in range(2):
+        target = tmp_path / f"shared-edited-{index}.xlsx"
+        book.save(target)
+        verified = openpyxl.load_workbook(target)
+        assert verified.active["A1"].value == "changed"
+        # The reference rewrites empty SST text as an absent inline literal.
+        # Preserving core saves retain untouched source values instead.
+        if value == "" and engine is openpyxl:
+            assert verified.active["B1"].value is None
+        else:
+            assert verified.active["B1"].value == expected
+        verified.close()
+    book.close()

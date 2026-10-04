@@ -389,14 +389,22 @@ impl NativeReader {
     #[new]
     fn new(py: Python<'_>, path: PathBuf, max_bytes: usize) -> PyResult<Self> {
         let reader = py.detach(move || {
-            WorkbookReader::open_with_limits(
-                path,
-                ResourceLimits {
-                    max_materialized_bytes: max_bytes,
-                    ..ResourceLimits::default()
-                },
-            )
-            .map_err(failure)
+            let limits = ResourceLimits {
+                max_materialized_bytes: max_bytes,
+                ..ResourceLimits::default()
+            };
+            let working = crabxl::memory_allowance(MemoryPolicy::Budget(usize::MAX), limits)
+                .map_err(failure)?
+                .working_reserve_bytes;
+            let budget = max_bytes
+                .checked_add(working)
+                .ok_or_else(|| PyValueError::new_err("Shared-string allowance overflows"))?;
+            let mut reader = WorkbookReader::open_with_limits(path, limits).map_err(failure)?;
+            reader.set_shared_string_options(crabxl::SharedStringOptions {
+                memory_policy: MemoryPolicy::Budget(budget),
+                ..crabxl::SharedStringOptions::default()
+            });
+            Ok::<_, PyErr>(reader)
         })?;
         Ok(Self {
             reader: Arc::new(Mutex::new(Some(reader))),
