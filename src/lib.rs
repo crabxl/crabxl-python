@@ -94,11 +94,6 @@ fn decode(py: Python<'_>, value: TaggedValue) -> PyResult<CellValue> {
         }
         "float" => {
             let number: f64 = value.extract()?;
-            if !number.is_finite() {
-                return Err(PyValueError::new_err(
-                    "Non-finite XLSX numbers are unsupported",
-                ));
-            }
             CellValue::Number(number)
         }
         "text" => CellValue::text(value.extract::<String>()?),
