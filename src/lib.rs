@@ -1,4 +1,6 @@
-//! Optional adapter: foreign objects and naming stay outside the Rust core.
+//! Foreign objects and naming remain outside the canonical Rust core.
+mod streaming;
+
 use crabxl::{
     Cell, CellAddress, CellRange, CellValue, ColumnIndex, DataTableOptions, DateEpoch, DateKind,
     EditLimits, EditorOptions, Error, ErrorKind, ExactInteger, ExcelDateTime, Formula, FormulaFlag,
@@ -553,12 +555,17 @@ impl NativeBook {
 }
 #[pyclass]
 struct NativeReader {
-    reader: Arc<Mutex<Option<WorkbookReader<File>>>>,
+    reader: Arc<Mutex<Option<WorkbookReader<streaming::SharedFile>>>>,
+    source: streaming::SharedFile,
+    alive: Arc<std::sync::atomic::AtomicBool>,
+    max_bytes: usize,
 }
 #[pymethods]
 impl NativeReader {
     #[new]
     fn new(py: Python<'_>, path: PathBuf, max_bytes: usize) -> PyResult<Self> {
+        let source = streaming::SharedFile::open(path)?;
+        let input = source.clone();
         let reader = py.detach(move || {
             let limits = ResourceLimits {
                 max_materialized_bytes: max_bytes,
@@ -570,7 +577,7 @@ impl NativeReader {
             let budget = max_bytes
                 .checked_add(working)
                 .ok_or_else(|| PyValueError::new_err("Shared-string allowance overflows"))?;
-            let mut reader = WorkbookReader::open_with_limits(path, limits).map_err(failure)?;
+            let mut reader = WorkbookReader::with_limits(input, limits).map_err(failure)?;
             reader.set_shared_string_options(crabxl::SharedStringOptions {
                 memory_policy: MemoryPolicy::Budget(budget),
                 ..crabxl::SharedStringOptions::default()
@@ -579,6 +586,9 @@ impl NativeReader {
         })?;
         Ok(Self {
             reader: Arc::new(Mutex::new(Some(reader))),
+            source,
+            alive: Arc::new(std::sync::atomic::AtomicBool::new(true)),
+            max_bytes,
         })
     }
     fn names(&self) -> PyResult<Vec<String>> {
@@ -641,8 +651,66 @@ impl NativeReader {
         })
     }
     fn close(&self) -> PyResult<()> {
+        self.alive
+            .store(false, std::sync::atomic::Ordering::Relaxed);
         lock(&self.reader)?.take();
+        self.source.close()?;
         Ok(())
+    }
+    fn dimension(&self, name: &str) -> PyResult<Option<(u32, u32, u32, u32)>> {
+        Ok(lock(&self.reader)?
+            .as_mut()
+            .ok_or_else(closed)?
+            .worksheet_dimension(name)
+            .map_err(failure)?
+            .map(|range| {
+                (
+                    range.start.row.get() + 1,
+                    range.start.column.get() + 1,
+                    range.end.row.get() + 1,
+                    range.end.column.get() + 1,
+                )
+            }))
+    }
+    fn number_format(&self, style: u32) -> PyResult<String> {
+        let mut reader = lock(&self.reader)?;
+        let catalog = reader
+            .as_mut()
+            .ok_or_else(closed)?
+            .style_catalog()
+            .map_err(failure)?;
+        Ok(catalog
+            .and_then(|catalog| {
+                catalog
+                    .cell_format(StyleId::new(style))
+                    .and_then(|format| catalog.number_format(format.number_format_id))
+            })
+            .unwrap_or("General")
+            .to_owned())
+    }
+    fn stream(
+        &self,
+        name: String,
+        data_only: bool,
+        first_row: u32,
+        last_row: Option<u32>,
+        first_column: u32,
+        last_column: Option<u32>,
+    ) -> PyResult<streaming::NativeReadStream> {
+        if !self.alive.load(std::sync::atomic::Ordering::Relaxed) {
+            return Err(closed());
+        }
+        streaming::NativeReadStream::start(
+            self.source.clone(),
+            Arc::clone(&self.alive),
+            self.max_bytes,
+            name,
+            data_only,
+            first_row,
+            last_row,
+            first_column,
+            last_column,
+        )
     }
 }
 #[pyclass]
@@ -866,6 +934,8 @@ fn save_models(
 #[pymodule]
 fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<NativeSheet>()?;
+    module.add_class::<streaming::NativeReadStream>()?;
+    module.add_class::<streaming::NativeWriteBook>()?;
     module.add_class::<NativeBook>()?;
     module.add_class::<NativeReader>()?;
     module.add_class::<NativeEditor>()?;

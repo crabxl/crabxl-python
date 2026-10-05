@@ -9,7 +9,7 @@ python -m pip install dist/*.whl
 python -m pytest tests -q
 ```
 
-Source builds require Rust 1.99 and Python 3.11 or newer; development and wheel publication use the latest stable Rust toolchain. CI checks CPython 3.11 through 3.15, allowing the 3.15 release candidate until its stable release. Linux x86_64 wheels were built and installed in clean environments on CPython 3.11.16, 3.12.14, 3.13.15, 3.14.7 and 3.15.0rc2; all 552 tests passed on each interpreter with PyO3 0.29.3. Other operating systems and Python implementations are not established by this validation. This standalone repository has its own lockfile and pins the canonical Rust core by Git revision. No sibling checkout is required.
+Source builds require Rust 1.99 and Python 3.11 or newer; development and wheel publication use the latest stable Rust toolchain. CI checks CPython 3.11 through 3.15, allowing the 3.15 release candidate until its stable release. Linux x86_64 wheels were built and installed in clean environments on CPython 3.11.16, 3.12.14, 3.13.15, 3.14.7 and 3.15.0rc2; all 577 tests passed on each interpreter with PyO3 0.29.3. Other operating systems and Python implementations are not established by this validation. This standalone repository has its own lockfile and pins the canonical Rust core by Git revision. No sibling checkout is required.
 
 Verified calls include Workbook, active selection and load/save readback, create_sheet/remove/index/move_sheet/copy_worksheet, sheetnames/indexing, Worksheet/Cell indexing, one-based cell(), value/data_type/coordinate, append with lists/dictionaries/generators, iter_rows/iter_cols/values, finite insert/delete/move, model titles and path save. Cached Cell views follow moves and detach on deletion/overwrite. Loaded load_workbook and scalar/formula cell assignment use the original-package editor, including sparse missing-cell insertion and repeatable saves preserving original assets.
 
@@ -41,7 +41,7 @@ The adapter now calls canonical core date conversions for loaded clock/duration 
 
 `Workbook(iso_dates=True)` now uses canonical Rust ISO creation. Date-only objects retain their public Python type in owned models; ISO readback preserves date/calendar/clock kinds and numeric readback follows reference date/time conversion. New `Workbook.epoch` getter/setter selects the canonical bank epoch and serialization; loaded epoch getters report the source. Changing loaded ISO storage or epoch rejects explicitly until loaded bank integration. Shared tests cover numeric/ISO creation and loaded value/type parity in both epochs.
 
-Structured formula compatibility includes `crabxl.worksheet.formula.ArrayFormula` and `DataTableFormula`, normal/shared loading, array/table source properties, literal constructor calls and direct property edits through the Rust core. Empty string formula caches project to None in data_only mode. One optional equals prefix is removed exactly once. The pinned core is `d39d5e8f413a0f239075464906f984e6c66c8350`; 552 tests pass, including 63 unchanged original reference test bodies. Shared-group editing, typed cm/vm graph editing and the complete formula API remain staged. Visible annotated values and compatible cache-only projection now follow core behavior. Newly assigned false data-table flags and empty inputs omit on save, while source flag strings retain their spelling; all saved/reloaded properties are compared with the public reference. The native shared-formula benchmark is recorded in the core repository; it does not measure Python adapter conversion costs.
+Structured formula compatibility includes `crabxl.worksheet.formula.ArrayFormula` and `DataTableFormula`, normal/shared loading, array/table source properties, literal constructor calls and direct property edits through the Rust core. Empty string formula caches project to None in data_only mode. One optional equals prefix is removed exactly once. The pinned core is `7e9eb8db613d1f9fd921f8698c50f858c76009bb`; 577 tests pass, including 63 unchanged original reference test bodies. Shared-group editing, typed cm/vm graph editing and the complete formula API remain staged. Visible annotated values and compatible cache-only projection now follow core behavior. Newly assigned false data-table flags and empty inputs omit on save, while source flag strings retain their spelling; all saved/reloaded properties are compared with the public reference. The native shared-formula benchmark is recorded in the core repository; it does not measure Python adapter conversion costs.
 
 NaN/infinity assignments and scientific overflow reads now use the core nonfinite compatibility policy: owned values remain floats, saves reopen as blank values, and data_only formula caches preserve overflow infinities when loaded from source. Both owned creation and original physical-cell editing are covered by shared public tests. No Python normalization engine or reference fallback is added.
 
@@ -66,4 +66,38 @@ Manual alpha numbering, package release checks and PyPI OIDC setup are documente
 in [releases](docs/releases.md).
 
 The first packaged Python alpha pins the canonical Rust engine with the Windows same-path save fix
-`d39d5e8f413a0f239075464906f984e6c66c8350` (post-alpha.1 source; the published Rust alpha.1 remains unchanged).
+`7e9eb8db613d1f9fd921f8698c50f858c76009bb` (post-alpha.1 source; the published Rust alpha.1 remains unchanged).
+
+## Optimized modes
+
+```python
+from crabxl import Workbook, load_workbook
+
+book = load_workbook("source.xlsx", read_only=True)
+try:
+    for row in book.active.iter_rows(values_only=True):
+        print(row)
+finally:
+    book.close()
+
+book = Workbook(write_only=True)
+sheet = book.create_sheet("Values")
+sheet.append([1, "hello", "=A1+1"])
+book.save("values.xlsx")  # A write-only workbook can be saved once.
+book.close()
+```
+
+Read-only iterators stream bounded Rust batches without editable models. Missing
+or incorrect dimensions can be reset with `sheet.reset_dimensions()`. Independent
+iterators are supported; close generators early to release their worker and SST
+resources. Write-only append calls spool worksheet XML to disk and support
+interleaving across sheets. `temp_directory` selects spool storage.
+`max_memory_bytes` configures working/model allowances, not total process RSS.
+
+Basic `WriteOnlyCell` and `ReadOnlyCell` imports are supported. Scalar/temporal
+values and supported formulas use the canonical core. Complete style and rich-text
+objects, column-wise read-only iteration, write-only random access, sheet reordering
+and file-like I/O remain unimplemented and raise explicit errors. See
+[ownership and cleanup](docs/decisions/0014-optimized-stream-ownership.md).
+
+Optimized-mode and current ordinary performance evidence: [numeric and Unicode workloads](benchmarks/optimized-modes.md).

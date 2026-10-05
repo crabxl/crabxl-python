@@ -222,8 +222,10 @@ def test_adapter_limits_exact_integers_closed_sources_and_unsupported_operations
         sheet["A1"].font = object()
     with pytest.raises(AttributeError):
         sheet.freeze_panes = "A1"
+    streaming = crabxl.Workbook(write_only=True)
     with pytest.raises(NotImplementedError):
-        crabxl.Workbook(write_only=True)
+        streaming.create_sheet().cell(1, 1)
+    streaming.close()
     source = tmp_path / "source.xlsx"
     workbook.save(source)
     loaded = crabxl.load_workbook(source)
