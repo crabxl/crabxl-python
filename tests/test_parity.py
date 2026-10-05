@@ -834,56 +834,56 @@ def test_saved_temporal_default_formats_match_public_assignments(
     loaded.close()
 
 
-@pytest.mark.parametrize(
-    "initial, format_code",
-    [
+def test_replacing_temporal_value_retains_format_across_repeated_save(engine, tmp_path):
+    initial_values = [
         (date(2024, 1, 2), "yyyy-mm-dd"),
         (datetime(2024, 1, 2, 3, 4, 5), "yyyy-mm-dd h:mm:ss"),
         (time(3, 4, 5), "h:mm:ss"),
         (timedelta(days=2, seconds=3), "[hh]:mm:ss"),
-    ],
-)
-@pytest.mark.parametrize(
-    "replacement",
-    [
+    ]
+    replacements = [
         date(2024, 2, 3),
         datetime(2024, 2, 3, 4, 5, 6),
         time(4, 5, 6),
         timedelta(days=3, seconds=4),
         42,
-    ],
-)
-def test_replacing_temporal_value_retains_format_across_repeated_save(
-    engine,
-    initial,
-    format_code,
-    replacement,
-    tmp_path,
-):
+    ]
+    cases = [
+        (initial, code, replacement)
+        for initial, code in initial_values
+        for replacement in replacements
+    ]
     book = engine.Workbook()
-    book.active["A1"] = initial
+    reference = openpyxl.Workbook()
+    for row, (initial, _, _) in enumerate(cases, 1):
+        book.active.cell(row, 1, initial)
+        reference.active.cell(row, 1, initial)
     first = tmp_path / "first.xlsx"
     book.save(first)
-    book.active["A1"] = replacement
-    assert book.active["A1"].value == replacement
-    reference = openpyxl.Workbook()
-    reference.active["A1"] = initial
-    reference.active["A1"] = replacement
+    for row, (_, _, replacement) in enumerate(cases, 1):
+        book.active.cell(row, 1).value = replacement
+        assert book.active.cell(row, 1).value == replacement, cases[row - 1]
+        reference.active.cell(row, 1).value = replacement
     expected_path = tmp_path / "expected.xlsx"
     reference.save(expected_path)
     reference.close()
     expected = openpyxl.load_workbook(expected_path)
-    expected_value = expected.active["A1"].value
-    assert expected.active["A1"].number_format == format_code
+    expected_values = []
+    for row, (_, code, _) in enumerate(cases, 1):
+        assert expected.active.cell(row, 1).number_format == code, cases[row - 1]
+        expected_values.append(expected.active.cell(row, 1).value)
     expected.close()
     for index in range(2):
         path = tmp_path / f"replaced-{index}.xlsx"
         book.save(path)
         loaded = openpyxl.load_workbook(path)
-        assert loaded.active["A1"].number_format == format_code
-        assert loaded.active["A1"].value == expected_value
+        for row, (_, code, _) in enumerate(cases, 1):
+            cell = loaded.active.cell(row, 1)
+            assert cell.number_format == code, cases[row - 1]
+            assert cell.value == expected_values[row - 1], cases[row - 1]
         loaded.close()
     original = openpyxl.load_workbook(first)
-    assert original.active["A1"].number_format == format_code
+    for row, (_, code, _) in enumerate(cases, 1):
+        assert original.active.cell(row, 1).number_format == code, cases[row - 1]
     original.close()
     book.close()
