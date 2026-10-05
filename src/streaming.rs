@@ -406,12 +406,22 @@ impl NativeWriteBook {
             .map_or(state.stats, WorkbookWriter::stats);
         Ok((stats.rows, stats.cells, stats.peak_temp_bytes))
     }
-    fn save(&self, py: Python<'_>, path: PathBuf, active: usize) -> PyResult<()> {
+    #[pyo3(signature = (path, active, compression_level=None))]
+    fn save(
+        &self,
+        py: Python<'_>,
+        path: PathBuf,
+        active: usize,
+        compression_level: Option<u8>,
+    ) -> PyResult<()> {
         let state = Arc::clone(&self.state);
         py.detach(move || {
             let mut state = lock(&state)?;
             let writer = state.writer.as_mut().ok_or_else(closed)?;
             writer.set_active_sheet(active).map_err(failure)?;
+            writer
+                .set_compression_level(compression_level)
+                .map_err(failure)?;
             state.stats = writer.stats();
             let writer = state.writer.take().ok_or_else(closed)?;
             let parent = path

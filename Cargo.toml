@@ -1,6 +1,6 @@
 [package]
 name = "crabxl-python"
-version = "0.1.0-alpha.3"
+version = "0.1.0-alpha.4"
 edition = "2024"
 rust-version = "1.99"
 license = "MIT"
@@ -11,8 +11,13 @@ description = "Optional Python compatibility adapter for crabxl"
 name = "_native"
 crate-type = ["cdylib"]
 
+[features]
+default = ["deflate-zlib-rs"]
+deflate-zlib-rs = ["crabxl/deflate-zlib-rs"]
+deflate-zlib = ["crabxl/deflate-zlib"]
+
 [dependencies]
-crabxl = { git = "https://github.com/crabxl/crabxl.git", rev = "9311bb18f5960391e0e2b55e2a50044b6e7bfa47" }
+crabxl = { git = "https://github.com/crabxl/crabxl.git", rev = "20020d33478017c897119787a3b9f4431343816f", default-features = false }
 pyo3 = { version = "0.29.3", features = ["extension-module"] }
 tempfile = "3.27"
 

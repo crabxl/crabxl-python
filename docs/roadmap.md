@@ -1,5 +1,10 @@
 # Python compatibility roadmap
 
+Alpha.4 adds validated per-save ZIP compression levels and build-time backend
+selection. Test consolidation and canonical M2 closure are deferred to alpha.5;
+they are not implied by compression support. Ordinary, write-only and loaded-edit
+save routes share canonical compression policies without a binding ZIP codec.
+
 Ordinary `iter_rows(values_only=True)` batches native conversion one row at a
 time, retaining live structured formulas and edits between rows. Same-mode
 numeric measurements are recorded in
