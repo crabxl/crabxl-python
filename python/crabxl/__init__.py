@@ -221,6 +221,10 @@ def _data_type(tag):
 class Worksheet:
     """Sparse worksheet using the same public call conventions as openpyxl."""
 
+    SHEETSTATE_VISIBLE = "visible"
+    SHEETSTATE_HIDDEN = "hidden"
+    SHEETSTATE_VERYHIDDEN = "veryHidden"
+
     __slots__ = ("parent", "_title", "_existing", "_native", "_cells", "__weakref__")
 
     def __init__(self, parent, title=None, *, _existing=False, _native=None):
@@ -253,6 +257,21 @@ class Worksheet:
     @property
     def title(self):
         return self._title
+
+    @property
+    def sheet_state(self):
+        self.parent._check_open()
+        if self._existing:
+            return self.parent._reader.sheet_state(self.title)
+        return self._native.sheet_state()
+
+    @sheet_state.setter
+    def sheet_state(self, state):
+        self.parent._check_open()
+        if self._existing:
+            self.parent._editor.set_sheet_state(self.title, state, self.parent._active)
+        else:
+            self._native.set_sheet_state(state)
 
     @title.setter
     def title(self, title):
@@ -650,13 +669,16 @@ class Workbook:
 
     @active.setter
     def active(self, value):
-        if self._editor is not None:
-            raise NotImplementedError(
-                "Changing loaded workbook views is not implemented"
-            )
+        self._check_open()
+        if isinstance(value, Worksheet) and value.sheet_state != "visible":
+            raise ValueError("Only visible sheets can be made active")
         index = self._sheets.index(value) if isinstance(value, Worksheet) else value
         if not isinstance(index, int):
             raise TypeError("Active sheet must be a worksheet or integer index")
+        if self._editor is not None:
+            self._editor.set_active_view_index(index)
+        elif self._book is not None and not self.write_only:
+            self._book.set_active_view_index(index)
         self._active = index
 
     def __getitem__(self, key):
@@ -814,9 +836,9 @@ class Workbook:
             if not self._sheets:
                 self.create_sheet()
             try:
-                self._stream_writer.save(
+                self._active = self._stream_writer.save(
                     Path(filename),
-                    self.index(self.active) if self.active is not None else 0,
+                    self._active if self._active is not None else 0,
                     compression_level,
                 )
             finally:
@@ -829,16 +851,17 @@ class Workbook:
                 raise NotImplementedError(
                     "Saving data-only loaded workbooks is not implemented"
                 )
-            self._editor.save(Path(filename), False, compression_level)
+            self._active = self._editor.save(Path(filename), False, compression_level)
         else:
-            save_models(
+            self._active = save_models(
                 Path(filename),
                 [sheet._model() for sheet in self._sheets],
-                self.index(self.active) if self.active is not None else 0,
+                self._active if self._active is not None else 0,
                 self.iso_dates,
                 self._book.date_1904(),
                 compression_level,
             )
+            self._book.set_active_view_index(self._active)
 
     def close(self):
         for stream in list(self._streams):
@@ -916,7 +939,7 @@ def load_workbook(
                 Worksheet(workbook, name, _existing=True)
                 for name in workbook._reader.names()
             ]
-        workbook._active = workbook._reader.active_index()
+        workbook._active = workbook._reader.active_view_index()
         workbook._book = None  # NativeReader owns the canonical loaded bank.
     except BaseException:
         workbook._reader.close()

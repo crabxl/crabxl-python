@@ -335,6 +335,14 @@ impl NativeWriteBook {
             .rename_interleaved_sheet(id, name)
             .map_err(failure)
     }
+    fn set_sheet_state(&self, id: usize, state: &str) -> PyResult<()> {
+        lock(&self.state)?
+            .writer
+            .as_mut()
+            .ok_or_else(closed)?
+            .set_sheet_visibility(id, visibility(state)?)
+            .map_err(failure)
+    }
     fn configure(&self, date_1904: bool, iso_dates: bool) -> PyResult<()> {
         lock(&self.state)?
             .writer
@@ -401,19 +409,23 @@ impl NativeWriteBook {
         &self,
         py: Python<'_>,
         path: PathBuf,
-        active: usize,
+        active: i64,
         compression_level: Option<u8>,
-    ) -> PyResult<()> {
+    ) -> PyResult<i64> {
         let state = Arc::clone(&self.state);
         py.detach(move || {
             let mut state = lock(&state)?;
             let writer = state.writer.as_mut().ok_or_else(closed)?;
-            writer.set_active_sheet(active).map_err(failure)?;
+            writer.set_active_view_index(active).map_err(failure)?;
             writer
                 .set_compression_level(compression_level)
                 .map_err(failure)?;
             state.stats = writer.stats();
             let writer = state.writer.take().ok_or_else(closed)?;
+            let active_after = writer
+                .active_view_selection()
+                .map_err(failure)?
+                .requested_index;
             let parent = path
                 .parent()
                 .filter(|path| !path.as_os_str().is_empty())
@@ -426,7 +438,7 @@ impl NativeWriteBook {
             let temporary = temporary.into_temp_path();
             std::fs::rename(&temporary, path)
                 .map_err(|error| PyOSError::new_err(error.to_string()))?;
-            Ok(())
+            Ok(active_after)
         })
     }
     fn close(&self, py: Python<'_>) -> PyResult<()> {

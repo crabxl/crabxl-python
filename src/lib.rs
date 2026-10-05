@@ -6,14 +6,15 @@ use crabxl::{
     Cell, CellAddress, CellRange, CellValue, ColumnIndex, DataTableOptions, DateEpoch, DateKind,
     EditLimits, EditorOptions, Error, ErrorKind, ExactInteger, ExcelDateTime, Formula, FormulaFlag,
     FormulaFlags, FormulaMetadata, FormulaRange, FormulaType, LoadOptions, LoadedWorkbook,
-    MemoryPolicy, ReadOptions, ResourceLimits, Row, RowIndex, SaveOptions, SheetId, StyleId,
-    Workbook, WorkbookEditor, WorkbookLimits, WorkbookReader, WorkbookWriter, Worksheet,
-    WorksheetEditor, WriteOptions,
+    MemoryPolicy, ReadOptions, ResourceLimits, Row, RowIndex, SaveOptions, SheetId,
+    SheetVisibility, StyleId, Workbook, WorkbookEditor, WorkbookLimits, WorkbookReader,
+    WorkbookWriter, Worksheet, WorksheetEditor, WriteOptions,
 };
 use pyo3::{
     IntoPyObjectExt,
     exceptions::{
-        PyKeyError, PyMemoryError, PyNotImplementedError, PyOSError, PyRuntimeError, PyValueError,
+        PyIndexError, PyKeyError, PyMemoryError, PyNotImplementedError, PyOSError, PyRuntimeError,
+        PyValueError,
     },
     prelude::*,
     types::PyDict,
@@ -40,7 +41,18 @@ fn failure(error: Error) -> PyErr {
         ErrorKind::SheetNotFound => PyKeyError::new_err(text),
         ErrorKind::Io => PyOSError::new_err(text),
         ErrorKind::InvalidState => PyRuntimeError::new_err(text),
+        ErrorKind::NoVisibleSheet => PyIndexError::new_err(text),
         _ => PyValueError::new_err(text),
+    }
+}
+fn visibility(value: &str) -> PyResult<SheetVisibility> {
+    match value {
+        "visible" => Ok(SheetVisibility::Visible),
+        "hidden" => Ok(SheetVisibility::Hidden),
+        "veryHidden" => Ok(SheetVisibility::VeryHidden),
+        _ => Err(PyValueError::new_err(
+            "Sheet state must be visible, hidden or veryHidden",
+        )),
     }
 }
 fn lock<T>(value: &Mutex<T>) -> PyResult<MutexGuard<'_, T>> {
@@ -436,6 +448,25 @@ impl NativeSheet {
     fn charged_bytes(&self) -> PyResult<usize> {
         self.with(|sheet| Ok(sheet.charged_bytes()))
     }
+    fn sheet_state(&self) -> PyResult<String> {
+        self.with(|sheet| Ok(sheet.visibility().as_str().to_owned()))
+    }
+    fn set_sheet_state(&self, state: &str) -> PyResult<()> {
+        let visibility = visibility(state)?;
+        let mut storage = lock(&self.storage)?;
+        match &mut *storage {
+            SheetStorage::Standalone(sheet) => {
+                sheet.set_visibility(visibility);
+                Ok(())
+            }
+            SheetStorage::Bank { book, id } => lock(book)?
+                .set_sheet_visibility(*id, visibility)
+                .map_err(failure),
+            SheetStorage::Loaded { .. } => Err(PyNotImplementedError::new_err(
+                "Loaded visibility changes require the preserving coordinator",
+            )),
+        }
+    }
     fn rename(&self, name: String) -> PyResult<()> {
         let mut storage = lock(&self.storage)?;
         match &mut *storage {
@@ -508,6 +539,10 @@ struct NativeBook {
 }
 #[pymethods]
 impl NativeBook {
+    fn set_active_view_index(&self, index: i64) -> PyResult<()> {
+        lock(&self.book)?.set_active_view_index(index);
+        Ok(())
+    }
     #[new]
     fn new(max_bytes: usize) -> PyResult<Self> {
         Ok(Self {
@@ -706,6 +741,42 @@ impl NativeReader {
             .as_ref()
             .ok_or_else(closed)?
             .active_index())
+    }
+    fn active_view_index(&self) -> PyResult<i64> {
+        if let Some(loaded) = &self.loaded {
+            return Ok(lock(loaded)?
+                .as_ref()
+                .ok_or_else(closed)?
+                .active_view_index());
+        }
+        Ok(lock(&self.reader)?
+            .as_ref()
+            .ok_or_else(closed)?
+            .active_view_index())
+    }
+    fn sheet_state(&self, name: &str) -> PyResult<String> {
+        if let Some(loaded) = &self.loaded {
+            let handle = lock(loaded)?;
+            let loaded = handle.as_ref().ok_or_else(closed)?;
+            let id = loaded
+                .sheet_id(name)
+                .ok_or_else(|| PyKeyError::new_err(name.to_owned()))?;
+            return Ok(loaded
+                .model()
+                .sheet(id)
+                .map_err(failure)?
+                .visibility()
+                .as_str()
+                .to_owned());
+        }
+        let handle = lock(&self.reader)?;
+        let reader = handle.as_ref().ok_or_else(closed)?;
+        let info = reader
+            .sheets()
+            .iter()
+            .find(|sheet| sheet.name() == name)
+            .ok_or_else(|| PyKeyError::new_err(name.to_owned()))?;
+        Ok(info.visibility().as_str().to_owned())
     }
     fn load_sheet(
         &self,
@@ -1011,6 +1082,45 @@ impl NativeEditor {
             .ok_or_else(closed)?
             .patch_bytes())
     }
+    fn set_active_view_index(&self, index: i64) -> PyResult<()> {
+        if let Some(loaded) = &self.loaded {
+            return lock(loaded)?
+                .as_mut()
+                .ok_or_else(closed)?
+                .set_active_view_index(index)
+                .map_err(failure);
+        }
+        lock(&self.editor)?
+            .as_mut()
+            .ok_or_else(closed)?
+            .set_active_view_index(index)
+            .map_err(failure)
+    }
+    #[pyo3(signature = (name, state, view_index=None))]
+    fn set_sheet_state(&self, name: &str, state: &str, view_index: Option<i64>) -> PyResult<()> {
+        let state = visibility(state)?;
+        if let Some(loaded) = &self.loaded {
+            let mut handle = lock(loaded)?;
+            let loaded = handle.as_mut().ok_or_else(closed)?;
+            let id = loaded
+                .sheet_id(name)
+                .ok_or_else(|| PyKeyError::new_err(name.to_owned()))?;
+            let view = view_index.unwrap_or_else(|| loaded.active_view_index());
+            return loaded
+                .set_sheet_visibility_and_active_view(id, state, view)
+                .map_err(failure);
+        }
+        if view_index.is_some() {
+            return Err(PyNotImplementedError::new_err(
+                "Combined visibility/view changes require the shared loaded coordinator",
+            ));
+        }
+        lock(&self.editor)?
+            .as_mut()
+            .ok_or_else(closed)?
+            .set_sheet_visibility(name, state)
+            .map_err(failure)
+    }
     #[pyo3(signature = (path, verify, compression_level=None))]
     fn save(
         &self,
@@ -1018,13 +1128,13 @@ impl NativeEditor {
         path: PathBuf,
         verify: bool,
         compression_level: Option<u8>,
-    ) -> PyResult<()> {
+    ) -> PyResult<i64> {
         if let Some(loaded) = &self.loaded {
             let loaded = Arc::clone(loaded);
             return py.detach(move || {
-                lock(&loaded)?
-                    .as_mut()
-                    .ok_or_else(closed)?
+                let mut handle = lock(&loaded)?;
+                let loaded = handle.as_mut().ok_or_else(closed)?;
+                loaded
                     .save_path(
                         path,
                         SaveOptions {
@@ -1032,15 +1142,15 @@ impl NativeEditor {
                             compression_level,
                         },
                     )
-                    .map(|_| ())
-                    .map_err(failure)
+                    .map_err(failure)?;
+                Ok(loaded.active_view_index())
             });
         }
         let editor = Arc::clone(&self.editor);
         py.detach(move || {
-            lock(&editor)?
-                .as_mut()
-                .ok_or_else(closed)?
+            let mut handle = lock(&editor)?;
+            let editor = handle.as_mut().ok_or_else(closed)?;
+            editor
                 .save_path(
                     path,
                     SaveOptions {
@@ -1048,8 +1158,8 @@ impl NativeEditor {
                         compression_level,
                     },
                 )
-                .map(|_| ())
-                .map_err(failure)
+                .map_err(failure)?;
+            Ok(editor.active_view_index())
         })
     }
     fn close(&self) -> PyResult<()> {
@@ -1137,11 +1247,11 @@ fn save_models(
     py: Python<'_>,
     path: PathBuf,
     sheets: Vec<Py<NativeSheet>>,
-    active_sheet: usize,
+    active_sheet: i64,
     iso_dates: bool,
     date_1904: bool,
     compression_level: Option<u8>,
-) -> PyResult<()> {
+) -> PyResult<i64> {
     let sheets = sheets
         .iter()
         .map(|sheet| Arc::clone(&sheet.borrow(py).storage))
@@ -1149,16 +1259,22 @@ fn save_models(
     py.detach(move || {
         let mut writer = WorkbookWriter::new(WriteOptions {
             compression_level,
-            active_sheet,
             iso_dates,
             date_1904,
             ..WriteOptions::default()
         })
         .map_err(failure)?;
+        writer
+            .set_active_view_index(active_sheet)
+            .map_err(failure)?;
         for sheet in sheets {
             NativeSheet { storage: sheet }
                 .with(|sheet| writer.write_worksheet(sheet).map_err(failure))?;
         }
+        let active_after = writer
+            .active_view_selection()
+            .map_err(failure)?
+            .requested_index;
         // Protect an existing target through failures, with a full adjacent
         // output ZIP rather than duplicating model payloads in memory.
         let parent = path
@@ -1173,7 +1289,7 @@ fn save_models(
         temporary
             .persist(path)
             .map_err(|error| PyOSError::new_err(error.error.to_string()))?;
-        Ok(())
+        Ok(active_after)
     })
 }
 #[pymodule]

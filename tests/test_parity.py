@@ -15,6 +15,95 @@ def engine(request):
     return request.param
 
 
+def test_sheet_visibility_and_deferred_active_views(engine, tmp_path):
+    cases = {
+        2: [(-3, 0, 0), (-1, 0, 0), (1, 1, 0), (10, 10, 0)],
+        3: [(-3, -3, 0), (-1, -1, 2), (1, 2, 2), (10, 10, 0)],
+    }
+
+    def active_title(book):
+        return book.active.title if book.active is not None else None
+
+    def selected_title(index, count):
+        return ["A", "B", "C"][:count][index] if -count <= index < count else None
+
+    for count, matrix in cases.items():
+        for mode in ["owned", "loaded", "write_only"]:
+            for requested, after, read_index in matrix:
+                book = engine.Workbook(write_only=mode == "write_only")
+                for index, title in enumerate(["A", "B", "C"][:count]):
+                    sheet = (
+                        book.active
+                        if index == 0 and mode != "write_only"
+                        else book.create_sheet(title)
+                    )
+                    sheet.title = title
+                    sheet.append([index + 11])
+                book["B"].sheet_state = "hidden"
+                with pytest.raises(ValueError):
+                    book.active = book["B"]
+                if mode == "loaded":
+                    source = tmp_path / f"source-{count}-{requested}.xlsx"
+                    book.save(source)
+                    book.close()
+                    book = engine.load_workbook(source)
+                book.active = requested
+                assert active_title(book) == selected_title(requested, count)
+                output = tmp_path / f"view-{count}-{mode}-{requested}.xlsx"
+                for _ in range(1 if mode == "write_only" else 2):
+                    book.save(output)
+                    assert active_title(book) == selected_title(after, count)
+                    checked = openpyxl.load_workbook(output, read_only=True)
+                    assert active_title(checked) == ["A", "B", "C"][read_index]
+                    assert checked["B"].sheet_state == "hidden"
+                    assert [list(sheet.values) for sheet in checked] == [
+                        [(index + 11,)] for index in range(count)
+                    ]
+                    checked.close()
+                read = engine.load_workbook(output, read_only=True)
+                assert read["B"].sheet_state == "hidden"
+                # Read-only metadata changes affect the view, never source output.
+                read["B"].sheet_state = "veryHidden"
+                assert read["B"].sheet_state == "veryHidden"
+                read.close()
+                book.close()
+
+    for loaded in [False, True]:
+        book = engine.Workbook()
+        book.active.title = "A"
+        book.create_sheet("B")
+        book["A"].append([11])
+        book["B"].append([22])
+        if loaded:
+            source = tmp_path / "hidden-source.xlsx"
+            book.save(source)
+            book.close()
+            book = engine.load_workbook(source)
+        book["A"].sheet_state = "hidden"
+        book["B"].sheet_state = "veryHidden"
+        output = tmp_path / f"hidden-{loaded}.xlsx"
+        with pytest.raises(IndexError):
+            book.save(output)
+        book["B"].sheet_state = "visible"
+        book.save(output)
+        assert active_title(book) == "B"
+        read = openpyxl.load_workbook(output)
+        assert read["A"].sheet_state == "hidden"
+        assert read["B"].sheet_state == "visible"
+        assert read["B"]["A1"].value == 22
+        read.close()
+        book.close()
+
+    book = engine.Workbook()
+    book.active.sheet_state = "hidden"
+    copied = book.copy_worksheet(book.active)
+    assert copied.sheet_state == "visible"
+    book.remove(copied)
+    with pytest.raises(ValueError):
+        book.save(tmp_path / "only-hidden.xlsx")
+    book.close()
+
+
 def test_scalar_types_formulas_dimensions_and_live_views(engine):
     workbook = engine.Workbook()
     sheet = workbook.active
@@ -241,7 +330,7 @@ def test_atomic_new_output_failure_preserves_existing_target(tmp_path):
     workbook = crabxl.Workbook()
     # All sheets removed is invalid for the writer. The target must survive.
     workbook.remove(workbook.active)
-    with pytest.raises((ValueError, RuntimeError)):
+    with pytest.raises(IndexError):
         workbook.save(target)
     assert target.read_bytes() == b"original"
     assert list(tmp_path.iterdir()) == [target]
