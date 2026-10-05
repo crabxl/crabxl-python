@@ -124,13 +124,21 @@ Optimized-mode and current ordinary performance evidence: [numeric and Unicode w
 strategies as CrabXL extensions:
 
 ```python
-from crabxl import AutoMemory, ResourceLimits, ResourceOptions, SharedStringOptions, load_workbook
+from crabxl import (
+    AutoMemory,
+    ResourceLimits,
+    ResourceOptions,
+    SharedStringOptions,
+    load_workbook,
+)
 
 options = ResourceOptions(
     auto_memory=AutoMemory(maximum_bytes=64 * 1024**2, concurrent_operations=2),
     limits=ResourceLimits(max_cell_bytes=128 * 1024, max_batch_rows=128),
     shared_strings=SharedStringOptions(
-        storage="auto", cache_bytes=1024**2, max_temp_bytes=2 * 1024**3,
+        storage="auto",
+        cache_bytes=1024**2,
+        max_temp_bytes=2 * 1024**3,
         temp_directory="/path/to/existing/temp-directory",
     ),
 )
