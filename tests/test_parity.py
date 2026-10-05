@@ -207,12 +207,17 @@ def test_loaded_numeric_edit_and_sparse_insertion(engine, tmp_path):
     assert sheet["C6"].value == "appended"
     assert sheet["D6"].value == "=A1+B1"
     assert sheet["A8"].value == 8 and sheet["B8"].value is True
+    workbook.move_sheet(second, offset=-1)
+    assert workbook.active is second
+    assert workbook.worksheets == [second, sheet]
+    assert alias.parent is sheet and alias.value == 5
+    workbook.active = sheet
     output = tmp_path / "output.xlsx"
     workbook.save(output)
     workbook.save(tmp_path / "repeat.xlsx")
     workbook.close()
     verified = openpyxl.load_workbook(output)
-    assert verified.sheetnames == ['Renamed<&" \u65b0', "first1"]
+    assert verified.sheetnames == ["first1", 'Renamed<&" \u65b0']
     assert verified["first1"]["A1"].value == "=First!A1"
     assert verified.defined_names["Pick"].attr_text == "'First'!$A$1"
     assert verified.active["A1"].value == 5 and verified.active["D5"].value == "new"
@@ -309,6 +314,7 @@ def test_loaded_style_image_comment_and_unknown_parts_are_preserved(tmp_path):
     from openpyxl.comments import Comment
     from openpyxl.drawing.image import Image as DrawingImage
     from openpyxl.styles import Font
+    from openpyxl.workbook.defined_name import DefinedName
     from PIL import Image
 
     image_path = tmp_path / "image.png"
@@ -319,11 +325,16 @@ def test_loaded_style_image_comment_and_unknown_parts_are_preserved(tmp_path):
     workbook.active["A1"].font = Font(bold=True)
     workbook.active["A1"].comment = Comment("comment", "author")
     workbook.active.add_image(DrawingImage(image_path), "D1")
+    workbook.active.defined_names.add(DefinedName("Local", attr_text="Sheet!$A$1"))
+    workbook.create_sheet("Other")
     workbook.save(source)
     with zipfile.ZipFile(source, "a") as archive:
         archive.writestr("custom/unknown.xml", '<x xmlns="urn:custom">keep</x>')
     loaded = crabxl.load_workbook(source)
     loaded.active.title = "Renamed"
+    with pytest.raises(NotImplementedError, match="Local defined-name"):
+        loaded.move_sheet(loaded.active, offset=1)
+    assert loaded.sheetnames == ["Renamed", "Other"]
     loaded.active["A1"] = 9
     for filename in ("first.xlsx", "second.xlsx"):
         target = tmp_path / filename
@@ -333,6 +344,7 @@ def test_loaded_style_image_comment_and_unknown_parts_are_preserved(tmp_path):
                 assert original.read(name) == saved.read(name)
         verified = openpyxl.load_workbook(target)
         assert verified.active.title == "Renamed"
+        assert verified.active.defined_names["Local"].attr_text == "Sheet!$A$1"
         assert verified.active["A1"].value == 9
         assert verified.active["A1"].font.bold
         assert verified.active["A1"].comment.text == "comment"

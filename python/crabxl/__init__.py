@@ -760,8 +760,6 @@ class Workbook:
             raise NotImplementedError(
                 "Reordering optimized worksheets is not implemented"
             )
-        if self._editor is not None:
-            raise NotImplementedError("Moving existing-file sheets is not implemented")
         if not isinstance(sheet, Worksheet):
             sheet = self[sheet]
         if not isinstance(offset, int):
@@ -771,7 +769,10 @@ class Workbook:
         index = old + offset
         # Match list.insert after removing the source, including negative offsets.
         position = max(0, min(remaining, index if index >= 0 else remaining + index))
-        self._book.move_sheet(sheet._native, position)
+        if self._editor is not None:
+            self._editor.move_sheet(sheet.title, position)
+        else:
+            self._book.move_sheet(sheet._native, position)
         self._sheets.pop(old)
         self._sheets.insert(position, sheet)
 

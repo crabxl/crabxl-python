@@ -19,6 +19,11 @@ Unsupported source graphs/values remain explicit errors before mutation.
 Loaded title changes use the same canonical preserving coordinator without
 materializing cells or replacing native identities; see
 [ADR 0019](decisions/0019-source-backed-sheet-title.md).
+
+Loaded display reordering commits the canonical source-index permutation before
+changing Python worksheet views. Signed active display indexes remain deferred;
+affected local defined-name graphs reject atomically pending M5. See
+[ADR 0020](decisions/0020-source-sheet-display-order.md).
 The pinned packed model's numeric Python cost is recorded in
 [paired measurements](../benchmarks/alpha7-packed-reading.md).
 
