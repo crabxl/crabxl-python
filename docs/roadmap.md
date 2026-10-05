@@ -1,9 +1,9 @@
 # Python compatibility roadmap
 
-Alpha.4 adds validated per-save ZIP compression levels and build-time backend
-selection. Test consolidation and canonical M2 closure are deferred to alpha.5;
-they are not implied by compression support. Ordinary, write-only and loaded-edit
-save routes share canonical compression policies without a binding ZIP codec.
+Alpha.5 adds canonical resource/SST/Auto controls and test consolidation, and
+pins the verified M2 core acceptance revision. Core M2 closure does not imply
+complete Python compatibility. Ordinary, write-only and loaded-edit save routes
+retain alpha.4 compression policies without a binding ZIP codec.
 
 Ordinary `iter_rows(values_only=True)` batches native conversion one row at a
 time, retaining live structured formulas and edits between rows. Same-mode
@@ -13,7 +13,7 @@ see [stream ownership](decisions/0014-optimized-stream-ownership.md).
 
 Target: openpyxl 3.1.5 public calls, mental model and observable behavior. Core capabilities remain governed by the CrabXL M4-M7 roadmap at https://github.com/crabxl/crabxl/blob/main/docs/roadmap.md.
 
-Current acceptance is partial: 577 tests, including 63 unchanged original test bodies, cover supported owned scalar/date/ISO and normal/shared/array/data-table formula models and lazy preserving edits. Typed style editing and rich-string Python objects, loaded structural/feature editing, complete optimized-mode styles, file-like I/O, tokenizer and all advanced baseline features remain required. This is not full-suite compatibility.
+Current acceptance is partial: 544 tests, including 63 unchanged original test bodies, cover supported owned scalar/date/ISO and normal/shared/array/data-table formula models and lazy preserving edits. Typed style editing and rich-string Python objects, loaded structural/feature editing, complete optimized-mode styles, file-like I/O, tokenizer and all advanced baseline features remain required. This is not full-suite compatibility.
 
 Pin and validate the core revision before updates. Shared reference assertions and separate extension tests should evolve independently. Python is first priority; Node and WASM later share an ExcelJS-compatible interface.
 
@@ -35,7 +35,7 @@ Literal shared-formula group identities, including absent, empty, padded, signed
 
 Optimized-mode and current ordinary performance evidence: [numeric and Unicode workloads](../benchmarks/optimized-modes.md).
 
-Alpha.5 development now exposes canonical read resource limits, Auto tuning,
+Alpha.5 exposes canonical read resource limits, Auto tuning,
 SST RAM/disk/Auto policies, decoded cache/temp bounds and loaded patch caps.
 Read-only workers inherit those settings. Creation accepts Auto tuning separately;
 compression remains per-save. This is a verified resource extension checkpoint,

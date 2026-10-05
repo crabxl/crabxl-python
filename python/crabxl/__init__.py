@@ -26,7 +26,7 @@ from .resources import AutoMemory, ResourceOptions
 from .resources import ResourceLimits as ResourceLimits
 from .resources import SharedStringOptions as SharedStringOptions
 
-__version__ = "0.1.0a4"
+__version__ = "0.1.0a5"
 _ERRORS = {
     "#NULL!",
     "#DIV/0!",
