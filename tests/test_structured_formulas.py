@@ -276,3 +276,41 @@ def test_compatible_source_formula_headers_match_visible_public_values(engine, a
     value = book.active['A1'].value
     assert (vars(value) if isinstance(expected, dict) and not cached else value) == (2 if cached else expected)
     book.close()
+
+
+@pytest.mark.parametrize("master, follower", [
+    (value, value) for value in (None, "", "0", "01", "1", "+1", "-1", "4294967296", "text", "1 ", "group & value")
+] + [("01", "1"), ("1", "01"), (None, ""), ("", None)])
+@pytest.mark.parametrize("cached", [False, True])
+def test_literal_shared_identities_loading_and_unmodified_repeat_save(engine, master, follower, cached, tmp_path):
+    from xml.sax.saxutils import quoteattr
+    path = tmp_path / "shared-identity.xlsx"
+    source = openpyxl.Workbook()
+    source.save(path)
+    source.close()
+    with zipfile.ZipFile(path) as archive:
+        parts = {name: archive.read(name) for name in archive.namelist()}
+    def index(value):
+        return "" if value is None else " si=" + quoteattr(value)
+    parts["xl/worksheets/sheet1.xml"] = (
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>'
+        '<row r="1"><c r="A1"><f t="shared"' + index(master) + '>A1+1</f><v>2</v></c></row>'
+        '<row r="2"><c r="A2"><f t="shared"' + index(follower) + '/><v>3</v></c></row>'
+        '</sheetData></worksheet>'
+    ).encode()
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name, value in parts.items():
+            archive.writestr(name, value)
+    formulas = ["=A1+1", "=A2+1" if master == follower else "="]
+    expected = [2, 3] if cached else formulas
+    book = engine.load_workbook(path, data_only=cached)
+    assert [book.active.cell(row, 1).value for row in (1, 2)] == expected
+    assert list(book.active.iter_rows(min_row=1, max_row=2, max_col=1, values_only=True)) == [(expected[0],), (expected[1],)]
+    if not cached:
+        for attempt in range(2):
+            saved = tmp_path / f"shared-repeat-{attempt}.xlsx"
+            book.save(saved)
+            loaded = openpyxl.load_workbook(saved)
+            assert [loaded.active.cell(row, 1).value for row in (1, 2)] == formulas
+            loaded.close()
+    book.close()
