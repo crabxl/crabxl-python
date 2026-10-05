@@ -1,11 +1,12 @@
 """One public-API test body runs against both implementations."""
-from datetime import date, datetime, time, timedelta
-import zipfile
-import warnings
-from contextlib import nullcontext
 
-import openpyxl
+import warnings
+import zipfile
+from contextlib import nullcontext
+from datetime import date, datetime, time, timedelta
+
 import crabxl
+import openpyxl
 import pytest
 
 
@@ -20,7 +21,16 @@ def test_scalar_types_formulas_dimensions_and_live_views(engine):
     values = [None, True, False, 5, 1.25, " whitespace ", "#DIV/0!", "=1+2"]
     sheet.append(values)
     assert list(sheet.values) == [tuple(values)]
-    assert [sheet.cell(1, column).data_type for column in range(1, 9)] == ["n", "b", "b", "n", "n", "s", "e", "f"]
+    assert [sheet.cell(1, column).data_type for column in range(1, 9)] == [
+        "n",
+        "b",
+        "b",
+        "n",
+        "n",
+        "s",
+        "e",
+        "f",
+    ]
     cell = sheet["D1"]
     assert sheet["D1"] is cell
     sheet.insert_rows(1, 2)
@@ -39,7 +49,19 @@ def test_new_save_public_readback_and_repeat(engine, tmp_path):
     workbook = engine.Workbook()
     sheet = workbook.active
     sheet.title = "Data"
-    sheet.append([True, 5, 1.25, " text ", "#N/A", "=SUM(B1:C1)", datetime(2020, 2, 29, 12, 3, 4, 123000), time(12, 3, 4), timedelta(days=2, seconds=3)])
+    sheet.append(
+        [
+            True,
+            5,
+            1.25,
+            " text ",
+            "#N/A",
+            "=SUM(B1:C1)",
+            datetime(2020, 2, 29, 12, 3, 4, 123000),
+            time(12, 3, 4),
+            timedelta(days=2, seconds=3),
+        ]
+    )
     workbook.create_sheet("Other").append(["second"])
     path = tmp_path / "new.xlsx"
     workbook.save(path)
@@ -47,7 +69,11 @@ def test_new_save_public_readback_and_repeat(engine, tmp_path):
     assert book.sheetnames == ["Data", "Other"]
     row = tuple(book["Data"].values)[0]
     assert row[:6] == (True, 5, 1.25, " text ", "#N/A", "=SUM(B1:C1)")
-    assert row[6:] == (datetime(2020, 2, 29, 12, 3, 4, 123000), time(12, 3, 4), timedelta(days=2, seconds=3))
+    assert row[6:] == (
+        datetime(2020, 2, 29, 12, 3, 4, 123000),
+        time(12, 3, 4),
+        timedelta(days=2, seconds=3),
+    )
     book.close()
     workbook.save(tmp_path / "repeat.xlsx")
     assert set(tmp_path.iterdir()) == {path, tmp_path / "repeat.xlsx"}
@@ -65,7 +91,9 @@ def test_loaded_numeric_edit_and_sparse_insertion(engine, tmp_path):
     sheet["D5"] = "new"
     assert sheet["A1"].value == 5 and sheet["D5"].value == "new"
     assert sheet.max_row == 5 and sheet.max_column == 4
-    assert list(sheet.iter_rows(min_row=5, max_row=5, values_only=True)) == [(None, None, None, "new")]
+    assert list(sheet.iter_rows(min_row=5, max_row=5, values_only=True)) == [
+        (None, None, None, "new")
+    ]
     output = tmp_path / "output.xlsx"
     workbook.save(output)
     workbook.save(tmp_path / "repeat.xlsx")
@@ -98,10 +126,11 @@ def test_empty_append_cursor_and_dictionary_columns(engine):
 
 
 def test_loaded_style_image_comment_and_unknown_parts_are_preserved(tmp_path):
-    from PIL import Image
+    from openpyxl.comments import Comment
     from openpyxl.drawing.image import Image as DrawingImage
     from openpyxl.styles import Font
-    from openpyxl.comments import Comment
+    from PIL import Image
+
     image_path = tmp_path / "image.png"
     Image.new("RGB", (8, 8), "red").save(image_path)
     source = tmp_path / "source.xlsx"
@@ -129,7 +158,9 @@ def test_loaded_style_image_comment_and_unknown_parts_are_preserved(tmp_path):
     loaded.close()
 
 
-def test_adapter_limits_exact_integers_closed_sources_and_unsupported_operations(tmp_path):
+def test_adapter_limits_exact_integers_closed_sources_and_unsupported_operations(
+    tmp_path,
+):
     workbook = crabxl.Workbook(max_memory_bytes=1000)
     sheet = workbook.active
     sheet["A1"] = 10**100
@@ -178,17 +209,21 @@ def test_sheet_names_and_order_match(engine):
     assert workbook.sheetnames == ["data1", "Sheet", "Data"]
 
 
-@pytest.mark.parametrize("source,expected", [
-    ("=A1+$B2+C$3+$D$4", "=B2+$B3+D$3+$D$4"),
-    ("='A1'!A1+A1!B2", "='A1'!B2+A1!C3"),
-    ("=T1[A1]+T2[[#Headers],[B2]]+A1", "=T1[A1]+T2[[#Headers],[B2]]+B2"),
-    ('="A1"&"say ""B2"""+A1', '="A1"&"say ""B2"""+B2'),
-    ("=LOG10(A1)+SUM(A1:B2:C3)", "=LOG10(B2)+SUM(B2:C3:D4)"),
-    ("=XFD1048576", "=XFE1048577"),
-    ("=AA1001001001+R1C1+named1", "=AA1001001001+R1C1+named1"),
-])
+@pytest.mark.parametrize(
+    "source,expected",
+    [
+        ("=A1+$B2+C$3+$D$4", "=B2+$B3+D$3+$D$4"),
+        ("='A1'!A1+A1!B2", "='A1'!B2+A1!C3"),
+        ("=T1[A1]+T2[[#Headers],[B2]]+A1", "=T1[A1]+T2[[#Headers],[B2]]+B2"),
+        ('="A1"&"say ""B2"""+A1', '="A1"&"say ""B2"""+B2'),
+        ("=LOG10(A1)+SUM(A1:B2:C3)", "=LOG10(B2)+SUM(B2:C3:D4)"),
+        ("=XFD1048576", "=XFE1048577"),
+        ("=AA1001001001+R1C1+named1", "=AA1001001001+R1C1+named1"),
+    ],
+)
 def test_formula_translation_context(engine, source, expected):
     from importlib import import_module
+
     translator = import_module(engine.__name__ + ".formula.translate").Translator
     assert translator(source, "A1").translate_formula("B2") == expected
 
@@ -226,7 +261,9 @@ def test_active_sheet_creation_and_loaded_catalog_match(engine, tmp_path):
     loaded.close()
 
 
-def test_owned_workbook_copy_order_removed_aliases_and_independent_values(engine, tmp_path):
+def test_owned_workbook_copy_order_removed_aliases_and_independent_values(
+    engine, tmp_path
+):
     workbook = engine.Workbook()
     source = workbook.active
     source.title = "Data"
@@ -288,7 +325,9 @@ def test_python_bank_aggregate_limit_atomic_copy_and_freed_space():
     before = workbook._book.charged_bytes()
     with pytest.raises(MemoryError):
         second["A3"] = 5
-    assert workbook._book.charged_bytes() == before and not second._native.contains(2, 0)
+    assert workbook._book.charged_bytes() == before and not second._native.contains(
+        2, 0
+    )
     with pytest.raises(MemoryError):
         first.insert_rows(1)
     assert first["A1"].value == 1
@@ -303,7 +342,9 @@ def test_python_bank_aggregate_limit_atomic_copy_and_freed_space():
 
 def test_native_bank_concurrent_copies_keep_owned_handles_valid():
     from concurrent.futures import ThreadPoolExecutor
+
     from crabxl._native import NativeBook
+
     book = NativeBook(10_000_000)
     source = book.create_sheet("Source")
     for row in range(400):
@@ -331,9 +372,17 @@ def test_loaded_calculation_chain_edit_removes_derived_parts(engine, tmp_path):
     book.save(source)
     with zipfile.ZipFile(source) as archive:
         parts = {name: archive.read(name) for name in archive.namelist()}
-    parts["[Content_Types].xml"] = parts["[Content_Types].xml"].replace(b'</Types>', b'<Override PartName="/custom/order.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.calcChain+xml"/></Types>')
-    parts["xl/_rels/workbook.xml.rels"] = parts["xl/_rels/workbook.xml.rels"].replace(b'</Relationships>', b'<Relationship Id="chain" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/calcChain" Target="../custom/order.xml"/></Relationships>')
-    parts["custom/order.xml"] = b'<calcChain xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><c r="B1" i="1"/></calcChain>'
+    parts["[Content_Types].xml"] = parts["[Content_Types].xml"].replace(
+        b"</Types>",
+        b'<Override PartName="/custom/order.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.calcChain+xml"/></Types>',
+    )
+    parts["xl/_rels/workbook.xml.rels"] = parts["xl/_rels/workbook.xml.rels"].replace(
+        b"</Relationships>",
+        b'<Relationship Id="chain" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/calcChain" Target="../custom/order.xml"/></Relationships>',
+    )
+    parts["custom/order.xml"] = (
+        b'<calcChain xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><c r="B1" i="1"/></calcChain>'
+    )
     with zipfile.ZipFile(source, "w", zipfile.ZIP_DEFLATED) as archive:
         for name, value in parts.items():
             archive.writestr(name, value)
@@ -344,16 +393,30 @@ def test_loaded_calculation_chain_edit_removes_derived_parts(engine, tmp_path):
         loaded.save(target)
         with zipfile.ZipFile(target) as archive:
             assert "custom/order.xml" not in archive.namelist()
-            assert b'calcChain' not in archive.read("[Content_Types].xml")
-            assert b'calcChain' not in archive.read("xl/_rels/workbook.xml.rels")
+            assert b"calcChain" not in archive.read("[Content_Types].xml")
+            assert b"calcChain" not in archive.read("xl/_rels/workbook.xml.rels")
         verified = openpyxl.load_workbook(target)
-        assert verified.active["A1"].value == 7 and verified.active["B1"].value == "=A1+1"
+        assert (
+            verified.active["A1"].value == 7 and verified.active["B1"].value == "=A1+1"
+        )
         verified.close()
     loaded.close()
 
 
-@pytest.mark.parametrize("value", ["_x0041_", "_x005F_x0041_", "_x005F__x0041_", "_x000D_", "_xD83D__xDE00_", "😀_x005f_<&>\r\n "])
-def test_inline_ooxml_looking_literals_preserve_reference_spelling(engine, value, tmp_path):
+@pytest.mark.parametrize(
+    "value",
+    [
+        "_x0041_",
+        "_x005F_x0041_",
+        "_x005F__x0041_",
+        "_x000D_",
+        "_xD83D__xDE00_",
+        "😀_x005f_<&>\r\n ",
+    ],
+)
+def test_inline_ooxml_looking_literals_preserve_reference_spelling(
+    engine, value, tmp_path
+):
     book = engine.Workbook()
     book.active["A1"] = value
     assert book.active["A1"].value == value
@@ -375,6 +438,7 @@ def test_inline_ooxml_looking_literals_preserve_reference_spelling(engine, value
 @pytest.mark.parametrize("value", ["literal", "  a & b  ", "_x005F_x0041_", "", "🦀"])
 def test_plain_shared_string_read_edit_and_repeat_save(engine, value, tmp_path):
     from xml.sax.saxutils import escape
+
     source = tmp_path / "shared-source.xlsx"
     initial = openpyxl.Workbook()
     initial.active["A1"] = "placeholder"
@@ -384,10 +448,20 @@ def test_plain_shared_string_read_edit_and_repeat_save(engine, value, tmp_path):
         parts = {name: archive.read(name) for name in archive.namelist()}
     main = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
     rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-    parts["xl/sharedStrings.xml"] = f'<sst xmlns="{main}" uniqueCount="1"><si><t>{escape(value)}</t></si></sst>'.encode()
-    parts["xl/_rels/workbook.xml.rels"] = parts["xl/_rels/workbook.xml.rels"].replace(b'</Relationships>', f'<Relationship Id="shared" Type="{rel}/sharedStrings" Target="sharedStrings.xml"/></Relationships>'.encode())
-    parts["[Content_Types].xml"] = parts["[Content_Types].xml"].replace(b'</Types>', b'<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>')
-    parts["xl/worksheets/sheet1.xml"] = f'<worksheet xmlns="{main}"><dimension ref="A1:B1"/><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>0</v></c></row></sheetData></worksheet>'.encode()
+    parts["xl/sharedStrings.xml"] = (
+        f'<sst xmlns="{main}" uniqueCount="1"><si><t>{escape(value)}</t></si></sst>'.encode()
+    )
+    parts["xl/_rels/workbook.xml.rels"] = parts["xl/_rels/workbook.xml.rels"].replace(
+        b"</Relationships>",
+        f'<Relationship Id="shared" Type="{rel}/sharedStrings" Target="sharedStrings.xml"/></Relationships>'.encode(),
+    )
+    parts["[Content_Types].xml"] = parts["[Content_Types].xml"].replace(
+        b"</Types>",
+        b'<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>',
+    )
+    parts["xl/worksheets/sheet1.xml"] = (
+        f'<worksheet xmlns="{main}"><dimension ref="A1:B1"/><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>0</v></c></row></sheetData></worksheet>'.encode()
+    )
     with zipfile.ZipFile(source, "w") as archive:
         for name, data in parts.items():
             archive.writestr(name, data)
@@ -411,13 +485,30 @@ def test_plain_shared_string_read_edit_and_repeat_save(engine, value, tmp_path):
 
 
 @pytest.mark.parametrize("location", ["inline", "shared"])
-@pytest.mark.parametrize("content,inline,shared", [
-    ('<r><rPr><b/></rPr><t xml:space="preserve">  rich &amp; text </t></r><r><t>tail</t></r>', '  rich & text tail', '  rich & text tail'),
-    ('<r><rPr><b/></rPr><t>_x005F_x0041_</t></r>', '_x005F_x0041_', '_x0041_'),
-    ('<r><rPr><b/></rPr><t>_x005F</t></r><r><t>_x0041_</t></r>', '_x005F_x0041_', '_x0041_'),
-    ('<r><t xml:space="preserve">  </t></r><r><rPr><i/></rPr><t></t></r>', '  ', '  '),
-])
-def test_default_rich_projection_edit_and_repeated_save(engine, location, content, inline, shared, tmp_path):
+@pytest.mark.parametrize(
+    "content,inline,shared",
+    [
+        (
+            '<r><rPr><b/></rPr><t xml:space="preserve">  rich &amp; text </t></r><r><t>tail</t></r>',
+            "  rich & text tail",
+            "  rich & text tail",
+        ),
+        ("<r><rPr><b/></rPr><t>_x005F_x0041_</t></r>", "_x005F_x0041_", "_x0041_"),
+        (
+            "<r><rPr><b/></rPr><t>_x005F</t></r><r><t>_x0041_</t></r>",
+            "_x005F_x0041_",
+            "_x0041_",
+        ),
+        (
+            '<r><t xml:space="preserve">  </t></r><r><rPr><i/></rPr><t></t></r>',
+            "  ",
+            "  ",
+        ),
+    ],
+)
+def test_default_rich_projection_edit_and_repeated_save(
+    engine, location, content, inline, shared, tmp_path
+):
     source = tmp_path / "rich-source.xlsx"
     initial = openpyxl.Workbook()
     initial.active["A1"] = initial.active["B1"] = "placeholder"
@@ -427,13 +518,30 @@ def test_default_rich_projection_edit_and_repeated_save(engine, location, conten
     main = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
     rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
     if location == "shared":
-        parts["xl/sharedStrings.xml"] = f'<sst xmlns="{main}"><si>{content}</si></sst>'.encode()
-        parts["xl/_rels/workbook.xml.rels"] = parts["xl/_rels/workbook.xml.rels"].replace(b'</Relationships>', f'<Relationship Id="shared" Type="{rel}/sharedStrings" Target="sharedStrings.xml"/></Relationships>'.encode())
-        parts["[Content_Types].xml"] = parts["[Content_Types].xml"].replace(b'</Types>', b'<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>')
-        cell = lambda address: f'<c r="{address}" t="s"><v>0</v></c>'
+        parts["xl/sharedStrings.xml"] = (
+            f'<sst xmlns="{main}"><si>{content}</si></sst>'.encode()
+        )
+        parts["xl/_rels/workbook.xml.rels"] = parts[
+            "xl/_rels/workbook.xml.rels"
+        ].replace(
+            b"</Relationships>",
+            f'<Relationship Id="shared" Type="{rel}/sharedStrings" Target="sharedStrings.xml"/></Relationships>'.encode(),
+        )
+        parts["[Content_Types].xml"] = parts["[Content_Types].xml"].replace(
+            b"</Types>",
+            b'<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>',
+        )
+
+        def cell(address):
+            return f'<c r="{address}" t="s"><v>0</v></c>'
     else:
-        cell = lambda address: f'<c r="{address}" t="inlineStr"><is>{content}</is></c>'
-    parts["xl/worksheets/sheet1.xml"] = f'<worksheet xmlns="{main}"><dimension ref="A1:B1"/><sheetData><row r="1">{cell("A1")}{cell("B1")}</row></sheetData></worksheet>'.encode()
+
+        def cell(address):
+            return f'<c r="{address}" t="inlineStr"><is>{content}</is></c>'
+
+    parts["xl/worksheets/sheet1.xml"] = (
+        f'<worksheet xmlns="{main}"><dimension ref="A1:B1"/><sheetData><row r="1">{cell("A1")}{cell("B1")}</row></sheetData></worksheet>'.encode()
+    )
     with zipfile.ZipFile(source, "w") as archive:
         for name, data in parts.items():
             archive.writestr(name, data)
@@ -453,7 +561,10 @@ def test_default_rich_projection_edit_and_repeated_save(engine, location, conten
 def test_preserving_rich_runs_is_separate_from_default_text_projection(tmp_path):
     from openpyxl.cell.rich_text import CellRichText, TextBlock
     from openpyxl.cell.text import InlineFont
-    original = CellRichText(TextBlock(InlineFont(b=True, color="80445566"), "formatted"), " tail")
+
+    original = CellRichText(
+        TextBlock(InlineFont(b=True, color="80445566"), "formatted"), " tail"
+    )
     source = tmp_path / "preserving-rich.xlsx"
     reference = openpyxl.Workbook()
     reference.active["A1"] = original
@@ -476,13 +587,18 @@ def test_preserving_rich_runs_is_separate_from_default_text_projection(tmp_path)
 
 @pytest.mark.parametrize("mac", [False, True], ids=["windows", "mac"])
 @pytest.mark.parametrize("data_only", [False, True], ids=["formula", "cached"])
-def test_loaded_numeric_dates_time_duration_and_formula_cache(engine, tmp_path, mac, data_only):
+def test_loaded_numeric_dates_time_duration_and_formula_cache(
+    engine, tmp_path, mac, data_only
+):
     from openpyxl.utils.datetime import CALENDAR_MAC_1904, CALENDAR_WINDOWS_1900
+
     source = tmp_path / "styled-numeric.xlsx"
     reference = openpyxl.Workbook()
     reference.epoch = CALENDAR_MAC_1904 if mac else CALENDAR_WINDOWS_1900
     sheet = reference.active
-    for row, value in enumerate([0, .5, 59, 60, 61, -.5, 2958466, 45292.123456789], 1):
+    for row, value in enumerate(
+        [0, 0.5, 59, 60, 61, -0.5, 2958466, 45292.123456789], 1
+    ):
         sheet.cell(row, 1, value).number_format = "yyyy-mm-dd hh:mm:ss.000"
     sheet["B1"] = 1.25
     sheet["B1"].number_format = "[h]:mm:ss.000"
@@ -496,7 +612,9 @@ def test_loaded_numeric_dates_time_duration_and_formula_cache(engine, tmp_path, 
     reference.close()
     with zipfile.ZipFile(source) as archive:
         parts = {name: archive.read(name) for name in archive.namelist()}
-    parts["xl/worksheets/sheet1.xml"] = parts["xl/worksheets/sheet1.xml"].replace(b"<f>1</f><v></v>", b"<f>1</f><v>61</v>")
+    parts["xl/worksheets/sheet1.xml"] = parts["xl/worksheets/sheet1.xml"].replace(
+        b"<f>1</f><v></v>", b"<f>1</f><v>61</v>"
+    )
     assert b"<f>1</f><v>61</v>" in parts["xl/worksheets/sheet1.xml"]
     with zipfile.ZipFile(source, "w") as archive:
         for name, content in parts.items():
@@ -506,12 +624,20 @@ def test_loaded_numeric_dates_time_duration_and_formula_cache(engine, tmp_path, 
     sheet = book.active
     assert sheet["A1"].value == time(0)
     assert sheet["A2"].value == time(12)
-    assert sheet["A3"].value == (datetime(1904, 2, 29) if mac else datetime(1900, 2, 28))
+    assert sheet["A3"].value == (
+        datetime(1904, 2, 29) if mac else datetime(1900, 2, 28)
+    )
     assert sheet["A4"].value == (datetime(1904, 3, 1) if mac else datetime(1900, 2, 28))
     assert sheet["A5"].value == (datetime(1904, 3, 2) if mac else datetime(1900, 3, 1))
-    assert sheet["A6"].value == (datetime(1903, 12, 31, 12) if mac else datetime(1899, 12, 29, 12))
+    assert sheet["A6"].value == (
+        datetime(1903, 12, 31, 12) if mac else datetime(1899, 12, 29, 12)
+    )
     assert sheet["A7"].value == "#VALUE!" and sheet["A7"].data_type == "e"
-    assert sheet["A8"].value == (datetime(2028, 1, 2, 2, 57, 46, 667000) if mac else datetime(2024, 1, 1, 2, 57, 46, 667000))
+    assert sheet["A8"].value == (
+        datetime(2028, 1, 2, 2, 57, 46, 667000)
+        if mac
+        else datetime(2024, 1, 1, 2, 57, 46, 667000)
+    )
     assert sheet["B1"].value == timedelta(days=1, hours=6)
     assert sheet["B2"].value is True and sheet["B3"].value == "text"
     assert sheet["C1"].value == (sheet["A5"].value if data_only else "=1")
@@ -519,11 +645,19 @@ def test_loaded_numeric_dates_time_duration_and_formula_cache(engine, tmp_path, 
 
 
 @pytest.mark.parametrize("reference", [openpyxl, crabxl], ids=["openpyxl", "crabxl"])
-@pytest.mark.parametrize("format_code,expected", [("hh:mm:ss.000", time(2, 57, 46, 667000)), ("[h]:mm:ss.000", timedelta(hours=2, minutes=57, seconds=46, milliseconds=667))])
-def test_loaded_fractional_clock_duration_baseline_rounding(reference, tmp_path, format_code, expected):
+@pytest.mark.parametrize(
+    "format_code,expected",
+    [
+        ("hh:mm:ss.000", time(2, 57, 46, 667000)),
+        ("[h]:mm:ss.000", timedelta(hours=2, minutes=57, seconds=46, milliseconds=667)),
+    ],
+)
+def test_loaded_fractional_clock_duration_baseline_rounding(
+    reference, tmp_path, format_code, expected
+):
     source = tmp_path / "fractional-clock.xlsx"
     book = openpyxl.Workbook()
-    book.active["A1"] = .123456789
+    book.active["A1"] = 0.123456789
     book.active["A1"].number_format = format_code
     book.save(source)
     book.close()
@@ -534,8 +668,19 @@ def test_loaded_fractional_clock_duration_baseline_rounding(reference, tmp_path,
         loaded.close()
 
 
-@pytest.mark.parametrize("value", [datetime(2024, 2, 29, 12, 3, 4, 123456), datetime(1899, 12, 31, 12, 0, 0, 123456), time(2, 57, 46, 666570), timedelta(microseconds=-1), timedelta(days=999999999, seconds=86399, microseconds=999999)])
-def test_literal_date_clock_duration_precision_matches_reference(engine, tmp_path, value):
+@pytest.mark.parametrize(
+    "value",
+    [
+        datetime(2024, 2, 29, 12, 3, 4, 123456),
+        datetime(1899, 12, 31, 12, 0, 0, 123456),
+        time(2, 57, 46, 666570),
+        timedelta(microseconds=-1),
+        timedelta(days=999999999, seconds=86399, microseconds=999999),
+    ],
+)
+def test_literal_date_clock_duration_precision_matches_reference(
+    engine, tmp_path, value
+):
     book = engine.Workbook()
     book.active["A1"] = value
     assert book.active["A1"].value == value
@@ -561,22 +706,36 @@ def test_literal_date_clock_duration_precision_matches_reference(engine, tmp_pat
 @pytest.mark.parametrize("mac", [False, True], ids=["windows", "mac"])
 def test_date_only_iso_creation_epoch_and_loaded_types(engine, tmp_path, iso, mac):
     from datetime import date
+
     from openpyxl.utils.datetime import CALENDAR_MAC_1904, CALENDAR_WINDOWS_1900
+
     book = engine.Workbook(iso_dates=iso)
     assert book.iso_dates == iso
     assert book.epoch == CALENDAR_WINDOWS_1900
     book.epoch = CALENDAR_MAC_1904 if mac else CALENDAR_WINDOWS_1900
-    values = (date(2024, 2, 29), datetime(2024, 2, 29, 12, 3, 4, 123456), time(12, 3, 4, 123456), timedelta(days=1, hours=6))
+    values = (
+        date(2024, 2, 29),
+        datetime(2024, 2, 29, 12, 3, 4, 123456),
+        time(12, 3, 4, 123456),
+        timedelta(days=1, hours=6),
+    )
     book.active.append(values)
     assert list(book.active.values) == [values]
-    assert [book.active.cell(1, column).data_type for column in range(1, 5)] == ["d"] * 4
+    assert [book.active.cell(1, column).data_type for column in range(1, 5)] == [
+        "d"
+    ] * 4
     with pytest.raises(ValueError):
         book.epoch = 1904
     path = tmp_path / "date-mode.xlsx"
     book.save(path)
     loaded = engine.load_workbook(path)
     assert loaded.epoch == book.epoch
-    expected = (date(2024, 2, 29) if iso else datetime(2024, 2, 29), datetime(2024, 2, 29, 12, 3, 4, 123000), time(12, 3, 4, 123000), timedelta(days=1, hours=6))
+    expected = (
+        date(2024, 2, 29) if iso else datetime(2024, 2, 29),
+        datetime(2024, 2, 29, 12, 3, 4, 123000),
+        time(12, 3, 4, 123000),
+        timedelta(days=1, hours=6),
+    )
     assert list(loaded.active.values) == [expected]
     assert type(loaded.active["A1"].value) is (date if iso else datetime)
     loaded.close()
@@ -600,61 +759,79 @@ def test_loaded_date_policy_changes_are_explicit_until_bank_integration(tmp_path
         loaded.close()
 
 
-@pytest.mark.parametrize('value, format_code', [
-    (date(2024, 1, 2), 'yyyy-mm-dd'),
-    (datetime(2024, 1, 2, 3, 4, 5, 678900), 'yyyy-mm-dd h:mm:ss'),
-    (time(3, 4, 5, 678900), 'h:mm:ss'),
-    (timedelta(days=2, seconds=3, microseconds=678900), '[hh]:mm:ss'),
-])
-def test_saved_temporal_default_formats_match_public_assignments(engine, value, format_code, tmp_path):
+@pytest.mark.parametrize(
+    "value, format_code",
+    [
+        (date(2024, 1, 2), "yyyy-mm-dd"),
+        (datetime(2024, 1, 2, 3, 4, 5, 678900), "yyyy-mm-dd h:mm:ss"),
+        (time(3, 4, 5, 678900), "h:mm:ss"),
+        (timedelta(days=2, seconds=3, microseconds=678900), "[hh]:mm:ss"),
+    ],
+)
+def test_saved_temporal_default_formats_match_public_assignments(
+    engine, value, format_code, tmp_path
+):
     book = engine.Workbook()
-    book.active['A1'] = value
-    assert book.active['A1'].value == value
-    path = tmp_path / 'temporal-format.xlsx'
+    book.active["A1"] = value
+    assert book.active["A1"].value == value
+    path = tmp_path / "temporal-format.xlsx"
     book.save(path)
     book.close()
     loaded = openpyxl.load_workbook(path)
-    assert loaded.active['A1'].number_format == format_code
+    assert loaded.active["A1"].number_format == format_code
     loaded.close()
 
 
-@pytest.mark.parametrize('initial, format_code', [
-    (date(2024, 1, 2), 'yyyy-mm-dd'),
-    (datetime(2024, 1, 2, 3, 4, 5), 'yyyy-mm-dd h:mm:ss'),
-    (time(3, 4, 5), 'h:mm:ss'),
-    (timedelta(days=2, seconds=3), '[hh]:mm:ss'),
-])
-@pytest.mark.parametrize('replacement', [
-    date(2024, 2, 3), datetime(2024, 2, 3, 4, 5, 6),
-    time(4, 5, 6), timedelta(days=3, seconds=4), 42,
-])
+@pytest.mark.parametrize(
+    "initial, format_code",
+    [
+        (date(2024, 1, 2), "yyyy-mm-dd"),
+        (datetime(2024, 1, 2, 3, 4, 5), "yyyy-mm-dd h:mm:ss"),
+        (time(3, 4, 5), "h:mm:ss"),
+        (timedelta(days=2, seconds=3), "[hh]:mm:ss"),
+    ],
+)
+@pytest.mark.parametrize(
+    "replacement",
+    [
+        date(2024, 2, 3),
+        datetime(2024, 2, 3, 4, 5, 6),
+        time(4, 5, 6),
+        timedelta(days=3, seconds=4),
+        42,
+    ],
+)
 def test_replacing_temporal_value_retains_format_across_repeated_save(
-    engine, initial, format_code, replacement, tmp_path,
+    engine,
+    initial,
+    format_code,
+    replacement,
+    tmp_path,
 ):
     book = engine.Workbook()
-    book.active['A1'] = initial
-    first = tmp_path / 'first.xlsx'
+    book.active["A1"] = initial
+    first = tmp_path / "first.xlsx"
     book.save(first)
-    book.active['A1'] = replacement
-    assert book.active['A1'].value == replacement
+    book.active["A1"] = replacement
+    assert book.active["A1"].value == replacement
     reference = openpyxl.Workbook()
-    reference.active['A1'] = initial
-    reference.active['A1'] = replacement
-    expected_path = tmp_path / 'expected.xlsx'
+    reference.active["A1"] = initial
+    reference.active["A1"] = replacement
+    expected_path = tmp_path / "expected.xlsx"
     reference.save(expected_path)
     reference.close()
     expected = openpyxl.load_workbook(expected_path)
-    expected_value = expected.active['A1'].value
-    assert expected.active['A1'].number_format == format_code
+    expected_value = expected.active["A1"].value
+    assert expected.active["A1"].number_format == format_code
     expected.close()
     for index in range(2):
-        path = tmp_path / f'replaced-{index}.xlsx'
+        path = tmp_path / f"replaced-{index}.xlsx"
         book.save(path)
         loaded = openpyxl.load_workbook(path)
-        assert loaded.active['A1'].number_format == format_code
-        assert loaded.active['A1'].value == expected_value
+        assert loaded.active["A1"].number_format == format_code
+        assert loaded.active["A1"].value == expected_value
         loaded.close()
     original = openpyxl.load_workbook(first)
-    assert original.active['A1'].number_format == format_code
+    assert original.active["A1"].number_format == format_code
     original.close()
     book.close()

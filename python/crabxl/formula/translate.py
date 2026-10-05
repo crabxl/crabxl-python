@@ -1,9 +1,15 @@
 """A1 translator compatibility entry point; tokenizer API remains staged."""
+
 import re
-from .._native import formula_position, translate_formula as _translate, translate_axis as _axis
+
+from .._native import formula_position
+from .._native import translate_axis as _axis
+from .._native import translate_formula as _translate
+
 
 class TranslatorError(ValueError):
     """Relative reference translation crosses a formula axis boundary."""
+
 
 class Translator:
     # Public baseline regex metadata; semantics run through the Rust scanner.
@@ -49,7 +55,9 @@ class Translator:
 
     @classmethod
     def translate_range(cls, range_str, rdelta, cdelta):
-        return cls._invoke(_translate, "=" + range_str, rdelta, cdelta, cls.MAX_FORMULA_BYTES)[1:]
+        return cls._invoke(
+            _translate, "=" + range_str, rdelta, cdelta, cls.MAX_FORMULA_BYTES
+        )[1:]
 
     def translate_formula(self, dest=None, row_delta=0, col_delta=0):
         if dest is not None:
@@ -57,4 +65,6 @@ class Translator:
             row_delta, col_delta = row - self.row, col - self.col
         if not self.formula.startswith("="):
             return self.formula
-        return self._invoke(_translate, self.formula, row_delta, col_delta, self.MAX_FORMULA_BYTES)
+        return self._invoke(
+            _translate, self.formula, row_delta, col_delta, self.MAX_FORMULA_BYTES
+        )

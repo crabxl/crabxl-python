@@ -1,2 +1,3 @@
 """Public compatibility import."""
-from .. import Cell
+
+from .. import Cell as Cell

@@ -1,4 +1,5 @@
 """Compatibility formula objects; validation and XLSX behavior live in Rust."""
+
 from weakref import WeakKeyDictionary, ref
 
 _owners = WeakKeyDictionary()
@@ -15,6 +16,7 @@ class _FormulaView:
         worksheet = binding[0]() if binding is not None else None
         if worksheet is not None:
             from .. import _decode
+
             row, column = binding[1:]
             current = _decode(worksheet._get(row, column))
             if type(current) is type(self) and vars(current) == vars(self):
@@ -40,7 +42,18 @@ class ArrayFormula(_FormulaView):
 class DataTableFormula(_FormulaView):
     t = "dataTable"
 
-    def __init__(self, ref, ca=False, dt2D=False, dtr=False, r1=None, r2=None, del1=False, del2=False, **kw):
+    def __init__(
+        self,
+        ref,
+        ca=False,
+        dt2D=False,
+        dtr=False,
+        r1=None,
+        r2=None,
+        del1=False,
+        del2=False,
+        **kw,
+    ):
         self.ref = ref
         self.ca = ca
         self.dt2D = dt2D

@@ -1,17 +1,29 @@
 [build-system]
-requires = ["maturin>=1.9,<2"]
+requires = ["maturin>=1.15,<2"]
 build-backend = "maturin"
 
 [project]
 name = "crabxl"
 version = "0.1.0"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 description = "Rust spreadsheet processing with an openpyxl-compatible Python surface"
 license = "MIT"
 
 [project.optional-dependencies]
-test = ["pytest>=8,<9", "openpyxl==3.1.5", "Pillow>=10"]
+test = ["pytest>=9.1.1,<10", "openpyxl==3.1.5", "Pillow>=12.3", "lxml>=6.1.3"]
+dev = ["ruff>=0.16.10,<0.17"]
 
 [tool.maturin]
 python-source = "python"
 module-name = "crabxl._native"
+
+[tool.ruff]
+target-version = "py311"
+extend-exclude = [
+    "tests/test_upstream_worksheet.py",
+    "tests/test_upstream_workbook.py",
+    "tests/test_upstream_translate.py",
+]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
