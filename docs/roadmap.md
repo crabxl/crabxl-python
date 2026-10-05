@@ -40,3 +40,7 @@ SST RAM/disk/Auto policies, decoded cache/temp bounds and loaded patch caps.
 Read-only workers inherit those settings. Creation accepts Auto tuning separately;
 compression remains per-save. This is a verified resource extension checkpoint,
 not aggregate loaded-bank accounting or complete Python compatibility (ADR 0016).
+
+Alpha.5 publication and fresh public installation are complete; see
+[release evidence](validation/alpha5-release.md). All 25 wheels and the sdist
+are verified. Core M2 acceptance is closed; full adapter compatibility remains staged.

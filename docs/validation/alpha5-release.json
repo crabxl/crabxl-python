@@ -1,0 +1,162 @@
+{
+  "version": "0.1.0a5",
+  "python_commit": "5523e6c734286a5658007cc47bc3ddf973cf26d8",
+  "core_commit": "7efa37b10c6b19757ff58dbf930f9e233b3af7d4",
+  "release_run": 37294935553,
+  "compatibility_run": 37294935699,
+  "wheel_count": 25,
+  "sdist_count": 1,
+  "files": [
+    {
+      "filename": "crabxl-0.1.0a5-cp311-cp311-macosx_10_12_x86_64.whl",
+      "sha256": "9ed4dd775be1fc2b8d505113db5440a296e293ff0ec2b577965c682cef546951",
+      "size": 1277594
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp311-cp311-macosx_11_0_arm64.whl",
+      "sha256": "30a62fe0c2e250911bf0c22429aad3793e23a8b59c8e18af3378151fbdc9c448",
+      "size": 1258428
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp311-cp311-manylinux_2_28_aarch64.whl",
+      "sha256": "4600f13cb6ecdf7087f087e3f16c6c62809d8db006599f8499e425170b931858",
+      "size": 1353574
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp311-cp311-manylinux_2_28_x86_64.whl",
+      "sha256": "18dee7d1d623372d1d8693e8e23e3fd23964f784921ee7e9848060abca401353",
+      "size": 1358440
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp311-cp311-win_amd64.whl",
+      "sha256": "e7c1ddabdd7767cdb5321adf378b3a23c9a4e9172e490d605e5a1336edb2778a",
+      "size": 1181022
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp312-cp312-macosx_10_12_x86_64.whl",
+      "sha256": "c7084abfc2dec86ca2732fbedf7ec8b5a40ea79b292dffb39f439bb13737b4b1",
+      "size": 1283882
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp312-cp312-macosx_11_0_arm64.whl",
+      "sha256": "9a5391441296f0aa0eec56b04191c48ffb79e7ddbc387a69355d8b57a233fe72",
+      "size": 1252996
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp312-cp312-manylinux_2_28_aarch64.whl",
+      "sha256": "97cd87ac602e6df88604c47581151f9de9c24daf5fefabf3226379c5c2ac49f4",
+      "size": 1344687
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp312-cp312-manylinux_2_28_x86_64.whl",
+      "sha256": "0ccf946b46b115e814cca4bbe1444da3376911a8bb0e5c136f6466428883ae9f",
+      "size": 1353706
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp312-cp312-win_amd64.whl",
+      "sha256": "ec660cb935a1737965a08c68f6f91674871b1b54fbca3a7f6c133d2420944bf2",
+      "size": 1177192
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp313-cp313-macosx_10_12_x86_64.whl",
+      "sha256": "1763912ff53522c6f3799cf15e428b1dd10a528cf7aea720f98ed665635d350c",
+      "size": 1284347
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp313-cp313-macosx_11_0_arm64.whl",
+      "sha256": "ce704372c2105dfe6c1b812704680ce81ba605f475f7bff2299b346fc481b700",
+      "size": 1253021
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp313-cp313-manylinux_2_28_aarch64.whl",
+      "sha256": "f26419a319f1ac7fe52b88be2335af5cddfa7b75aa5f7ddb5e0c54f5580dc4e7",
+      "size": 1345179
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp313-cp313-manylinux_2_28_x86_64.whl",
+      "sha256": "0b02d08a5788775d3cef3a9896ae58d1f141a1a3a1d879994f8ad3e05e7d93aa",
+      "size": 1353434
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp313-cp313-win_amd64.whl",
+      "sha256": "60491cb55a8641c9af43b889f87735ea96201b70f03b04736450c02e6e16abaa",
+      "size": 1177304
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp314-cp314-macosx_10_12_x86_64.whl",
+      "sha256": "55c04f340412499d43554e789a76c7854c0853f6d878a98d32133e056292e14e",
+      "size": 1283426
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp314-cp314-macosx_11_0_arm64.whl",
+      "sha256": "624942658b974293a38ca0de85b776f035e2e95029cf7f9513d96a7d88525a43",
+      "size": 1251899
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp314-cp314-manylinux_2_28_aarch64.whl",
+      "sha256": "bed4a410903078493e7168bff6e0dd843d879728d548d48c6a2100ab2cbca081",
+      "size": 1346223
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp314-cp314-manylinux_2_28_x86_64.whl",
+      "sha256": "b0ebbe62a5a50ebf4980a419e2a9601efecbe843d37da554e66b020130d2e52f",
+      "size": 1353655
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp314-cp314-win_amd64.whl",
+      "sha256": "fa52e0616cc3f207576e2b6b4858d311aac7aaa8da24b2a33fbdbf0267684d4f",
+      "size": 1177125
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp315-cp315-macosx_10_12_x86_64.whl",
+      "sha256": "e9c5638fee2ed4fc14ae2561a1bf35e659d175e9f8fb7d452800d581991b0939",
+      "size": 1283917
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp315-cp315-macosx_11_0_arm64.whl",
+      "sha256": "48dc16dbf420e9ad4ec39814bcfb7d356b9eee8400ec278e1662e329db45fdad",
+      "size": 1251799
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp315-cp315-manylinux_2_28_aarch64.whl",
+      "sha256": "20d480ea2f2a9d779701624ec0e1cad5ea3ec9738a45c6a14fdd31052257dcf5",
+      "size": 1345785
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp315-cp315-manylinux_2_28_x86_64.whl",
+      "sha256": "e0cf8fa945f4fc6ac02f5e44b7fb2c91dcced15806205b89dc852b1db165e00f",
+      "size": 1353152
+    },
+    {
+      "filename": "crabxl-0.1.0a5-cp315-cp315-win_amd64.whl",
+      "sha256": "e36bcc7c998fc9e7cf5bb2e2c0916ab54de7169c2f27a6de7a5c2540f00a0aec",
+      "size": 1177625
+    },
+    {
+      "filename": "crabxl-0.1.0a5.tar.gz",
+      "sha256": "8691d5dd1e6fefa0e8d284805cdb4477566a0d467f85cdfaec7c625257412666",
+      "size": 121518
+    }
+  ],
+  "public_installation": {
+    "python": "3.12.14",
+    "wheel": "crabxl-0.1.0a5-cp312-cp312-manylinux_2_28_x86_64.whl",
+    "native_module_matches_public_wheel": true,
+    "sdist_sha256_and_core_pin_verified": true,
+    "openpyxl_installed": false,
+    "smoke": {
+      "version": "0.1.0a5",
+      "rows_per_case": 128,
+      "checks": [
+        "ordinary creation",
+        "Auto model allowance excludes working reserve",
+        "SST memory/auto/disk read-only batch limits",
+        "loaded edit patch limit/retry",
+        "source protection",
+        "stored rewritten worksheet",
+        "write-only creation",
+        "readback without openpyxl installed"
+      ]
+    }
+  }
+}
