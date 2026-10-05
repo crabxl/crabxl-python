@@ -1,0 +1,42 @@
+name: Set up supported CPython versions
+description: Install all supported interpreters on one runner; leave Python 3.14 as the builder.
+outputs:
+  python-311:
+    description: CPython 3.11 executable
+    value: ${{ steps.py311.outputs.python-path }}
+  python-312:
+    description: CPython 3.12 executable
+    value: ${{ steps.py312.outputs.python-path }}
+  python-313:
+    description: CPython 3.13 executable
+    value: ${{ steps.py313.outputs.python-path }}
+  python-314:
+    description: CPython 3.14 executable
+    value: ${{ steps.py314.outputs.python-path }}
+  python-315:
+    description: CPython 3.15 executable
+    value: ${{ steps.py315.outputs.python-path }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v7
+      id: py311
+      with:
+        python-version: '3.11'
+    - uses: actions/setup-python@v7
+      id: py312
+      with:
+        python-version: '3.12'
+    - uses: actions/setup-python@v7
+      id: py313
+      with:
+        python-version: '3.13'
+    - uses: actions/setup-python@v7
+      id: py315
+      with:
+        python-version: '3.15'
+        allow-prereleases: true
+    - uses: actions/setup-python@v7
+      id: py314
+      with:
+        python-version: '3.14'

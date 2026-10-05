@@ -18,28 +18,28 @@ jobs:
   adapter:
     needs: quality
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python: ["3.11", "3.12", "3.13", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - uses: actions/setup-python@v7
-        with:
-          python-version: ${{ matrix.python }}
-          allow-prereleases: ${{ matrix.python == '3.15' }}
+      - uses: ./.github/actions/setup-supported-python
+        id: pythons
       - run: cargo fmt -- --check
       - run: cargo clippy --all-targets --locked -- -D warnings
-      - run: python -m pip install maturin "pytest>=9.1.1,<10" "openpyxl==3.1.5" "Pillow>=12.3" "lxml>=6.1.3"
-      - run: maturin build --release --locked --out dist
-      - run: python -m pip install dist/*.whl
-      - run: python -m pytest tests -q
+      - run: python -m pip install 'maturin>=1.15,<2'
+      - name: Build all five wheels with shared Rust dependencies
+        env:
+          PYTHON_PATHS: ${{ toJSON(steps.pythons.outputs) }}
+        run: python tools/platform_wheels.py build
+      - name: Test each wheel in its matching clean Python environment
+        env:
+          PYTHON_PATHS: ${{ toJSON(steps.pythons.outputs) }}
+        run: python tools/platform_wheels.py test
       - run: maturin sdist --out dist
       - uses: actions/upload-artifact@v7
         with:
-          name: python-package-${{ matrix.python }}
+          name: python-packages-linux-x86_64
           path: dist/*
           if-no-files-found: error
 

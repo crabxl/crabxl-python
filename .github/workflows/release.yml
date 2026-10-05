@@ -58,17 +58,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python:
-          - version: '3.11'
-            abi: cp311
-          - version: '3.12'
-            abi: cp312
-          - version: '3.13'
-            abi: cp313
-          - version: '3.14'
-            abi: cp314
-          - version: '3.15'
-            abi: cp315
         platform:
           - name: linux-x86_64
             runner: ubuntu-24.04
@@ -87,10 +76,8 @@ jobs:
             target: aarch64-apple-darwin
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: ${{ matrix.python.version }}
-          allow-prereleases: ${{ matrix.python.version == '3.15' }}
+      - uses: ./.github/actions/setup-supported-python
+        id: pythons
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -104,18 +91,28 @@ jobs:
           rust-toolchain: 'stable'
           target: ${{ matrix.platform.target }}
           manylinux: '2_28'
-          args: --release --locked --out dist --interpreter /opt/python/${{ matrix.python.abi }}-${{ matrix.python.abi }}/bin/python
+          args: >-
+            --release --locked --out dist --interpreter
+            /opt/python/cp311-cp311/bin/python
+            /opt/python/cp312-cp312/bin/python
+            /opt/python/cp313-cp313/bin/python
+            /opt/python/cp314-cp314/bin/python
+            /opt/python/cp315-cp315/bin/python
       - name: Install the native package builder
         if: runner.os != 'Linux'
         run: python -m pip install 'maturin>=1.15,<2'
       - name: Build Windows and macOS wheels
         if: runner.os != 'Linux'
-        run: python -m maturin build --release --locked --out dist --interpreter python --target ${{ matrix.platform.target }}
-      - name: Install the wheel and its declared test dependencies
-        run: python tools/test_distribution.py '*.whl'
+        env:
+          PYTHON_PATHS: ${{ toJSON(steps.pythons.outputs) }}
+        run: python tools/platform_wheels.py build --target ${{ matrix.platform.target }}
+      - name: Test all five installed CPython wheels
+        env:
+          PYTHON_PATHS: ${{ toJSON(steps.pythons.outputs) }}
+        run: python tools/platform_wheels.py test
       - uses: actions/upload-artifact@v7
         with:
-          name: release-wheel-${{ matrix.platform.name }}-${{ matrix.python.version }}
+          name: release-wheel-${{ matrix.platform.name }}
           path: dist/*.whl
           if-no-files-found: error
 
