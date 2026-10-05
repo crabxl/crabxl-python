@@ -1,0 +1,187 @@
+{
+  "semantics": "Ordinary editable load_workbook and iter_rows(values_only=True). Same generated numeric cells, count and exact checksum. One warmup and rotating serial cold-process samples include imports and cleanup; generation/build excluded. Load/iteration boundaries are mode-specific; compare the complete operation, including deferred parsing or model materialization.",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "installed_packages": {
+    "before": {
+      "python": "3.12.14",
+      "crabxl": "0.1.0a6",
+      "openpyxl": "3.1.5",
+      "native_sha256": "2378c3142aa8caeeefc676ebd4db87acfd8a28ad21b1adc5c0b01941915a9000",
+      "python_source_sha256": "69de5263e1c19ce2ab86d4ce62ee0122f428f28413f9d27252caeb6c423034d3"
+    },
+    "after": {
+      "python": "3.12.14",
+      "crabxl": "0.1.0a6",
+      "openpyxl": "3.1.5",
+      "native_sha256": "b345ea3fa42f1b4706b649cf6514188140d24cf77b8009baec94e2e6eb47135e",
+      "python_source_sha256": "81bc994b3a1994913b5552052748989de77221485575646ddff318ccc3c8ec07"
+    }
+  },
+  "reference_version": "3.1.5",
+  "model_allowance_bytes": 1073741824,
+  "read_temporary_bytes": 0,
+  "cases": [
+    {
+      "rows": 10000,
+      "columns": 10,
+      "file_sha256": "081b4e981f595f55bf35433899fae6c1e8cfa7e67416c0edaeae22ed37da4621",
+      "samples": {
+        "before": [
+          {
+            "seconds": 0.173658245,
+            "cpu_seconds": 0.173513,
+            "peak_rss_kib": 27532,
+            "cells": 100000,
+            "checksum": 4999950000,
+            "open_seconds": 0.0005558250049944036,
+            "iterate_seconds": 0.12421448299573967
+          },
+          {
+            "seconds": 0.170713572,
+            "cpu_seconds": 0.17052,
+            "peak_rss_kib": 27660,
+            "cells": 100000,
+            "checksum": 4999950000,
+            "open_seconds": 0.0006314589991234243,
+            "iterate_seconds": 0.12148185400292277
+          },
+          {
+            "seconds": 0.168253137,
+            "cpu_seconds": 0.168091,
+            "peak_rss_kib": 27532,
+            "cells": 100000,
+            "checksum": 4999950000,
+            "open_seconds": 0.0005431860045064241,
+            "iterate_seconds": 0.11979982299817493
+          }
+        ],
+        "after": [
+          {
+            "seconds": 0.1635812,
+            "cpu_seconds": 0.163448,
+            "peak_rss_kib": 27656,
+            "cells": 100000,
+            "checksum": 4999950000,
+            "open_seconds": 0.0005391300001065247,
+            "iterate_seconds": 0.11391976100276224
+          },
+          {
+            "seconds": 0.158774692,
+            "cpu_seconds": 0.158609,
+            "peak_rss_kib": 27656,
+            "cells": 100000,
+            "checksum": 4999950000,
+            "open_seconds": 0.0007434169965563342,
+            "iterate_seconds": 0.10905839000042761
+          },
+          {
+            "seconds": 0.162199059,
+            "cpu_seconds": 0.16203,
+            "peak_rss_kib": 27496,
+            "cells": 100000,
+            "checksum": 4999950000,
+            "open_seconds": 0.0005631150052067824,
+            "iterate_seconds": 0.11322576899692649
+          }
+        ]
+      },
+      "medians": {
+        "before": {
+          "seconds": 0.170713572,
+          "cpu_seconds": 0.17052,
+          "peak_rss_kib": 27532,
+          "open_seconds": 0.0005558250049944036,
+          "iterate_seconds": 0.12148185400292277
+        },
+        "after": {
+          "seconds": 0.162199059,
+          "cpu_seconds": 0.16203,
+          "peak_rss_kib": 27656,
+          "open_seconds": 0.0005631150052067824,
+          "iterate_seconds": 0.11322576899692649
+        }
+      }
+    },
+    {
+      "rows": 100000,
+      "columns": 10,
+      "file_sha256": "fd8cfc31277fa4c15beda24d2724ef0a44ec47d848b83f3263c2c79de2093047",
+      "samples": {
+        "before": [
+          {
+            "seconds": 1.361055095,
+            "cpu_seconds": 1.360842,
+            "peak_rss_kib": 97676,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.0006493249966297299,
+            "iterate_seconds": 1.2908152800009702
+          },
+          {
+            "seconds": 1.429359896,
+            "cpu_seconds": 1.428206,
+            "peak_rss_kib": 97548,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.0006106870059738867,
+            "iterate_seconds": 1.343257675995119
+          },
+          {
+            "seconds": 1.337003139,
+            "cpu_seconds": 1.335664,
+            "peak_rss_kib": 97676,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.0005952739957137965,
+            "iterate_seconds": 1.2635089169998537
+          }
+        ],
+        "after": [
+          {
+            "seconds": 1.305359609,
+            "cpu_seconds": 1.303843,
+            "peak_rss_kib": 97672,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.0010282240036758594,
+            "iterate_seconds": 1.2272736269951565
+          },
+          {
+            "seconds": 1.290970959,
+            "cpu_seconds": 1.290801,
+            "peak_rss_kib": 97672,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.0006072519972804002,
+            "iterate_seconds": 1.2132057880007778
+          },
+          {
+            "seconds": 1.200525002,
+            "cpu_seconds": 1.200169,
+            "peak_rss_kib": 97672,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.0005097359971841797,
+            "iterate_seconds": 1.1285589850012911
+          }
+        ]
+      },
+      "medians": {
+        "before": {
+          "seconds": 1.361055095,
+          "cpu_seconds": 1.360842,
+          "peak_rss_kib": 97676,
+          "open_seconds": 0.0006106870059738867,
+          "iterate_seconds": 1.2908152800009702
+        },
+        "after": {
+          "seconds": 1.290970959,
+          "cpu_seconds": 1.290801,
+          "peak_rss_kib": 97672,
+          "open_seconds": 0.0006072519972804002,
+          "iterate_seconds": 1.2132057880007778
+        }
+      }
+    }
+  ]
+}

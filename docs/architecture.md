@@ -22,6 +22,9 @@ The core roadmap and feature inventory are authoritative: https://github.com/cra
 
 Optimized streams and ownership are described in [ADR 0014](decisions/0014-optimized-stream-ownership.md). The pinned canonical core uses quick-xml 0.42; the binding contains no duplicated codecs.
 
+The canonical default-namespace cache is verified through ordinary and read-only
+Python values iteration; see [paired performance evidence](../benchmarks/alpha7-namespace-reading.md).
+
 Resource extensions map immutable Python configuration to canonical Rust limits,
 SST options and Auto controls. Both ordinary and optimized readers inherit the
 same settings; no resource strategy is implemented in Python. Mode applicability,
