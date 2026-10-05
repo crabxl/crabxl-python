@@ -22,6 +22,10 @@ Each package release pins the verified published core revision and passes the
 applicable public-reference, resource/cleanup, Ruff, and platform wheel checks.
 Alpha.6 is published; A7 and later stages remain planned.
 
+Loaded scalar/formula row append now uses canonical atomic model/package
+updates and is covered by the shared public-reference edit/save workflow.
+Loaded structural operations and the remaining A7 gates are still open.
+
 Alpha.5 adds canonical resource/SST/Auto controls and test consolidation, and
 pins the verified M2 core acceptance revision. Core M2 closure does not imply
 complete Python compatibility. Ordinary, write-only and loaded-edit save routes

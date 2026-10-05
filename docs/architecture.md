@@ -10,6 +10,14 @@ preserving editor/source and joint model/catalog/overlay/SST allowances; see
 [ADR 0017](decisions/0017-canonical-loaded-workbook-owner.md). Compatibility and
 idiomatic extensions remain clearly distinguishable.
 
+Loaded `Worksheet.append` delegates to the canonical preserving coordinator,
+which updates the model and package overlay atomically. Python normalizes row
+iterables and column dictionaries, converts values, and releases the GIL for
+the native operation. Empty rows advance the source-aware append cursor.
+Unsupported source graphs/values remain explicit errors before mutation.
+The pinned packed model's numeric Python cost is recorded in
+[paired measurements](../benchmarks/alpha7-packed-reading.md).
+
 Worksheet visibility and deferred signed active-view selection use the canonical
 core coordinator in ordinary loaded mode, the registered bank in owned mode, and
 the streaming writer in write-only mode; see
