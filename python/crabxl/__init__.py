@@ -23,7 +23,7 @@ from ._native import (
     save_models,
 )
 
-__version__ = "0.1.0a2"
+__version__ = "0.1.0a3"
 _ERRORS = {
     "#NULL!",
     "#DIV/0!",
@@ -64,12 +64,6 @@ def _range(value):
 
 
 def _encode(value):
-    from .worksheet.formula import ArrayFormula, DataTableFormula
-
-    if isinstance(value, ArrayFormula):
-        return "array", {"ref": value.ref, "text": value.text}
-    if isinstance(value, DataTableFormula):
-        return "table", dict(vars(value))
     if value is None:
         return "empty", None
     if isinstance(value, bool):
@@ -87,6 +81,12 @@ def _encode(value):
         if value.startswith("=") and len(value) > 1:
             return "formula", value[1:]
         return ("error" if value in _ERRORS else "text"), value
+    from .worksheet.formula import ArrayFormula, DataTableFormula
+
+    if isinstance(value, ArrayFormula):
+        return "array", {"ref": value.ref, "text": value.text}
+    if isinstance(value, DataTableFormula):
+        return "table", dict(vars(value))
     if isinstance(value, datetime):
         if value.tzinfo is not None:
             raise TypeError("Excel does not support timezones in datetimes")
