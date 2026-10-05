@@ -33,6 +33,10 @@ read-only rows avoid a GIL detach/attach cycle; blocking receives still release
 the GIL. Both use one adapter conversion helper and unchanged bounded buffers.
 The [calamine comparison](../benchmarks/alpha7-direct-values.md) records remaining
 parser/model and conversion costs; neither mode meets the speed target yet.
+Output tags borrow fixed native literals, while input tags retain owned caller
+validation. The [paired adapter measurement](../benchmarks/alpha7-static-tags.md)
+records small ordinary gains and no clear streaming gain, independently of core
+namespace representation changes.
 
 Worksheet visibility and deferred signed active-view selection use the canonical
 core coordinator in ordinary loaded mode, the registered bank in owned mode, and

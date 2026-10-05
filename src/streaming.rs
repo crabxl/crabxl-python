@@ -113,7 +113,7 @@ impl ReadState {
         }
     }
 }
-type DenseRow = (u32, Vec<TaggedValue>, Vec<Option<u32>>);
+type DenseRow = (u32, Vec<EncodedValue>, Vec<Option<u32>>);
 
 #[pyclass(weakref)]
 pub(crate) struct NativeReadStream {
