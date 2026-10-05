@@ -270,8 +270,6 @@ class Worksheet:
             self._native = self.parent._reader.load_sheet(
                 self.title, self.parent._max_bytes, self.parent.data_only
             )
-        if self._existing:
-            self.parent._editor.apply(self.title, self._native)
         return self._native
 
     def _get(self, row, column):
@@ -888,14 +886,23 @@ def load_workbook(
     maximum = resolve_model_budget(max_memory_bytes, native_resources)
     workbook = Workbook(max_memory_bytes=maximum)
     workbook._reader = NativeReader(
-        Path(filename), workbook._max_bytes, native_resources
+        Path(filename),
+        workbook._max_bytes,
+        native_resources,
+        editable=not read_only,
+        data_only=bool(data_only),
     )
     try:
         workbook.read_only = bool(read_only)
         workbook._editor = (
             None
             if read_only
-            else NativeEditor(Path(filename), max_memory_bytes, native_resources)
+            else NativeEditor(
+                Path(filename),
+                max_memory_bytes,
+                native_resources,
+                reader=workbook._reader,
+            )
         )
         workbook.data_only = data_only
         if read_only:
@@ -910,7 +917,7 @@ def load_workbook(
                 for name in workbook._reader.names()
             ]
         workbook._active = workbook._reader.active_index()
-        workbook._book = None  # Loaded models remain in the original-package path.
+        workbook._book = None  # NativeReader owns the canonical loaded bank.
     except BaseException:
         workbook._reader.close()
         raise

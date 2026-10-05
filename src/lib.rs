@@ -5,9 +5,10 @@ mod streaming;
 use crabxl::{
     Cell, CellAddress, CellRange, CellValue, ColumnIndex, DataTableOptions, DateEpoch, DateKind,
     EditLimits, EditorOptions, Error, ErrorKind, ExactInteger, ExcelDateTime, Formula, FormulaFlag,
-    FormulaFlags, FormulaMetadata, FormulaRange, FormulaType, MemoryPolicy, ReadOptions,
-    ResourceLimits, Row, RowIndex, SaveOptions, SheetId, StyleId, Workbook, WorkbookEditor,
-    WorkbookLimits, WorkbookReader, WorkbookWriter, Worksheet, WorksheetEditor, WriteOptions,
+    FormulaFlags, FormulaMetadata, FormulaRange, FormulaType, LoadOptions, LoadedWorkbook,
+    MemoryPolicy, ReadOptions, ResourceLimits, Row, RowIndex, SaveOptions, SheetId, StyleId,
+    Workbook, WorkbookEditor, WorkbookLimits, WorkbookReader, WorkbookWriter, Worksheet,
+    WorksheetEditor, WriteOptions,
 };
 use pyo3::{
     IntoPyObjectExt,
@@ -24,6 +25,7 @@ use std::{
 };
 
 type TaggedValue = (String, Py<PyAny>);
+type SharedLoaded = Arc<Mutex<Option<LoadedWorkbook<streaming::SharedFile>>>>;
 fn failure(error: Error) -> PyErr {
     let mut text = error.to_string();
     let mut source = std::error::Error::source(&error);
@@ -253,6 +255,10 @@ enum SheetStorage {
         book: Arc<Mutex<Workbook>>,
         id: SheetId,
     },
+    Loaded {
+        book: SharedLoaded,
+        id: SheetId,
+    },
 }
 #[pyclass]
 struct NativeSheet {
@@ -264,6 +270,14 @@ impl NativeSheet {
         match &*storage {
             SheetStorage::Standalone(sheet) => action(sheet),
             SheetStorage::Bank { book, id } => action(lock(book)?.sheet(*id).map_err(failure)?),
+            SheetStorage::Loaded { book, id } => action(
+                lock(book)?
+                    .as_ref()
+                    .ok_or_else(closed)?
+                    .model()
+                    .sheet(*id)
+                    .map_err(failure)?,
+            ),
         }
     }
     fn with_mut<T>(
@@ -276,6 +290,9 @@ impl NativeSheet {
             SheetStorage::Bank { book, id } => {
                 action(&mut lock(book)?.sheet_mut(*id).map_err(failure)?)
             }
+            SheetStorage::Loaded { .. } => Err(PyNotImplementedError::new_err(
+                "Loaded model mutation must use the preserving coordinator",
+            )),
         }
     }
     fn in_bank(book: Arc<Mutex<Workbook>>, id: SheetId) -> Self {
@@ -328,6 +345,21 @@ impl NativeSheet {
         CellAddress::new(row, last).map_err(failure)?;
         if first > last {
             return Ok(Vec::new());
+        }
+        if !create_missing {
+            return self.with(|sheet| {
+                (first..=last)
+                    .map(|column| {
+                        let address = CellAddress::new(row, column).map_err(failure)?;
+                        encode(
+                            py,
+                            sheet
+                                .get(address)
+                                .map_or(&CellValue::Empty, |cell| &cell.value),
+                        )
+                    })
+                    .collect()
+            });
         }
         self.with_mut(|sheet| {
             let mut values = Vec::with_capacity((last - first + 1) as usize);
@@ -409,6 +441,9 @@ impl NativeSheet {
         match &mut *storage {
             SheetStorage::Standalone(sheet) => sheet.rename(name).map_err(failure),
             SheetStorage::Bank { book, id } => lock(book)?.rename_sheet(*id, name).map_err(failure),
+            SheetStorage::Loaded { .. } => Err(PyNotImplementedError::new_err(
+                "Renaming existing sheets remains unimplemented",
+            )),
         }
     }
     fn shift(
@@ -557,6 +592,7 @@ impl NativeBook {
 #[pyclass]
 struct NativeReader {
     reader: Arc<Mutex<Option<WorkbookReader<streaming::SharedFile>>>>,
+    loaded: Option<SharedLoaded>,
     source: streaming::SharedFile,
     alive: Arc<std::sync::atomic::AtomicBool>,
     max_bytes: usize,
@@ -565,12 +601,14 @@ struct NativeReader {
 #[pymethods]
 impl NativeReader {
     #[new]
-    #[pyo3(signature = (path, max_bytes, resources=None))]
+    #[pyo3(signature = (path, max_bytes, resources=None, *, editable=false, data_only=false))]
     fn new(
         py: Python<'_>,
         path: PathBuf,
         max_bytes: usize,
         resources: Option<PyRef<'_, resources::NativeResources>>,
+        editable: bool,
+        data_only: bool,
     ) -> PyResult<Self> {
         let config = resources.map_or_else(resources::ResourceConfig::default, |value| {
             value.config.clone()
@@ -578,17 +616,52 @@ impl NativeReader {
         let source = streaming::SharedFile::open(path)?;
         let input = source.clone();
         let worker_config = config.clone();
-        let reader = py.detach(move || {
+        let (reader, loaded) = py.detach(move || {
             let limits = worker_config.reader_limits(max_bytes, false);
             let options = worker_config
                 .string_options(max_bytes, limits)
                 .map_err(failure)?;
+            if editable {
+                // max_bytes is the already resolved retained-model allowance.
+                // Add back only the canonical working reserve so resolving the
+                // joint loaded budget does not subtract it a second time.
+                let working = crabxl::memory_allowance(MemoryPolicy::Budget(usize::MAX), limits)
+                    .map_err(failure)?
+                    .working_reserve_bytes;
+                let operation = max_bytes
+                    .checked_add(working)
+                    .ok_or_else(|| PyValueError::new_err("Loaded operation allowance overflows"))?;
+                let loaded = LoadedWorkbook::with_options(
+                    input,
+                    LoadOptions {
+                        resources: limits,
+                        memory_policy: MemoryPolicy::Budget(operation),
+                        shared_strings: options,
+                        workbook: WorkbookLimits {
+                            max_bytes,
+                            sheet: EditLimits {
+                                max_bytes: limits.max_materialized_bytes,
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        },
+                        read: ReadOptions {
+                            data_only,
+                            ..Default::default()
+                        },
+                        editor: worker_config.editor_options(Some(operation)),
+                    },
+                )
+                .map_err(failure)?;
+                return Ok::<_, PyErr>((None, Some(loaded)));
+            }
             let mut reader = WorkbookReader::with_limits(input, limits).map_err(failure)?;
             reader.set_shared_string_options(options);
-            Ok::<_, PyErr>(reader)
+            Ok::<_, PyErr>((Some(reader), None))
         })?;
         Ok(Self {
-            reader: Arc::new(Mutex::new(Some(reader))),
+            reader: Arc::new(Mutex::new(reader)),
+            loaded: loaded.map(|book| Arc::new(Mutex::new(Some(book)))),
             source,
             alive: Arc::new(std::sync::atomic::AtomicBool::new(true)),
             max_bytes,
@@ -596,6 +669,15 @@ impl NativeReader {
         })
     }
     fn names(&self) -> PyResult<Vec<String>> {
+        if let Some(loaded) = &self.loaded {
+            return Ok(lock(loaded)?
+                .as_ref()
+                .ok_or_else(closed)?
+                .model()
+                .sheets()
+                .map(|(_, sheet)| sheet.name().to_owned())
+                .collect());
+        }
         Ok(lock(&self.reader)?
             .as_ref()
             .ok_or_else(closed)?
@@ -605,9 +687,21 @@ impl NativeReader {
             .collect())
     }
     fn date_1904(&self) -> PyResult<bool> {
+        if let Some(loaded) = &self.loaded {
+            return Ok(
+                lock(loaded)?.as_ref().ok_or_else(closed)?.model().epoch() == DateEpoch::Mac1904
+            );
+        }
         Ok(lock(&self.reader)?.as_ref().ok_or_else(closed)?.date_1904())
     }
     fn active_index(&self) -> PyResult<Option<usize>> {
+        if let Some(loaded) = &self.loaded {
+            return Ok(lock(loaded)?
+                .as_ref()
+                .ok_or_else(closed)?
+                .model()
+                .active_index());
+        }
         Ok(lock(&self.reader)?
             .as_ref()
             .ok_or_else(closed)?
@@ -620,6 +714,22 @@ impl NativeReader {
         max_bytes: usize,
         data_only: bool,
     ) -> PyResult<NativeSheet> {
+        if let Some(loaded) = &self.loaded {
+            let book = Arc::clone(loaded);
+            let worker = Arc::clone(&book);
+            let id = py.detach(move || {
+                let mut handle = lock(&worker)?;
+                let loaded = handle.as_mut().ok_or_else(closed)?;
+                let id = loaded
+                    .sheet_id(&name)
+                    .ok_or_else(|| PyKeyError::new_err(name.clone()))?;
+                loaded.sheet(id).map_err(failure)?;
+                Ok::<_, PyErr>(id)
+            })?;
+            return Ok(NativeSheet {
+                storage: Arc::new(Mutex::new(SheetStorage::Loaded { book, id })),
+            });
+        }
         let max_bytes = max_bytes
             .min(self.max_bytes)
             .min(self.config.materialized_limit.unwrap_or(usize::MAX));
@@ -661,6 +771,9 @@ impl NativeReader {
         self.alive
             .store(false, std::sync::atomic::Ordering::Relaxed);
         lock(&self.reader)?.take();
+        if let Some(loaded) = &self.loaded {
+            lock(loaded)?.take();
+        }
         self.source.close()?;
         Ok(())
     }
@@ -680,6 +793,18 @@ impl NativeReader {
             }))
     }
     fn number_format(&self, style: u32) -> PyResult<String> {
+        if let Some(loaded) = &self.loaded {
+            let handle = lock(loaded)?;
+            let catalog = handle.as_ref().ok_or_else(closed)?.model().style_catalog();
+            return Ok(catalog
+                .and_then(|catalog| {
+                    catalog
+                        .cell_format(StyleId::new(style))
+                        .and_then(|format| catalog.number_format(format.number_format_id))
+                })
+                .unwrap_or("General")
+                .to_owned());
+        }
         let mut reader = lock(&self.reader)?;
         let catalog = reader
             .as_mut()
@@ -724,17 +849,29 @@ impl NativeReader {
 #[pyclass]
 struct NativeEditor {
     editor: Arc<Mutex<Option<WorkbookEditor<File>>>>,
+    loaded: Option<SharedLoaded>,
 }
 #[pymethods]
 impl NativeEditor {
     #[new]
-    #[pyo3(signature = (path, max_bytes=None, resources=None))]
+    #[pyo3(signature = (path, max_bytes=None, resources=None, *, reader=None))]
     fn new(
         py: Python<'_>,
         path: PathBuf,
         max_bytes: Option<usize>,
         resources: Option<PyRef<'_, resources::NativeResources>>,
+        reader: Option<PyRef<'_, NativeReader>>,
     ) -> PyResult<Self> {
+        if let Some(reader) = reader {
+            let loaded = reader.loaded.as_ref().ok_or_else(|| {
+                PyValueError::new_err("The reader must own an editable loaded workbook")
+            })?;
+            lock(loaded)?.as_ref().ok_or_else(closed)?;
+            return Ok(Self {
+                editor: Arc::new(Mutex::new(None)),
+                loaded: Some(Arc::clone(loaded)),
+            });
+        }
         let config = resources.map_or_else(resources::ResourceConfig::default, |value| {
             value.config.clone()
         });
@@ -745,6 +882,7 @@ impl NativeEditor {
         })?;
         Ok(Self {
             editor: Arc::new(Mutex::new(Some(editor))),
+            loaded: None,
         })
     }
     fn set(
@@ -755,6 +893,17 @@ impl NativeEditor {
         col: u32,
         value: TaggedValue,
     ) -> PyResult<()> {
+        if let Some(loaded) = &self.loaded {
+            let value = decode(py, value)?;
+            let mut handle = lock(loaded)?;
+            let loaded = handle.as_mut().ok_or_else(closed)?;
+            let id = loaded
+                .sheet_id(name)
+                .ok_or_else(|| PyKeyError::new_err(name.to_owned()))?;
+            return loaded
+                .upsert_value(id, CellAddress::new(row, col).map_err(failure)?, value)
+                .map_err(failure);
+        }
         lock(&self.editor)?
             .as_mut()
             .ok_or_else(closed)?
@@ -772,6 +921,17 @@ impl NativeEditor {
         row: u32,
         col: u32,
     ) -> PyResult<Option<TaggedValue>> {
+        if let Some(loaded) = &self.loaded {
+            let handle = lock(loaded)?;
+            let loaded = handle.as_ref().ok_or_else(closed)?;
+            let id = loaded
+                .sheet_id(name)
+                .ok_or_else(|| PyKeyError::new_err(name.to_owned()))?;
+            return loaded
+                .pending_value(id, CellAddress::new(row, col).map_err(failure)?)
+                .map(|value| encode(py, value))
+                .transpose();
+        }
         let editor = lock(&self.editor)?;
         editor
             .as_ref()
@@ -781,6 +941,29 @@ impl NativeEditor {
             .transpose()
     }
     fn apply(&self, name: &str, sheet: &NativeSheet) -> PyResult<()> {
+        if let Some(loaded) = &self.loaded {
+            let storage = lock(&sheet.storage)?;
+            let SheetStorage::Loaded { book, id } = &*storage else {
+                return Err(PyValueError::new_err(
+                    "Loaded sheet belongs to a different owner",
+                ));
+            };
+            if !Arc::ptr_eq(loaded, book) {
+                return Err(PyValueError::new_err(
+                    "Loaded sheet belongs to a different owner",
+                ));
+            }
+            let handle = lock(loaded)?;
+            let loaded = handle.as_ref().ok_or_else(closed)?;
+            if loaded.sheet_id(name) != Some(*id) {
+                return Err(PyValueError::new_err(
+                    "Loaded sheet identity does not match",
+                ));
+            }
+            // The core coordinator already synchronizes pending values with
+            // cached models; repeating clones here would bypass its accounting.
+            return Ok(());
+        }
         let editor = lock(&self.editor)?;
         let editor = editor.as_ref().ok_or_else(closed)?;
         sheet.with_mut(|sheet| {
@@ -795,6 +978,19 @@ impl NativeEditor {
         })
     }
     fn bounds(&self, name: &str) -> PyResult<(u32, u32)> {
+        if let Some(loaded) = &self.loaded {
+            let handle = lock(loaded)?;
+            let loaded = handle.as_ref().ok_or_else(closed)?;
+            let id = loaded
+                .sheet_id(name)
+                .ok_or_else(|| PyKeyError::new_err(name.to_owned()))?;
+            return Ok(loaded.pending_cells(id).fold((0, 0), |(rows, cols), cell| {
+                (
+                    rows.max(cell.address.row.get() + 1),
+                    cols.max(cell.address.column.get() + 1),
+                )
+            }));
+        }
         let editor = lock(&self.editor)?;
         let editor = editor.as_ref().ok_or_else(closed)?;
         Ok(editor
@@ -807,6 +1003,9 @@ impl NativeEditor {
             }))
     }
     fn patch_bytes(&self) -> PyResult<usize> {
+        if let Some(loaded) = &self.loaded {
+            return Ok(lock(loaded)?.as_ref().ok_or_else(closed)?.patch_bytes());
+        }
         Ok(lock(&self.editor)?
             .as_ref()
             .ok_or_else(closed)?
@@ -820,6 +1019,23 @@ impl NativeEditor {
         verify: bool,
         compression_level: Option<u8>,
     ) -> PyResult<()> {
+        if let Some(loaded) = &self.loaded {
+            let loaded = Arc::clone(loaded);
+            return py.detach(move || {
+                lock(&loaded)?
+                    .as_mut()
+                    .ok_or_else(closed)?
+                    .save_path(
+                        path,
+                        SaveOptions {
+                            verify_unchanged: verify,
+                            compression_level,
+                        },
+                    )
+                    .map(|_| ())
+                    .map_err(failure)
+            });
+        }
         let editor = Arc::clone(&self.editor);
         py.detach(move || {
             lock(&editor)?
@@ -838,6 +1054,9 @@ impl NativeEditor {
     }
     fn close(&self) -> PyResult<()> {
         lock(&self.editor)?.take();
+        if let Some(loaded) = &self.loaded {
+            lock(loaded)?.take();
+        }
         Ok(())
     }
 }
