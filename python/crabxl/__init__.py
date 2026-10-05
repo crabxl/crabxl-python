@@ -3,15 +3,36 @@
 Compatibility is verified per capability. Unsupported features raise explicitly;
 this package never falls back to the Python openpyxl implementation.
 """
+
+import re
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
-import re
 from weakref import WeakValueDictionary
 
-from ._native import NativeBook, NativeEditor, NativeReader, NativeSheet, cell_address, column_index, column_letters, finite_range, resolve_model_budget, save_models
+from ._native import (
+    NativeBook,
+    NativeEditor,
+    NativeReader,
+    NativeSheet,
+    cell_address,
+    column_index,
+    column_letters,
+    finite_range,
+    resolve_model_budget,
+    save_models,
+)
 
 __version__ = "0.1.0"
-_ERRORS = {"#NULL!", "#DIV/0!", "#VALUE!", "#REF!", "#NAME?", "#NUM!", "#N/A", "#GETTING_DATA"}
+_ERRORS = {
+    "#NULL!",
+    "#DIV/0!",
+    "#VALUE!",
+    "#REF!",
+    "#NAME?",
+    "#NUM!",
+    "#N/A",
+    "#GETTING_DATA",
+}
 _ADDRESS = re.compile(r"^\$?([A-Za-z]+)\$?([1-9][0-9]*)$")
 
 
@@ -43,6 +64,7 @@ def _range(value):
 
 def _encode(value):
     from .worksheet.formula import ArrayFormula, DataTableFormula
+
     if isinstance(value, ArrayFormula):
         return "array", {"ref": value.ref, "text": value.text}
     if isinstance(value, DataTableFormula):
@@ -59,6 +81,7 @@ def _encode(value):
         value = value[:32767]
         if any(ord(char) < 32 and char not in "\t\n\r" for char in value):
             from .utils.exceptions import IllegalCharacterError
+
             raise IllegalCharacterError("Text contains an illegal XML character")
         if value.startswith("=") and len(value) > 1:
             return "formula", value[1:]
@@ -66,7 +89,15 @@ def _encode(value):
     if isinstance(value, datetime):
         if value.tzinfo is not None:
             raise TypeError("Excel does not support timezones in datetimes")
-        return "datetime", (value.year, value.month, value.day, value.hour, value.minute, value.second, value.microsecond)
+        return "datetime", (
+            value.year,
+            value.month,
+            value.day,
+            value.hour,
+            value.minute,
+            value.second,
+            value.microsecond,
+        )
     if isinstance(value, date):
         return "date", (value.year, value.month, value.day)
     if isinstance(value, time):
@@ -82,6 +113,7 @@ def _decode(tagged):
     kind, value = tagged
     if kind in ("array", "table"):
         from .worksheet.formula import ArrayFormula, DataTableFormula
+
         return (ArrayFormula if kind == "array" else DataTableFormula)(**value)
     if kind == "bigint":
         return int(value)
@@ -98,6 +130,7 @@ def _decode(tagged):
 
 class Cell:
     """A live Python view of a Rust-owned cell; coordinates are one-based."""
+
     __slots__ = ("parent", "row", "column", "_detached", "_formula", "__weakref__")
 
     def __init__(self, worksheet, row, column):
@@ -116,9 +149,14 @@ class Cell:
     @property
     def value(self):
         from .worksheet.formula import ArrayFormula, DataTableFormula, bind
+
         value = _decode(self._tagged())
         if isinstance(value, (ArrayFormula, DataTableFormula)):
-            if self._formula is not None and type(self._formula) is type(value) and vars(self._formula) == vars(value):
+            if (
+                self._formula is not None
+                and type(self._formula) is type(value)
+                and vars(self._formula) == vars(value)
+            ):
                 return self._formula
             self._formula = bind(value, self)
             return self._formula
@@ -134,12 +172,24 @@ class Cell:
             self.parent._set(self.row, self.column, value)
 
     def _tagged(self):
-        return self._detached if self._detached is not None else self.parent._get(self.row, self.column)
+        return (
+            self._detached
+            if self._detached is not None
+            else self.parent._get(self.row, self.column)
+        )
 
     @property
     def data_type(self):
         kind = self._tagged()[0]
-        return "f" if kind in ("array", "table") else "d" if kind in ("date", "datetime", "duration", "time") else "n" if kind == "bigint" else kind
+        return (
+            "f"
+            if kind in ("array", "table")
+            else "d"
+            if kind in ("date", "datetime", "duration", "time")
+            else "n"
+            if kind == "bigint"
+            else kind
+        )
 
     @property
     def internal_value(self):
@@ -151,18 +201,37 @@ class Cell:
 
 
 def _data_type(tag):
-    return {"empty": "n", "bool": "b", "int": "n", "float": "n", "text": "s", "error": "e", "formula": "f", "array": "f", "table": "f"}.get(tag[0], "d")
+    return {
+        "empty": "n",
+        "bool": "b",
+        "int": "n",
+        "float": "n",
+        "text": "s",
+        "error": "e",
+        "formula": "f",
+        "array": "f",
+        "table": "f",
+    }.get(tag[0], "d")
 
 
 class Worksheet:
     """Sparse worksheet using the same public call conventions as openpyxl."""
+
     __slots__ = ("parent", "_title", "_existing", "_native", "_cells", "__weakref__")
 
     def __init__(self, parent, title=None, *, _existing=False, _native=None):
         self.parent = parent
-        self._title = (title or "Sheet") if _existing else parent._unique_title(title or "Sheet")
+        self._title = (
+            (title or "Sheet") if _existing else parent._unique_title(title or "Sheet")
+        )
         self._existing = _existing
-        self._native = None if _existing else _native if _native is not None else NativeSheet(self._title, parent._max_bytes)
+        self._native = (
+            None
+            if _existing
+            else _native
+            if _native is not None
+            else NativeSheet(self._title, parent._max_bytes)
+        )
         self._cells = WeakValueDictionary()
         self._validate_title(self._title)
 
@@ -173,7 +242,9 @@ class Worksheet:
         if re.search(r"[\\*?:/\[\]]", title):
             raise ValueError("Invalid character in sheet title")
         if len(title) > 31:
-            raise NotImplementedError("Titles longer than 31 characters are not implemented")
+            raise NotImplementedError(
+                "Titles longer than 31 characters are not implemented"
+            )
 
     @property
     def title(self):
@@ -192,7 +263,9 @@ class Worksheet:
     def _model(self):
         self.parent._check_open()
         if self._native is None:
-            self._native = self.parent._reader.load_sheet(self.title, self.parent._max_bytes, self.parent.data_only)
+            self._native = self.parent._reader.load_sheet(
+                self.title, self.parent._max_bytes, self.parent.data_only
+            )
         if self._existing:
             self.parent._editor.apply(self.title, self._native)
         return self._native
@@ -214,7 +287,12 @@ class Worksheet:
             self._native.set(row - 1, column - 1, tagged)
 
     def cell(self, row, column, value=None):
-        if not isinstance(row, int) or not isinstance(column, int) or not 1 <= row <= 1048576 or not 1 <= column <= 16384:
+        if (
+            not isinstance(row, int)
+            or not isinstance(column, int)
+            or not 1 <= row <= 1048576
+            or not 1 <= column <= 16384
+        ):
             raise ValueError("Row or column values must be within Excel bounds")
         key = row, column
         cell = self._cells.get(key)
@@ -240,7 +318,9 @@ class Worksheet:
             if first.isdigit() and last.isdigit():
                 return tuple(self.iter_rows(min_row=int(first), max_row=int(last)))
             if first.isalpha() and last.isalpha():
-                return tuple(self.iter_cols(min_col=_column(first), max_col=_column(last)))
+                return tuple(
+                    self.iter_cols(min_col=_column(first), max_col=_column(last))
+                )
             row, col, end_row, end_col = _range(key)
             return tuple(self.iter_rows(row, end_row, col, end_col))
         raise ValueError(f"{key} is not a valid coordinate or range")
@@ -251,7 +331,9 @@ class Worksheet:
 
     def __delitem__(self, key):
         if self._existing:
-            raise NotImplementedError("Deleting existing physical cells is not implemented")
+            raise NotImplementedError(
+                "Deleting existing physical cells is not implemented"
+            )
         row, column = _address(key)
         cell = self._cells.pop((row, column), None)
         if cell is not None:
@@ -259,57 +341,90 @@ class Worksheet:
         self._model().remove(row - 1, column - 1)
 
     @property
-    def _current_row(self): return self._model().row_extent()
+    def _current_row(self):
+        return self._model().row_extent()
 
     @property
-    def min_row(self): return self._model().bounds()[0]
+    def min_row(self):
+        return self._model().bounds()[0]
+
     @property
-    def min_column(self): return self._model().bounds()[1]
+    def min_column(self):
+        return self._model().bounds()[1]
+
     @property
-    def max_row(self): return self._model().bounds()[2]
+    def max_row(self):
+        return self._model().bounds()[2]
+
     @property
-    def max_column(self): return self._model().bounds()[3]
+    def max_column(self):
+        return self._model().bounds()[3]
 
     def calculate_dimension(self):
         first_row, first_col, last_row, last_col = self._model().bounds()
         return f"{_letters(first_col)}{first_row}:{_letters(last_col)}{last_row}"
 
     @property
-    def dimensions(self): return self.calculate_dimension()
+    def dimensions(self):
+        return self.calculate_dimension()
 
-    def iter_rows(self, min_row=None, max_row=None, min_col=None, max_col=None, values_only=False):
+    def iter_rows(
+        self, min_row=None, max_row=None, min_col=None, max_col=None, values_only=False
+    ):
         bounds = self._model().bounds()
-        if min_row is None and max_row is None and min_col is None and max_col is None and not self._native.contains(0, 0) and bounds == (1, 1, 1, 1):
+        if (
+            min_row is None
+            and max_row is None
+            and min_col is None
+            and max_col is None
+            and not self._native.contains(0, 0)
+            and bounds == (1, 1, 1, 1)
+        ):
             return iter(())
         min_row, min_col = min_row or 1, min_col or 1
         max_row, max_col = max_row or bounds[2], max_col or bounds[3]
         self.cell(min_row, min_col)
         if max_row < min_row or max_col < min_col:
             return iter(())
+
         def rows():
             for row in range(min_row, max_row + 1):
-                cells = tuple(self.cell(row, column) for column in range(min_col, max_col + 1))
+                cells = tuple(
+                    self.cell(row, column) for column in range(min_col, max_col + 1)
+                )
                 yield tuple(cell.value for cell in cells) if values_only else cells
+
         return rows()
 
-    def iter_cols(self, min_col=None, max_col=None, min_row=None, max_row=None, values_only=False):
+    def iter_cols(
+        self, min_col=None, max_col=None, min_row=None, max_row=None, values_only=False
+    ):
         min_col, min_row = min_col or 1, min_row or 1
         max_col, max_row = max_col or self.max_column, max_row or self.max_row
         for column in range(min_col, max_col + 1):
             cells = tuple(self.cell(row, column) for row in range(min_row, max_row + 1))
             yield tuple(cell.value for cell in cells) if values_only else cells
 
-    def __iter__(self): return self.iter_rows()
+    def __iter__(self):
+        return self.iter_rows()
+
     @property
-    def rows(self): return self.iter_rows()
+    def rows(self):
+        return self.iter_rows()
+
     @property
-    def columns(self): return self.iter_cols()
+    def columns(self):
+        return self.iter_cols()
+
     @property
-    def values(self): return self.iter_rows(values_only=True)
+    def values(self):
+        return self.iter_rows(values_only=True)
 
     def append(self, iterable):
         if self._existing:
-            raise NotImplementedError("Appending to loaded sheets requires source extent tracking")
+            raise NotImplementedError(
+                "Appending to loaded sheets requires source extent tracking"
+            )
         if isinstance(iterable, (str, bytes)):
             raise TypeError("Append requires a row iterable or column dictionary")
         if isinstance(iterable, dict):
@@ -327,11 +442,17 @@ class Worksheet:
 
     def _shift(self, idx, amount, rows, insert):
         if self._existing:
-            raise NotImplementedError("Existing-file structural editing is not implemented")
+            raise NotImplementedError(
+                "Existing-file structural editing is not implemented"
+            )
         if idx < 1 or amount < 1:
             raise ValueError("Index and amount must be positive")
         cached = list(self._cells.items())
-        detached = {(row, col): cell._tagged() for (row, col), cell in cached if not insert and idx <= (row if rows else col) < idx + amount}
+        detached = {
+            (row, col): cell._tagged()
+            for (row, col), cell in cached
+            if not insert and idx <= (row if rows else col) < idx + amount
+        }
         self._model().shift(idx - 1, amount, rows, insert)
         self._cells.clear()
         for (row, col), cell in cached:
@@ -341,23 +462,45 @@ class Worksheet:
                 continue
             if coordinate >= idx + (0 if insert else amount):
                 coordinate += amount if insert else -amount
-                if rows: cell.row = coordinate
-                else: cell.column = coordinate
+                if rows:
+                    cell.row = coordinate
+                else:
+                    cell.column = coordinate
             self._cells[cell.row, cell.column] = cell
 
-    def insert_rows(self, idx, amount=1): self._shift(idx, amount, True, True)
-    def delete_rows(self, idx, amount=1): self._shift(idx, amount, True, False)
-    def insert_cols(self, idx, amount=1): self._shift(idx, amount, False, True)
-    def delete_cols(self, idx, amount=1): self._shift(idx, amount, False, False)
+    def insert_rows(self, idx, amount=1):
+        self._shift(idx, amount, True, True)
+
+    def delete_rows(self, idx, amount=1):
+        self._shift(idx, amount, True, False)
+
+    def insert_cols(self, idx, amount=1):
+        self._shift(idx, amount, False, True)
+
+    def delete_cols(self, idx, amount=1):
+        self._shift(idx, amount, False, False)
 
     def move_range(self, cell_range, rows=0, cols=0, translate=False):
         if self._existing:
             raise NotImplementedError("Existing-file moves are not implemented")
         range_object = cell_range if hasattr(cell_range, "coord") else None
-        first_row, first_col, last_row, last_col = _range(range_object.coord if range_object is not None else cell_range)
+        first_row, first_col, last_row, last_col = _range(
+            range_object.coord if range_object is not None else cell_range
+        )
         cached = list(self._cells.items())
-        overwritten = {(row, col): cell._tagged() for (row, col), cell in cached if first_row + rows <= row <= last_row + rows and first_col + cols <= col <= last_col + cols and not (first_row <= row <= last_row and first_col <= col <= last_col)}
-        self._model().move_range((first_row - 1, first_col - 1, last_row - 1, last_col - 1), rows, cols, translate)
+        overwritten = {
+            (row, col): cell._tagged()
+            for (row, col), cell in cached
+            if first_row + rows <= row <= last_row + rows
+            and first_col + cols <= col <= last_col + cols
+            and not (first_row <= row <= last_row and first_col <= col <= last_col)
+        }
+        self._model().move_range(
+            (first_row - 1, first_col - 1, last_row - 1, last_col - 1),
+            rows,
+            cols,
+            translate,
+        )
         if range_object is not None:
             range_object.shift(row_shift=rows, col_shift=cols)
         self._cells.clear()
@@ -373,7 +516,21 @@ class Worksheet:
 
 class Workbook:
     """Workbook-compatible entry point; models and package editing remain Rust-owned."""
-    __slots__ = ("_max_bytes", "_closed", "_reader", "_editor", "data_only", "read_only", "write_only", "_active", "_sheets", "_book", "_iso_dates")
+
+    __slots__ = (
+        "_max_bytes",
+        "_closed",
+        "_reader",
+        "_editor",
+        "data_only",
+        "read_only",
+        "write_only",
+        "_active",
+        "_sheets",
+        "_book",
+        "_iso_dates",
+    )
+
     def __init__(self, write_only=False, iso_dates=False, *, max_memory_bytes=None):
         if write_only:
             raise NotImplementedError("Write-only binding is not implemented")
@@ -392,40 +549,58 @@ class Workbook:
             raise ValueError("Workbook is closed")
 
     @property
-    def iso_dates(self): return self._iso_dates
+    def iso_dates(self):
+        return self._iso_dates
+
     @iso_dates.setter
     def iso_dates(self, value):
         if self._reader is not None and value:
-            raise NotImplementedError("Changing loaded date storage requires loaded bank integration")
+            raise NotImplementedError(
+                "Changing loaded date storage requires loaded bank integration"
+            )
         self._iso_dates = bool(value)
 
     @property
     def epoch(self):
         self._check_open()
-        mac = self._reader.date_1904() if self._reader is not None else self._book.date_1904()
+        mac = (
+            self._reader.date_1904()
+            if self._reader is not None
+            else self._book.date_1904()
+        )
         return datetime(1904, 1, 1) if mac else datetime(1899, 12, 30)
+
     @epoch.setter
     def epoch(self, value):
         if value not in (datetime(1899, 12, 30), datetime(1904, 1, 1)):
             raise ValueError("The epoch must be either 1900 or 1904")
         if self._reader is not None:
-            raise NotImplementedError("Changing a loaded workbook epoch is not implemented")
+            raise NotImplementedError(
+                "Changing a loaded workbook epoch is not implemented"
+            )
         self._book.set_date_1904(value == datetime(1904, 1, 1))
 
     @property
-    def worksheets(self): return list(self._sheets)
+    def worksheets(self):
+        return list(self._sheets)
+
     @property
-    def sheetnames(self): return [sheet.title for sheet in self._sheets]
+    def sheetnames(self):
+        return [sheet.title for sheet in self._sheets]
+
     @property
     def active(self):
         try:
             return self._sheets[self._active] if self._active is not None else None
         except IndexError:
             return None
+
     @active.setter
     def active(self, value):
         if self._editor is not None:
-            raise NotImplementedError("Changing loaded workbook views is not implemented")
+            raise NotImplementedError(
+                "Changing loaded workbook views is not implemented"
+            )
         index = self._sheets.index(value) if isinstance(value, Worksheet) else value
         if not isinstance(index, int):
             raise TypeError("Active sheet must be a worksheet or integer index")
@@ -433,16 +608,28 @@ class Workbook:
 
     def __getitem__(self, key):
         for sheet in self._sheets:
-            if sheet.title == key: return sheet
+            if sheet.title == key:
+                return sheet
         raise KeyError(f"Worksheet {key} does not exist")
-    def __contains__(self, key): return key in self.sheetnames
-    def __iter__(self): return iter(self._sheets)
+
+    def __contains__(self, key):
+        return key in self.sheetnames
+
+    def __iter__(self):
+        return iter(self._sheets)
 
     def _unique_title(self, title, exclude=None):
         names = [sheet.title for sheet in self._sheets if sheet is not exclude]
         if title.lower() in {name.lower() for name in names}:
-            suffixes = [name[len(title):] for name in names if name.lower().startswith(title.lower())]
-            number = max((int(suffix) for suffix in suffixes if suffix.isdigit()), default=0) + 1
+            suffixes = [
+                name[len(title) :]
+                for name in names
+                if name.lower().startswith(title.lower())
+            ]
+            number = (
+                max((int(suffix) for suffix in suffixes if suffix.isdigit()), default=0)
+                + 1
+            )
             title = f"{title}{number}"
         return title
 
@@ -453,7 +640,17 @@ class Workbook:
         Worksheet._validate_title(title)
         if index is not None and not isinstance(index, int):
             raise TypeError("Sheet position must be an integer")
-        position = len(self._sheets) if index is None else max(0, min(len(self._sheets), index if index >= 0 else len(self._sheets) + index))
+        position = (
+            len(self._sheets)
+            if index is None
+            else max(
+                0,
+                min(
+                    len(self._sheets),
+                    index if index >= 0 else len(self._sheets) + index,
+                ),
+            )
+        )
         native = self._book.create_sheet(title)
         sheet = Worksheet(self, title, _native=native)
         if position != len(self._sheets):
@@ -482,8 +679,13 @@ class Workbook:
 
     def copy_worksheet(self, from_worksheet):
         if self._editor is not None:
-            raise NotImplementedError("Copying existing-file feature graphs is not implemented")
-        if not isinstance(from_worksheet, Worksheet) or from_worksheet.parent is not self:
+            raise NotImplementedError(
+                "Copying existing-file feature graphs is not implemented"
+            )
+        if (
+            not isinstance(from_worksheet, Worksheet)
+            or from_worksheet.parent is not self
+        ):
             raise ValueError("Cannot copy between workbooks")
         self.index(from_worksheet)
         title = self._unique_title(from_worksheet.title + " Copy")
@@ -495,7 +697,9 @@ class Workbook:
 
     def remove(self, worksheet):
         if self._editor is not None:
-            raise NotImplementedError("Removing existing-file sheets is not implemented")
+            raise NotImplementedError(
+                "Removing existing-file sheets is not implemented"
+            )
         self.index(worksheet)
         self._book.remove_sheet(worksheet._native)
         self._sheets.remove(worksheet)
@@ -509,10 +713,18 @@ class Workbook:
             raise NotImplementedError("File-like binding output is not implemented")
         if self._editor is not None:
             if self.data_only:
-                raise NotImplementedError("Saving data-only loaded workbooks is not implemented")
+                raise NotImplementedError(
+                    "Saving data-only loaded workbooks is not implemented"
+                )
             self._editor.save(Path(filename), False)
         else:
-            save_models(Path(filename), [sheet._model() for sheet in self._sheets], self.index(self.active) if self.active is not None else 0, self.iso_dates, self._book.date_1904())
+            save_models(
+                Path(filename),
+                [sheet._model() for sheet in self._sheets],
+                self.index(self.active) if self.active is not None else 0,
+                self.iso_dates,
+                self._book.date_1904(),
+            )
 
     def close(self):
         if self._reader is not None:
@@ -521,10 +733,21 @@ class Workbook:
             self._closed = True
 
 
-def load_workbook(filename, read_only=False, keep_vba=False, data_only=False, keep_links=True, rich_text=False, *, max_memory_bytes=None):
+def load_workbook(
+    filename,
+    read_only=False,
+    keep_vba=False,
+    data_only=False,
+    keep_links=True,
+    rich_text=False,
+    *,
+    max_memory_bytes=None,
+):
     """Use openpyxl call names; unsupported modes fail rather than change semantics."""
     if read_only or not keep_links or rich_text:
-        raise NotImplementedError("Read-only binding, external-link removal and rich-text binding are not implemented")
+        raise NotImplementedError(
+            "Read-only binding, external-link removal and rich-text binding are not implemented"
+        )
     if not isinstance(filename, (str, Path)):
         raise NotImplementedError("File-like binding input is not implemented")
     # VBA removal is staged; require explicit preservation for macro inputs.
@@ -535,7 +758,10 @@ def load_workbook(filename, read_only=False, keep_vba=False, data_only=False, ke
     try:
         workbook._editor = NativeEditor(Path(filename), max_memory_bytes)
         workbook.data_only = data_only
-        workbook._sheets = [Worksheet(workbook, name, _existing=True) for name in workbook._reader.names()]
+        workbook._sheets = [
+            Worksheet(workbook, name, _existing=True)
+            for name in workbook._reader.names()
+        ]
         workbook._active = workbook._reader.active_index()
         workbook._book = None  # Loaded models remain in the original-package path.
     except BaseException:

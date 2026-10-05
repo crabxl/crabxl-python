@@ -1,8 +1,10 @@
 """Public nonfinite behavior uses canonical Rust serialization, without fallback."""
+
 import math
 import zipfile
-import openpyxl
+
 import crabxl
+import openpyxl
 import pytest
 
 
@@ -11,7 +13,11 @@ def engine(request):
     return request.param
 
 
-@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf")], ids=["nan", "inf", "negative-inf"])
+@pytest.mark.parametrize(
+    "value",
+    [float("nan"), float("inf"), -float("inf")],
+    ids=["nan", "inf", "negative-inf"],
+)
 def test_nonfinite_owned_and_original_editor_values(engine, value, tmp_path):
     book = engine.Workbook()
     book.active["A1"] = value
@@ -41,7 +47,9 @@ def test_scientific_overflow_and_formula_cache(engine, cached, tmp_path):
     book.close()
     with zipfile.ZipFile(path) as archive:
         parts = {name: archive.read(name) for name in archive.namelist()}
-    parts["xl/worksheets/sheet1.xml"] = b'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><v>1e999</v></c><c r="B1"><v>-1e999</v></c><c r="C1"><f>1</f><v>1e999</v></c></row></sheetData></worksheet>'
+    parts["xl/worksheets/sheet1.xml"] = (
+        b'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><v>1e999</v></c><c r="B1"><v>-1e999</v></c><c r="C1"><f>1</f><v>1e999</v></c></row></sheetData></worksheet>'
+    )
     with zipfile.ZipFile(path, "w") as archive:
         for name, payload in parts.items():
             archive.writestr(name, payload)

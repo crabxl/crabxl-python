@@ -1,2 +1,3 @@
 """Public compatibility import."""
-from .. import Worksheet
+
+from .. import Worksheet as Worksheet

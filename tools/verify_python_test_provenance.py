@@ -2,12 +2,13 @@
 
 Only test source is read; no implementation source or bytecode is inspected.
 """
+
 import argparse
 import ast
 import hashlib
 import json
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--reference-checkout", type=Path, required=True)
@@ -15,8 +16,22 @@ parser.add_argument("--record", default="third_party/python-tests.json")
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 record = json.loads((root / args.record).read_text())
-source = subprocess.run(["hg", "--cwd", str(args.reference_checkout), "cat", "-r", record["revision"], record["source"]], check=True, capture_output=True, text=True).stdout
+source = subprocess.run(
+    [
+        "hg",
+        "--cwd",
+        str(args.reference_checkout),
+        "cat",
+        "-r",
+        record["revision"],
+        record["source"],
+    ],
+    check=True,
+    capture_output=True,
+    text=True,
+).stdout
 assert hashlib.sha256(source.encode()).hexdigest() == record["source_sha256"]
+
 
 def methods(text):
     result = {}
@@ -27,13 +42,20 @@ def methods(text):
                 result[node.name] = node
     return result
 
+
 original = methods(source)
 selected = methods((root / record["destination"]).read_text())
 assert set(selected) == set(record["selected_methods"])
 for name, method in selected.items():
-    assert ast.dump(ast.Module(body=method.body, type_ignores=[])) == ast.dump(ast.Module(body=original[name].body, type_ignores=[])), name
+    assert ast.dump(ast.Module(body=method.body, type_ignores=[])) == ast.dump(
+        ast.Module(body=original[name].body, type_ignores=[])
+    ), name
     assert ast.dump(method.args) == ast.dump(original[name].args), name
     expected = original[name].decorator_list
     actual = method.decorator_list
-    assert [ast.dump(node) for node in actual] == [ast.dump(node) for node in expected], name
-print(f"Verified {len(selected)} original test bodies and parameters at {record['revision']}")
+    assert [ast.dump(node) for node in actual] == [
+        ast.dump(node) for node in expected
+    ], name
+print(
+    f"Verified {len(selected)} original test bodies and parameters at {record['revision']}"
+)
