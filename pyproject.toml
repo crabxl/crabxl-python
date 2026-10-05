@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "crabxl"
-version = "0.1.0a1"
+version = "0.1.0a2"
 requires-python = ">=3.11"
 description = "Rust spreadsheet processing with an openpyxl-compatible Python surface"
 license = "MIT"
