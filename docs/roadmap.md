@@ -1,5 +1,26 @@
 # Python compatibility roadmap
 
+## Planned release stages
+
+Follow the canonical [Alpha.6 and later release plan](https://github.com/crabxl/crabxl/blob/main/docs/alpha-6-and-later-plan.md):
+
+- **A6:** M4 loaded bank/resource integration, existing-file sheet mutations,
+  append and row/column structural operations for supported content.
+- **A7:** measured read/write/edit and Python binding performance backlog.
+- **A8:** complete M5 common features and their compatible Python APIs.
+- **M6 alphas:** usable groups of images, charts, pivots, external links, and
+  complex metadata graphs with corresponding Python support.
+- **M7:** full compatibility, supported-platform, performance, and release-quality
+  acceptance.
+
+The user selected staged M4 acceptance. A6 must reject affected unimplemented
+M5/M6 graphs before mutation and retain their dependency cases for later feature
+releases. Its M4 stage can be accepted without claiming full graph support or full
+M4 closure. Core implementation alone does not complete a Python capability.
+Each package release pins the verified published core revision and passes the
+applicable public-reference, resource/cleanup, Ruff, and platform wheel checks.
+The above releases remain planned; alpha.5 is the current published version.
+
 Alpha.5 adds canonical resource/SST/Auto controls and test consolidation, and
 pins the verified M2 core acceptance revision. Core M2 closure does not imply
 complete Python compatibility. Ordinary, write-only and loaded-edit save routes
