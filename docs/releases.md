@@ -79,8 +79,8 @@ benchmarks are formatted and checked.
 Python wheels are compiled using the latest stable Rust toolchain (currently
 1.99). Prebuilt wheel installation does not require Rust. Source builds require
 Rust 1.99 or newer under the adapter manifest, independently of the core crate
-MSRV. The engine is pinned to the published core alpha.1 commit
-`92ffab2f4e15b642dad0c03664e43815909b6ccb`.
+MSRV. The engine is pinned to the post-alpha.1 core revision with the Windows same-path save fix
+`d39d5e8f413a0f239075464906f984e6c66c8350`.
 
 A committed `.github/release-request.json` can also initiate publication on push
 to the default branch, using the same manual-version, feature and test gates.
