@@ -65,7 +65,7 @@ Rust engine remains pinned to its independently verified Git revision.
 Manual alpha numbering, package release checks and PyPI OIDC setup are documented
 in [releases](docs/releases.md).
 
-Python alpha.4 pins canonical Rust alpha.4 commit `0a4eadc87387af286065e0a8380a9c2b6cccfc30`, including configurable ZIP compression, bounded editor compression buffering and the earlier streaming and Windows same-path save fixes.
+Python alpha.5 pins canonical Rust alpha.5 commit `7efa37b10c6b19757ff58dbf930f9e233b3af7d4`, including verified M2 core read acceptance, canonical resource/SST/Auto controls and the existing compression/streaming/editing capabilities. Full Python style/rich/feature APIs remain staged.
 
 ## ZIP compression
 
