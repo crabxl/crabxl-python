@@ -26,5 +26,7 @@ def main(pattern):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("pattern", choices=("*.whl", "*.tar.gz"))
+    parser.add_argument(
+        "pattern", help="A wheel or sdist glob matching exactly one file"
+    )
     main(parser.parse_args().pattern)

@@ -48,6 +48,12 @@ All five CPython versions (3.11 through 3.15) build native wheels on each of:
 | Windows | x86_64 |
 | macOS | Intel x86_64, Apple Silicon ARM64 |
 
+Five platform/architecture build jobs each build all five CPython wheels in one
+runner, sharing the Cargo target directory. Ordinary Rust dependencies are reused;
+PyO3 and the adapter are rebuilt for each Python ABI. Linux builds use one
+manylinux container per platform. Ordinary Linux CI uses the same multi-interpreter
+builder. A failed platform job reruns that platform's five versions.
+
 Each of the 25 combinations runs the complete selected compatibility suite after
 installation into a clean, platform-native virtual environment. Only 3.15 permits
 a release candidate until stable is available. The sdist is also built, installed
