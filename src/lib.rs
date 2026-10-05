@@ -1216,6 +1216,27 @@ impl NativeEditor {
                 .map_err(failure)
         })
     }
+    fn move_sheet(&self, py: Python<'_>, name: String, position: usize) -> PyResult<()> {
+        if let Some(loaded) = &self.loaded {
+            let loaded = Arc::clone(loaded);
+            return py.detach(move || {
+                let mut handle = lock(&loaded)?;
+                let loaded = handle.as_mut().ok_or_else(closed)?;
+                let id = loaded
+                    .sheet_id(&name)
+                    .ok_or_else(|| PyKeyError::new_err(name.clone()))?;
+                loaded.move_sheet(id, position).map_err(failure)
+            });
+        }
+        let editor = Arc::clone(&self.editor);
+        py.detach(move || {
+            lock(&editor)?
+                .as_mut()
+                .ok_or_else(closed)?
+                .move_sheet(&name, position)
+                .map_err(failure)
+        })
+    }
     #[pyo3(signature = (path, verify, compression_level=None))]
     fn save(
         &self,
