@@ -1,4 +1,5 @@
 //! Foreign objects and naming remain outside the canonical Rust core.
+mod resources;
 mod streaming;
 
 use crabxl::{
@@ -559,29 +560,31 @@ struct NativeReader {
     source: streaming::SharedFile,
     alive: Arc<std::sync::atomic::AtomicBool>,
     max_bytes: usize,
+    config: resources::ResourceConfig,
 }
 #[pymethods]
 impl NativeReader {
     #[new]
-    fn new(py: Python<'_>, path: PathBuf, max_bytes: usize) -> PyResult<Self> {
+    #[pyo3(signature = (path, max_bytes, resources=None))]
+    fn new(
+        py: Python<'_>,
+        path: PathBuf,
+        max_bytes: usize,
+        resources: Option<PyRef<'_, resources::NativeResources>>,
+    ) -> PyResult<Self> {
+        let config = resources.map_or_else(resources::ResourceConfig::default, |value| {
+            value.config.clone()
+        });
         let source = streaming::SharedFile::open(path)?;
         let input = source.clone();
+        let worker_config = config.clone();
         let reader = py.detach(move || {
-            let limits = ResourceLimits {
-                max_materialized_bytes: max_bytes,
-                ..ResourceLimits::default()
-            };
-            let working = crabxl::memory_allowance(MemoryPolicy::Budget(usize::MAX), limits)
-                .map_err(failure)?
-                .working_reserve_bytes;
-            let budget = max_bytes
-                .checked_add(working)
-                .ok_or_else(|| PyValueError::new_err("Shared-string allowance overflows"))?;
+            let limits = worker_config.reader_limits(max_bytes, false);
+            let options = worker_config
+                .string_options(max_bytes, limits)
+                .map_err(failure)?;
             let mut reader = WorkbookReader::with_limits(input, limits).map_err(failure)?;
-            reader.set_shared_string_options(crabxl::SharedStringOptions {
-                memory_policy: MemoryPolicy::Budget(budget),
-                ..crabxl::SharedStringOptions::default()
-            });
+            reader.set_shared_string_options(options);
             Ok::<_, PyErr>(reader)
         })?;
         Ok(Self {
@@ -589,6 +592,7 @@ impl NativeReader {
             source,
             alive: Arc::new(std::sync::atomic::AtomicBool::new(true)),
             max_bytes,
+            config,
         })
     }
     fn names(&self) -> PyResult<Vec<String>> {
@@ -616,6 +620,9 @@ impl NativeReader {
         max_bytes: usize,
         data_only: bool,
     ) -> PyResult<NativeSheet> {
+        let max_bytes = max_bytes
+            .min(self.max_bytes)
+            .min(self.config.materialized_limit.unwrap_or(usize::MAX));
         let reader = Arc::clone(&self.reader);
         let sheet = py.detach(move || {
             let mut handle = lock(&reader)?;
@@ -704,6 +711,7 @@ impl NativeReader {
             self.source.clone(),
             Arc::clone(&self.alive),
             self.max_bytes,
+            self.config.clone(),
             name,
             data_only,
             first_row,
@@ -720,19 +728,20 @@ struct NativeEditor {
 #[pymethods]
 impl NativeEditor {
     #[new]
-    #[pyo3(signature = (path, max_bytes=None))]
-    fn new(py: Python<'_>, path: PathBuf, max_bytes: Option<usize>) -> PyResult<Self> {
+    #[pyo3(signature = (path, max_bytes=None, resources=None))]
+    fn new(
+        py: Python<'_>,
+        path: PathBuf,
+        max_bytes: Option<usize>,
+        resources: Option<PyRef<'_, resources::NativeResources>>,
+    ) -> PyResult<Self> {
+        let config = resources.map_or_else(resources::ResourceConfig::default, |value| {
+            value.config.clone()
+        });
+        let options = config.editor_options(max_bytes);
         let editor = py.detach(move || {
             let file = File::open(path).map_err(|error| PyOSError::new_err(error.to_string()))?;
-            WorkbookEditor::with_options(
-                file,
-                EditorOptions {
-                    memory_policy: max_bytes
-                        .map_or_else(MemoryPolicy::default, MemoryPolicy::Budget),
-                    ..EditorOptions::default()
-                },
-            )
-            .map_err(failure)
+            WorkbookEditor::with_options(file, options).map_err(failure)
         })?;
         Ok(Self {
             editor: Arc::new(Mutex::new(Some(editor))),
@@ -884,14 +893,21 @@ fn finite_range(reference: &str) -> PyResult<(u32, u32, u32, u32)> {
     ))
 }
 #[pyfunction]
-fn resolve_model_budget(max_bytes: Option<usize>) -> PyResult<usize> {
+#[pyo3(signature = (max_bytes, resources=None))]
+fn resolve_model_budget(
+    max_bytes: Option<usize>,
+    resources: Option<PyRef<'_, resources::NativeResources>>,
+) -> PyResult<usize> {
     if let Some(bytes) = max_bytes {
         if bytes == 0 {
             return Err(PyValueError::new_err("Memory allowance must be positive"));
         }
         Ok(bytes)
     } else {
-        crabxl::memory_allowance(MemoryPolicy::default(), ResourceLimits::default())
+        let config = resources.map_or_else(resources::ResourceConfig::default, |value| {
+            value.config.clone()
+        });
+        crabxl::memory_allowance(config.memory_policy, config.limits)
             .map(|allowance| allowance.retained_data_bytes)
             .map_err(failure)
     }
@@ -948,6 +964,7 @@ fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<streaming::NativeWriteBook>()?;
     module.add_class::<NativeBook>()?;
     module.add_class::<NativeReader>()?;
+    module.add_class::<resources::NativeResources>()?;
     module.add_class::<NativeEditor>()?;
     module.add_function(wrap_pyfunction!(save_models, module)?)?;
     module.add_function(wrap_pyfunction!(resolve_model_budget, module)?)?;

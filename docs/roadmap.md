@@ -34,3 +34,9 @@ Owned temporal value replacement retains canonical format IDs and supports repea
 Literal shared-formula group identities, including absent, empty, padded, signed, opaque and escaped IDs, now match public ordinary/data-only loading; normal-mode unchanged saves are repeatable. Core worksheet views and printing exist at this pin, but their Python property proxies remain staged. See ADR 0013 and benchmarks/shared-identity-calls.md.
 
 Optimized-mode and current ordinary performance evidence: [numeric and Unicode workloads](../benchmarks/optimized-modes.md).
+
+Alpha.5 development now exposes canonical read resource limits, Auto tuning,
+SST RAM/disk/Auto policies, decoded cache/temp bounds and loaded patch caps.
+Read-only workers inherit those settings. Creation accepts Auto tuning separately;
+compression remains per-save. This is a verified resource extension checkpoint,
+not aggregate loaded-bank accounting or complete Python compatibility (ADR 0016).

@@ -9,3 +9,8 @@ Registered new workbooks share the native aggregate sheet bank. Loaded models us
 The core roadmap and feature inventory are authoritative: https://github.com/crabxl/crabxl/blob/main/docs/roadmap.md and https://github.com/crabxl/crabxl/blob/main/docs/features.json. See docs/binding-contract.md for all adapter priorities.
 
 Optimized streams and ownership are described in [ADR 0014](decisions/0014-optimized-stream-ownership.md). The pinned canonical core uses quick-xml 0.42; the binding contains no duplicated codecs.
+
+Resource extensions map immutable Python configuration to canonical Rust limits,
+SST options and Auto controls. Both ordinary and optimized readers inherit the
+same settings; no resource strategy is implemented in Python. Mode applicability,
+separate loaded allowances and ownership are documented in ADR 0016.

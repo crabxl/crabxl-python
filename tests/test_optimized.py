@@ -291,42 +291,12 @@ def test_write_only_rejects_large_rows_before_consuming_unbounded_generator(tmp_
 
 
 def test_read_only_shared_strings_spill_and_partial_close_cleanup(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, shared_strings_source
 ):
     path = tmp_path / "strings.xlsx"
     source(path)
-    with zipfile.ZipFile(path) as archive:
-        parts = {name: archive.read(name) for name in archive.namelist()}
-    main = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
     values = [f"value-{index}-" + "x" * 500 for index in range(500)]
-    parts["xl/sharedStrings.xml"] = (
-        f'<sst xmlns="{main}" count="500" uniqueCount="500">'
-        + "".join(f"<si><t>{value}</t></si>" for value in values)
-        + "</sst>"
-    ).encode()
-    parts["xl/worksheets/sheet1.xml"] = (
-        f'<worksheet xmlns="{main}"><dimension ref="A1:A500"/><sheetData>'
-        + "".join(
-            f'<row r="{index + 1}"><c r="A{index + 1}" t="s"><v>{index}</v></c></row>'
-            for index in range(500)
-        )
-        + "</sheetData></worksheet>"
-    ).encode()
-    parts["xl/_rels/workbook.xml.rels"] = parts["xl/_rels/workbook.xml.rels"].replace(
-        b"</Relationships>",
-        b'<Relationship Id="shared" '
-        b'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" '
-        b'Target="sharedStrings.xml"/></Relationships>',
-    )
-    parts["[Content_Types].xml"] = parts["[Content_Types].xml"].replace(
-        b"</Types>",
-        b'<Override PartName="/xl/sharedStrings.xml" '
-        b'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>'
-        b"</Types>",
-    )
-    with zipfile.ZipFile(path, "w") as archive:
-        for name, content in parts.items():
-            archive.writestr(name, content)
+    shared_strings_source(path, values)
     temporary = tmp_path / "sst-temporary"
     temporary.mkdir()
     monkeypatch.setenv("TMPDIR", str(temporary))
