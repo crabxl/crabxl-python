@@ -4,16 +4,17 @@
 
 Follow the canonical [Alpha.6 and later release plan](https://github.com/crabxl/crabxl/blob/main/docs/alpha-6-and-later-plan.md):
 
-- **A6:** M4 loaded bank/resource integration, existing-file sheet mutations,
+- **A6:** urgent large/stream-generated archive compatibility; default archive byte caps removed, explicit finite caps retained.
+- **A7:** M4 loaded bank/resource integration, existing-file sheet mutations,
   append and row/column structural operations for supported content.
-- **A7:** measured read/write/edit and Python binding performance backlog.
-- **A8:** complete M5 common features and their compatible Python APIs.
+- **A8:** measured read/write/edit and Python binding performance backlog.
+- **A9:** complete M5 common features and their compatible Python APIs.
 - **M6 alphas:** usable groups of images, charts, pivots, external links, and
   complex metadata graphs with corresponding Python support.
 - **M7:** full compatibility, supported-platform, performance, and release-quality
   acceptance.
 
-The user selected staged M4 acceptance. A6 must reject affected unimplemented
+The user selected staged M4 acceptance. A7 must reject affected unimplemented
 M5/M6 graphs before mutation and retain their dependency cases for later feature
 releases. Its M4 stage can be accepted without claiming full graph support or full
 M4 closure. Core implementation alone does not complete a Python capability.
@@ -69,4 +70,4 @@ are verified. Core M2 acceptance is closed; full adapter compatibility remains s
 Ordinary loaded worksheets now share the canonical source-backed bank, imported
 style identities and aggregate source/model/overlay/SST accounting (ADR 0017).
 Pending edits update cached models without repeated binding-owned overlay clones.
-Loaded structural and feature graph operations remain open before A6 acceptance.
+Loaded structural and feature graph operations remain open before A7 acceptance.

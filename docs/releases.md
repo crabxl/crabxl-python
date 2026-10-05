@@ -93,3 +93,13 @@ The core crate MSRV is Rust 1.88.
 
 A committed `.github/release-request.json` can also initiate publication on push
 to the default branch, using the same manual-version, feature and test gates.
+
+## Alpha 6 archive compatibility fix
+
+Default compressed archive, aggregate uncompressed and worksheet byte caps are
+removed. Explicit finite limits remain configurable through `ResourceOptions`.
+Valid ZIP/ZIP64 data descriptors no longer cause a false size-limit error.
+For incorrect source dimensions such as `A1:A1`, call `ws.reset_dimensions()`
+before read-only iteration. A forced dimension calculation performs another scan
+and is unnecessary when only consuming rows. Original M4/performance/M5 release
+stages move to Alpha 7/8/9. No million-row NYC benchmark is claimed here.

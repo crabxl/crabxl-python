@@ -1,6 +1,8 @@
 """Resource controls must affect native behavior in both public read modes."""
 
+import io
 import os
+import zipfile
 from pathlib import Path
 
 import crabxl
@@ -89,6 +91,54 @@ def test_read_edit_and_batch_limits_are_enforced_without_corrupting_source(tmp_p
     original.save(source)
     original.close()
     before = source.read_bytes()
+
+    # A write-only sink produces legal data descriptors; dimensions can be stale
+    # independently of ZIP encoding. Exercise both public modes and ZIP64.
+    class StreamSink:
+        def __init__(self):
+            self.buffer = io.BytesIO()
+
+        def write(self, value):
+            return self.buffer.write(value)
+
+        def flush(self):
+            pass
+
+    with zipfile.ZipFile(source) as archive:
+        parts = {item.filename: archive.read(item) for item in archive.infolist()}
+    for zip64 in [False, True]:
+        sink = StreamSink()
+        with zipfile.ZipFile(sink, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for name, payload in parts.items():
+                with archive.open(name, "w", force_zip64=zip64) as target:
+                    target.write(payload)
+        streamed = tmp_path / f"descriptor-{zip64}.xlsx"
+        streamed.write_bytes(sink.buffer.getvalue())
+        assert b"PK\x07\x08" in streamed.read_bytes()
+        for read_only in [False, True]:
+            for aggregate_cap in [None, sum(map(len, parts.values()))]:
+                book = crabxl.load_workbook(
+                    streamed,
+                    read_only=read_only,
+                    max_memory_bytes=8 * MIB,
+                    resource_options=crabxl.ResourceOptions(
+                        limits=crabxl.ResourceLimits(
+                            max_total_uncompressed_bytes=aggregate_cap
+                        )
+                    ),
+                )
+                try:
+                    assert list(book.active.values) == [(1, "long text", 3)]
+                finally:
+                    book.close()
+            with pytest.raises(ValueError, match="max_total_uncompressed_bytes=10"):
+                crabxl.load_workbook(
+                    streamed,
+                    read_only=read_only,
+                    resource_options=crabxl.ResourceOptions(
+                        limits=crabxl.ResourceLimits(max_total_uncompressed_bytes=10)
+                    ),
+                )
     for read_only in [False, True]:
         for limits in [
             crabxl.ResourceLimits(max_cell_bytes=3),
