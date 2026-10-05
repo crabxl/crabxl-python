@@ -26,6 +26,7 @@ use std::{
 };
 
 type TaggedValue = (String, Py<PyAny>);
+type EncodedValue = (&'static str, Py<PyAny>);
 type DecodedValues = (Vec<Py<PyAny>>, Option<Vec<u32>>);
 type SharedLoaded = Arc<Mutex<Option<LoadedWorkbook<streaming::SharedFile>>>>;
 fn failure(error: Error) -> PyErr {
@@ -178,7 +179,7 @@ fn decode(py: Python<'_>, value: TaggedValue) -> PyResult<CellValue> {
         _ => return Err(PyValueError::new_err("Unknown native value tag")),
     })
 }
-fn encode(py: Python<'_>, value: &CellValue) -> PyResult<TaggedValue> {
+fn encode(py: Python<'_>, value: &CellValue) -> PyResult<EncodedValue> {
     let (kind, object) = match value {
         CellValue::Empty => ("n", py.None()),
         CellValue::Number(value) => ("n", value.into_py_any(py)?),
@@ -257,7 +258,7 @@ fn encode(py: Python<'_>, value: &CellValue) -> PyResult<TaggedValue> {
         },
         _ => return Err(PyNotImplementedError::new_err("Unsupported native value")),
     };
-    Ok((kind.into(), object))
+    Ok((kind, object))
 }
 
 // Scalar rows reach Python without per-cell tagged tuples or Python decode
@@ -265,18 +266,18 @@ fn encode(py: Python<'_>, value: &CellValue) -> PyResult<TaggedValue> {
 // relative column positions; read-only formulas keep their detached projection.
 fn decode_values(
     py: Python<'_>,
-    tagged: Vec<TaggedValue>,
+    tagged: Vec<EncodedValue>,
     bound_formulas: bool,
 ) -> PyResult<DecodedValues> {
     let mut values = Vec::with_capacity(tagged.len());
     let mut formulas = None;
     let mut decoder = None;
     for (column, (kind, value)) in tagged.into_iter().enumerate() {
-        if bound_formulas && matches!(kind.as_str(), "array" | "table") {
+        if bound_formulas && matches!(kind, "array" | "table") {
             formulas.get_or_insert_with(Vec::new).push(column as u32);
             values.push(py.None());
         } else if matches!(
-            kind.as_str(),
+            kind,
             "bigint" | "date" | "datetime" | "time" | "duration" | "array" | "table"
         ) {
             if decoder.is_none() {
@@ -367,7 +368,7 @@ impl NativeSheet {
             ))),
         })
     }
-    fn get(&self, py: Python<'_>, row: u32, column: u32) -> PyResult<TaggedValue> {
+    fn get(&self, py: Python<'_>, row: u32, column: u32) -> PyResult<EncodedValue> {
         let address = CellAddress::new(row, column).map_err(failure)?;
         self.with(|sheet| {
             encode(
@@ -389,7 +390,7 @@ impl NativeSheet {
         first: u32,
         last: u32,
         create_missing: bool,
-    ) -> PyResult<Vec<TaggedValue>> {
+    ) -> PyResult<Vec<EncodedValue>> {
         let row_index = CellAddress::new(row, first).map_err(failure)?.row;
         CellAddress::new(row, last).map_err(failure)?;
         if first > last {
@@ -1065,7 +1066,7 @@ impl NativeEditor {
         name: &str,
         row: u32,
         col: u32,
-    ) -> PyResult<Option<TaggedValue>> {
+    ) -> PyResult<Option<EncodedValue>> {
         if let Some(loaded) = &self.loaded {
             let handle = lock(loaded)?;
             let loaded = handle.as_ref().ok_or_else(closed)?;
