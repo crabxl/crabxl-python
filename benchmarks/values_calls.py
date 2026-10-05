@@ -27,11 +27,11 @@ print(json.dumps({
     return json.loads(subprocess.check_output([str(python), "-c", probe], text=True))
 
 
-def worker(engine, path):
+def worker(engine, path, read_only=False):
     module = __import__(engine)
     started = time.perf_counter()
     options = {"max_memory_bytes": 1024**3} if engine == "crabxl" else {}
-    book = module.load_workbook(path, **options)
+    book = module.load_workbook(path, read_only=read_only, **options)
     opened = time.perf_counter()
     count = total = 0
     for row in book.active.iter_rows(values_only=True):
@@ -60,6 +60,8 @@ def main():
     parser.add_argument("--measure", type=Path)
     parser.add_argument("--rows", type=int, nargs="+", default=[1000, 10000, 100000])
     parser.add_argument("--runs", type=int, default=5)
+    parser.add_argument("--read-only", action="store_true")
+    parser.add_argument("--skip-reference", action="store_true")
     parser.add_argument(
         "--output",
         type=Path,
@@ -67,7 +69,7 @@ def main():
     )
     args = parser.parse_args()
     if args.worker:
-        worker(args.worker, args.path)
+        worker(args.worker, args.path, args.read_only)
         return
     if not all((args.before_python, args.after_python, args.measure)):
         parser.error(
@@ -76,11 +78,12 @@ def main():
     import openpyxl
 
     report = {
-        "semantics": "Ordinary editable load_workbook and iter_rows(values_only=True); "
-        "no read-only mode. Same generated numeric cells, count and exact checksum. "
+        "semantics": ("Read-only" if args.read_only else "Ordinary editable")
+        + " load_workbook and iter_rows(values_only=True). "
+        "Same generated numeric cells, count and exact checksum. "
         "One warmup and rotating serial cold-process samples include imports and cleanup; "
-        "generation/build excluded. Lazy CrabXL sheet materialization occurs during iteration; "
-        "open/iterate phases cannot be compared independently with eager openpyxl loading.",
+        "generation/build excluded. Load/iteration boundaries are mode-specific; "
+        "compare the complete operation, including deferred parsing or model materialization.",
         "platform": platform.platform(),
         "installed_packages": {
             "before": identity(args.before_python),
@@ -104,6 +107,10 @@ def main():
                 "after": (args.after_python, "crabxl"),
                 "openpyxl_normal": (args.after_python, "openpyxl"),
             }
+            if args.skip_reference:
+                del commands["openpyxl_normal"]
+            elif args.read_only:
+                commands["openpyxl_read_only"] = commands.pop("openpyxl_normal")
             samples = {name: [] for name in commands}
             names = list(commands)
             for index in range(args.runs + 1):
@@ -118,6 +125,7 @@ def main():
                             engine,
                             "--path",
                             str(path),
+                            *(["--read-only"] if args.read_only else []),
                         ],
                         check=True,
                         capture_output=True,
