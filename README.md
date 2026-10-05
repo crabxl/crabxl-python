@@ -1,95 +1,69 @@
-# Optional Python compatibility adapter
+<div align="center">
 
-The public interface targets openpyxl-compatible migration, not a second Python API. Supported code can replace `import openpyxl` with `import crabxl as openpyxl`. Full compatibility remains a staged requirement. This package never calls openpyxl at runtime.
+# CrabXL for Python
+
+**A Rust-powered XLSX library with an openpyxl-compatible interface.**
+
+[![PyPI](https://img.shields.io/pypi/v/crabxl?include_prereleases)](https://pypi.org/project/crabxl/)
+[![Python](https://img.shields.io/badge/Python-3.11–3.15-blue?logo=python&logoColor=white)](https://pypi.org/project/crabxl/#files)
+[![CI](https://github.com/crabxl/crabxl-python/actions/workflows/python.yml/badge.svg)](https://github.com/crabxl/crabxl-python/actions/workflows/python.yml)
+[![License](https://img.shields.io/github/license/crabxl/crabxl-python)](LICENSE)
+
+[Rust engine](https://github.com/crabxl/crabxl) · [Roadmap](docs/roadmap.md) · [Report an issue](https://github.com/crabxl/crabxl-python/issues)
+
+</div>
+
+## About
+
+CrabXL supports reading, creating, and editing XLSX files, including streaming
+`read_only` and `write_only` modes. Supported calls follow openpyxl conventions:
+use `import crabxl as openpyxl` to migrate compatible code. Processing runs in the
+shared Rust engine; openpyxl is not a runtime dependency.
+
+**Currently alpha.** Full openpyxl compatibility remains in progress. Complete
+style and rich-text object APIs, advanced worksheet features, and some loaded
+structural edits are still unimplemented. Unsupported operations raise explicit
+errors. Formula calculation is not provided. See the [roadmap](docs/roadmap.md)
+for remaining work.
+
+## Installation
 
 ```sh
-python -m pip install maturin "pytest>=9.1.1,<10" "openpyxl==3.1.5" "Pillow>=12.3" "lxml>=6.1.3"
-maturin build --release --locked --manifest-path Cargo.toml --out dist
-python -m pip install dist/*.whl
-python -m pytest tests -q
+python -m pip install --pre crabxl
 ```
 
-Source builds require Rust 1.99 and Python 3.11 or newer; development and wheel publication use the latest stable Rust toolchain. CI checks CPython 3.11 through 3.15, allowing the 3.15 release candidate until its stable release. Linux x86_64 wheels were built and installed in clean environments on CPython 3.11.16, 3.12.14, 3.13.15, 3.14.7 and 3.15.0rc2; all 577 tests passed on each interpreter with PyO3 0.29.3. Other operating systems and Python implementations are not established by this validation. This standalone repository has its own lockfile and pins the canonical Rust core by Git revision. No sibling checkout is required.
+Wheels are available for **CPython 3.11–3.15** on Linux x86_64/ARM64, Windows
+x86_64, and macOS Intel/Apple Silicon. Python 3.15 validation currently uses its
+release candidate. Source builds require Rust 1.99 or newer and Maturin.
 
-Verified calls include Workbook, active selection and load/save readback, create_sheet/remove/index/move_sheet/copy_worksheet, sheetnames/indexing, Worksheet/Cell indexing, one-based cell(), value/data_type/coordinate, append with lists/dictionaries/generators, iter_rows/iter_cols/values, finite insert/delete/move, model titles and path save. Cached Cell views follow moves and detach on deletion/overwrite. Loaded load_workbook and scalar/formula cell assignment use the original-package editor, including sparse missing-cell insertion and repeatable saves preserving original assets.
+## Usage
 
-Default `max_memory_bytes=None` uses Rust Auto availability policy. For a newly created Workbook, an explicit integer caps the Rust bank's aggregate managed model/work allowance across registered sheets, including allocated bank slots. Auto selects this same aggregate allowance. It is not a whole-process RSS cap: Python objects, caller values, dependency allocations and temporary output are additional. Standalone Worksheet objects and removed sheets retained by callers are outside the bank. Loaded workbooks still use per-model/overlay operation allowances; their aggregate bank migration remains required. Models scale with loaded cells; lazy loaded-cell assignments keep only overlays. Accessing original values/dimensions/iteration materializes that selected sheet and may reject unsupported style/date/extension content. Python output and source catalogs are additional costs.
-
-New saves use bounded sequential XML spools plus an adjacent output ZIP; loaded saves need only the output ZIP. Path targets are replaced after successful ZIP completion, and failed writes clean owned temporary files. Loaded `close()` releases reader/editor file handles and future source access raises ValueError. New-model close is harmless. Long native loading/saving/structural operations release the GIL.
-
-Still required: full style reading/editing and typed rich-string Python objects, loaded date storage/epoch mutation, non-finite numbers, complete formula tokenizer, loaded append/structural/sheet mutation, read-only/write-only binding modes, file-like I/O, workbook views/properties and all advanced M5/M6 features. Unsupported arguments/properties fail explicitly. Macro input currently requires keep_vba=True; macro removal is staged. Saving a data-only loaded workbook is not implemented. These limits are not a reduced final feature scope.
-
-Tests contain 37 selected original openpyxl 3.1.5 worksheet methods, nine translator methods and 17 workbook test bodies, with unchanged assertions and adapted imports/fixtures. All selected cases pass; complete tokenizer-dependent cases remain staged. Shared public-API tests run against both engines, and separate failure/preservation tests cover adapter ownership and limits. [Test provenance](third_party/python-tests.json), [license](third_party/licenses/openpyxl-MIT.txt), [ADR](docs/decisions/0006-python-compatibility-adapter.md), [direct API benchmark](https://github.com/crabxl/crabxl/blob/main/benchmarks/python-adapter.md).
-
-Verify original test bodies with `python tools/verify_python_test_provenance.py --reference-checkout /path/to/pinned/openpyxl` from the repository root. The full upstream suite is not claimed to run unchanged.
-
-`move_range(..., translate=True)` and `crabxl.formula.translate.Translator` now use bounded Rust A1 translation. Absolute axes, quoted sheet names/text and structured references retain context. Formula tools use baseline reference grammar separately from physical worksheet limits. `Translator.MAX_FORMULA_BYTES` configures its output allowance. Full tokenizer APIs and dynamic spill translation are not implemented.
-
-Owned worksheet copies are independent scalar/formula models using the canonical Rust bank; unsupported feature graphs cannot be set and are not silently omitted. Removed worksheets remain usable through retained Python references. Public sheet insertion/movement and active-index behavior follow Python compatibility rules while stable Rust IDs remain internal. [Workbook test provenance](third_party/python-workbook-tests.json) records the additional original assertions.
-
-Loaded scalar/formula edits discard a conventional derived calculation chain and its package declarations, matching the reference save behavior. Unchanged original chains remain available through the Rust editor. Unsafe incoming/extension relationships and signed-package edits still reject explicitly. [Policy and boundaries](https://github.com/crabxl/crabxl/blob/main/docs/decisions/0008-derived-calculation-chain.md).
-
-Plain shared strings now read through the pinned Rust RAM/disk/Auto store. Inline escape-looking literals retain public reference spelling; shared strings use the reference protection-marker behavior. Tests cover initial read, changed cells and repeat saves. An explicit reference difference remains: openpyxl rewrites an untouched empty SST value as absent inline text on save (readback None), while the original-package Rust editor preserves that empty SST value. This case is recorded separately and is not claimed as exact save parity.
-
-The shared-string table has its own retained allowance bounded by the loaded model allowance, with parser working reserve additional. Loaded model, SST/cache and preserving-editor budgets are still separate component allowances, not a combined loaded-workbook RSS cap. Full loaded aggregate integration remains M4 work.
-
-Core revision 512a958 adds default rich display-text projection for inline and shared values. Shared reference cases cover whitespace, protected literals, cross-run boundaries, edits and repeated saves. Original-package saves retain untouched rich runs as an explicit preservation capability; default openpyxl loading instead flattens them on resave. Typed rich_text=True remains rejected until compatible Python rich classes and conversion are implemented. The adapter has 259 passing cases, including the same 63 unchanged upstream test bodies.
-
-Numeric date-formatted cells and formula caches now load through the canonical imported style catalog in either date epoch. Shared tests cover clocks, elapsed durations, early serials, negative serials, overflow-to-error behavior and calendar millisecond rounding. Calendar results are converted by Rust, with no reference runtime fallback. Loaded style objects and style mutation remain staged; preserving original style XML does not expose the complete public style API.
-
-The adapter now calls canonical core date conversions for loaded clock/duration values. The two previous millisecond-rounding gaps pass without expected-failure markers. Literal datetimes, clocks and durations retain microseconds on direct access, with normalized components crossing FFI instead of raw floating-point reconstruction. Numeric XLSX load follows baseline millisecond conversion, including loss of literal microseconds on round-trip. Original-package date assignment and loaded date storage/epoch mutation remain staged.
-
-`Workbook(iso_dates=True)` now uses canonical Rust ISO creation. Date-only objects retain their public Python type in owned models; ISO readback preserves date/calendar/clock kinds and numeric readback follows reference date/time conversion. New `Workbook.epoch` getter/setter selects the canonical bank epoch and serialization; loaded epoch getters report the source. Changing loaded ISO storage or epoch rejects explicitly until loaded bank integration. Shared tests cover numeric/ISO creation and loaded value/type parity in both epochs.
-
-Structured formula compatibility includes `crabxl.worksheet.formula.ArrayFormula` and `DataTableFormula`, normal/shared loading, array/table source properties, literal constructor calls and direct property edits through the Rust core. Empty string formula caches project to None in data_only mode. One optional equals prefix is removed exactly once. The pinned core is `0a4eadc87387af286065e0a8380a9c2b6cccfc30`; selected compatibility tests retain 63 unchanged original reference test bodies. Shared-group editing, typed cm/vm graph editing and the complete formula API remain staged. Visible annotated values and compatible cache-only projection now follow core behavior. Newly assigned false data-table flags and empty inputs omit on save, while source flag strings retain their spelling; all saved/reloaded properties are compared with the public reference. The native shared-formula benchmark is recorded in the core repository; it does not measure Python adapter conversion costs.
-
-NaN/infinity assignments and scientific overflow reads now use the core nonfinite compatibility policy: owned values remain floats, saves reopen as blank values, and data_only formula caches preserve overflow infinities when loaded from source. Both owned creation and original physical-cell editing are covered by shared public tests. No Python normalization engine or reference fallback is added.
-
-Optional ArrayFormula text properties retain None, empty and arbitrary literal prefixes through canonical Rust ownership. Direct/loaded property edits and repeated saves match public body slicing, including a non-ASCII first character. Missing array references remain None. The new same-call benchmark is [recorded separately](benchmarks/array-calls.md); complete array_formulae and opaque reference-string support remain staged.
-
-Array/table reference and input strings retain empty, absolute, worksheet-qualified and opaque public properties without eager coordinate validation. Compatible save omits empty references/inputs; array ref then reloads as None. The canonical engine owns this behavior. See [literal reference checkpoint](docs/decisions/0009-literal-formula-references.md) and [same-call regression](benchmarks/literal-reference-array-calls.md).
-
-Raw data-table flag strings, compatible unused/unknown visible formula hints and known loaded array/table property edits now use canonical core policies. Unknown source records/attributes and shared-group replacements still have explicit editing guards. [Flag checkpoint](docs/decisions/0010-literal-formula-flags.md), [same-call table benchmark](benchmarks/table-calls.md).
-
-Saved date/datetime/time/duration default number formats match public assignments through the canonical core. Replacing an owned cell value retains its existing temporal format across repeated saves. Public readback tests verify all four codes; no adapter-side date-format table is introduced. General Python style getters/setters remain staged. See [core temporal style checkpoint](https://github.com/crabxl/crabxl/blob/main/docs/decisions/0038-temporal-number-format-variants.md).
-
-Identical Python temporal replacement/getter/two-save measurements are recorded in [temporal-calls.md](benchmarks/temporal-calls.md).
-
-Compatibility tests require lxml: the pinned public reference uses its XML
-serializer for carriage-return preservation and fixture XML spelling.
-
-Prefer current stable build/test dependencies after compatibility validation.
-Python 3.15 RC is the explicit temporary prerelease exception. The canonical
-Rust engine remains pinned to its independently verified Git revision.
-
-Manual alpha numbering, package release checks and PyPI OIDC setup are documented
-in [releases](docs/releases.md).
-
-Python alpha.5 pins canonical Rust alpha.5 commit `7efa37b10c6b19757ff58dbf930f9e233b3af7d4`, including verified M2 core read acceptance, canonical resource/SST/Auto controls and the existing compression/streaming/editing capabilities. Full Python style/rich/feature APIs remain staged.
-
-## ZIP compression
-
-All save modes accept the optional `compression_level` keyword:
-
-```python
-book.save("values.xlsx", compression_level=3)
-```
-
-`None` retains default level 6, levels 1 through 9 use Deflate, and 0 stores
-without compression. The option works for ordinary, write-only and loaded edited
-workbooks. Untouched original package entries retain their compressed bytes.
-Invalid levels are rejected before replacing a target or consuming write-only
-spools. The default wheel backend is pure-Rust zlib-rs; source builders can select
-native zlib with `--no-default-features --features deflate-zlib` and a C toolchain.
-Higher levels do not guarantee smaller files. See the
-[canonical compression measurements](https://github.com/crabxl/crabxl/blob/main/benchmarks/alpha4-compression.md).
-
-## Optimized modes
+### Create and edit
 
 ```python
 from crabxl import Workbook, load_workbook
 
-book = load_workbook("source.xlsx", read_only=True)
+book = Workbook()
+sheet = book.active
+sheet["A1"] = "Hello"
+sheet.append([1, 2, 3])
+book.save("example.xlsx")
+book.close()
+
+book = load_workbook("example.xlsx")
+try:
+    book.active["A1"] = "Updated"
+    book.save("updated.xlsx")
+finally:
+    book.close()
+```
+
+### Streaming modes
+
+```python
+from crabxl import Workbook, load_workbook
+
+book = load_workbook("input.xlsx", read_only=True)
 try:
     for row in book.active.iter_rows(values_only=True):
         print(row)
@@ -99,80 +73,49 @@ finally:
 book = Workbook(write_only=True)
 sheet = book.create_sheet("Values")
 sheet.append([1, "hello", "=A1+1"])
-book.save("values.xlsx")  # A write-only workbook can be saved once.
+book.save("output.xlsx")
 book.close()
 ```
 
-Read-only iterators stream bounded Rust batches without editable models. Missing
-or incorrect dimensions can be reset with `sheet.reset_dimensions()`. Independent
-iterators are supported; close generators early to release their worker and SST
-resources. Write-only append calls spool worksheet XML to disk and support
-interleaving across sheets. `temp_directory` selects spool storage.
-`max_memory_bytes` configures working/model allowances, not total process RSS.
+Read-only mode streams bounded batches. Write-only mode spools rows to disk and
+can be saved once; it does not support random cell access.
 
-Basic `WriteOnlyCell` and `ReadOnlyCell` imports are supported. Scalar/temporal
-values and supported formulas use the canonical core. Complete style and rich-text
-objects, column-wise read-only iteration, write-only random access, sheet reordering
-and file-like I/O remain unimplemented and raise explicit errors. See
-[ownership and cleanup](docs/decisions/0014-optimized-stream-ownership.md).
+### Memory and compression
 
-Optimized-mode and current ordinary performance evidence: [numeric and Unicode workloads](benchmarks/optimized-modes.md).
-
-## Advanced resource controls
-
-`load_workbook(..., resource_options=...)` exposes canonical Rust limits and SST
-strategies as CrabXL extensions:
+All save modes accept `compression_level`: **0** stores without compression,
+**1–9** use Deflate, and the default is **6**.
 
 ```python
-from crabxl import (
-    AutoMemory,
-    ResourceLimits,
-    ResourceOptions,
-    SharedStringOptions,
-    load_workbook,
-)
+from crabxl import AutoMemory, ResourceOptions, SharedStringOptions, load_workbook
 
 options = ResourceOptions(
-    auto_memory=AutoMemory(maximum_bytes=64 * 1024**2, concurrent_operations=2),
-    limits=ResourceLimits(max_cell_bytes=128 * 1024, max_batch_rows=128),
-    shared_strings=SharedStringOptions(
-        storage="auto",
-        cache_bytes=1024**2,
-        max_temp_bytes=2 * 1024**3,
-        temp_directory="/path/to/existing/temp-directory",
-    ),
+    auto_memory=AutoMemory(maximum_bytes=64 * 1024**2),
+    shared_strings=SharedStringOptions(storage="auto", cache_bytes=1024**2),
 )
-book = load_workbook("source.xlsx", read_only=True, resource_options=options)
+book = load_workbook("input.xlsx", resource_options=options)
 try:
-    print(book.model_memory_budget_bytes)
-    for row in book.active.values:
-        print(row)
+    book.active["A1"] = 42
+    book.save("output.xlsx", compression_level=3)
 finally:
     book.close()
 ```
 
-| Controls | Scope |
-| --- | --- |
-| `ResourceLimits` archive, part, XML, value, style, formula and row bounds | Ordinary and read-only loading; applicable XML/archive limits also reach loaded edits |
-| `max_materialized_bytes` | Ordinary loaded worksheet models |
-| `max_batch_rows`, `max_batch_bytes` | Read-only worker batches |
-| `SharedStringOptions.storage` | `auto`, `memory` or `disk`; actual placement stays in Rust |
-| `memory_bytes`, `cache_bytes`, `max_temp_bytes`, `max_entries`, `temp_directory` | SST component policy; memory budget includes parser reserve, cache is decoded disk data |
-| `AutoMemory` fraction, headroom, maximum, availability, concurrency | Derived managed allowance; defaults stay in Rust |
-| `ResourceOptions.max_patch_bytes`, `max_patch_cells` | Loaded editable overlays |
+Use `max_memory_bytes` for an explicit managed allowance, or `AutoMemory` to tune
+Auto selection. `ResourceOptions` also exposes input limits, SST RAM/disk
+strategies, cache and temporary-storage limits, and edit-overlay bounds.
+These are managed component allowances, not a total process RSS cap. See
+[resource configuration](docs/decisions/0016-canonical-resource-configuration.md)
+for details.
 
-None fields preserve existing defaults. Incompatible mode settings raise errors;
-forced-memory SST storage rejects explicitly supplied disk/cache controls.
-Directories must already exist. Use `max_memory_bytes` for an explicit allowance,
-or `auto_memory` for customized Auto, rather than supplying both.
+## Documentation
 
-New ordinary/write-only `Workbook` instances also accept `auto_memory=AutoMemory(...)`.
-Archive/SST read controls belong to `load_workbook`; write-only spool storage uses
-its existing `temp_directory` argument. Compression remains a per-save option.
+- [Roadmap](docs/roadmap.md)
+- [Streaming modes](docs/decisions/0014-optimized-stream-ownership.md)
+- [Resource configuration](docs/decisions/0016-canonical-resource-configuration.md)
+- [Benchmarks](benchmarks/optimized-modes.md)
+- [Releases](docs/releases.md)
 
-These limits govern managed operations, not total process RSS. Loaded model,
-catalog, SST and overlay allowances remain separate; Python objects, dependency
-allocations and OS cache are additional. Availability is a snapshot and concurrent
-operation count creates no threads or global reservation. Native Windows/macOS
-probes report host RAM; constrained callers must supply effective availability or
-an explicit budget. See [resource configuration](docs/decisions/0016-canonical-resource-configuration.md).
+## License
+
+Distributed under the [MIT License](LICENSE). Third-party notices and test
+provenance are listed in [third_party](third_party).
