@@ -276,11 +276,13 @@ class Worksheet:
     @title.setter
     def title(self, title):
         self._validate_title(title)
-        if self._existing:
-            raise NotImplementedError("Renaming existing sheets is not implemented")
+        self.parent._check_open()
         if title != self._title:
             title = self.parent._unique_title(title, exclude=self)
-            self._native.rename(title)
+            if self._existing:
+                self.parent._editor.rename_sheet(self._title, title)
+            else:
+                self._native.rename(title)
             self._title = title
 
     def _model(self):

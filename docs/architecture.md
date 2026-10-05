@@ -15,6 +15,10 @@ which updates the model and package overlay atomically. Python normalizes row
 iterables and column dictionaries, converts values, and releases the GIL for
 the native operation. Empty rows advance the source-aware append cursor.
 Unsupported source graphs/values remain explicit errors before mutation.
+
+Loaded title changes use the same canonical preserving coordinator without
+materializing cells or replacing native identities; see
+[ADR 0019](decisions/0019-source-backed-sheet-title.md).
 The pinned packed model's numeric Python cost is recorded in
 [paired measurements](../benchmarks/alpha7-packed-reading.md).
 

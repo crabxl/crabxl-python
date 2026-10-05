@@ -1195,6 +1195,27 @@ impl NativeEditor {
             .set_sheet_visibility(name, state)
             .map_err(failure)
     }
+    fn rename_sheet(&self, py: Python<'_>, name: String, title: String) -> PyResult<()> {
+        if let Some(loaded) = &self.loaded {
+            let loaded = Arc::clone(loaded);
+            return py.detach(move || {
+                let mut handle = lock(&loaded)?;
+                let loaded = handle.as_mut().ok_or_else(closed)?;
+                let id = loaded
+                    .sheet_id(&name)
+                    .ok_or_else(|| PyKeyError::new_err(name.clone()))?;
+                loaded.rename_sheet(id, title).map_err(failure)
+            });
+        }
+        let editor = Arc::clone(&self.editor);
+        py.detach(move || {
+            lock(&editor)?
+                .as_mut()
+                .ok_or_else(closed)?
+                .rename_sheet(&name, title)
+                .map_err(failure)
+        })
+    }
     #[pyo3(signature = (path, verify, compression_level=None))]
     fn save(
         &self,
