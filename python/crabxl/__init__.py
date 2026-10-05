@@ -22,6 +22,9 @@ from ._native import (
     resolve_model_budget,
     save_models,
 )
+from .resources import AutoMemory, ResourceOptions
+from .resources import ResourceLimits as ResourceLimits
+from .resources import SharedStringOptions as SharedStringOptions
 
 __version__ = "0.1.0a4"
 _ERRORS = {
@@ -554,8 +557,16 @@ class Workbook:
         *,
         max_memory_bytes=None,
         temp_directory=None,
+        auto_memory=None,
     ):
-        self._max_bytes = resolve_model_budget(max_memory_bytes)
+        if auto_memory is not None and not isinstance(auto_memory, AutoMemory):
+            raise TypeError("auto_memory must be AutoMemory or None")
+        native_resources = (
+            ResourceOptions(auto_memory=auto_memory)._native(max_memory_bytes)
+            if auto_memory is not None
+            else None
+        )
+        self._max_bytes = resolve_model_budget(max_memory_bytes, native_resources)
         self._closed = False
         self._reader = self._editor = None
         self._iso_dates = bool(iso_dates)
@@ -578,6 +589,11 @@ class Workbook:
         self._book = NativeBook(self._max_bytes)
         if not write_only:
             self.create_sheet("Sheet")
+
+    @property
+    def model_memory_budget_bytes(self):
+        """Resolved model allowance; loaded catalogs/overlays have separate budgets."""
+        return self._max_bytes
 
     def _check_open(self):
         if self._closed:
@@ -848,6 +864,7 @@ def load_workbook(
     rich_text=False,
     *,
     max_memory_bytes=None,
+    resource_options=None,
 ):
     """Use openpyxl call names; unsupported modes fail rather than change semantics."""
     if not keep_links or rich_text:
@@ -859,12 +876,26 @@ def load_workbook(
     # VBA removal is staged; require explicit preservation for macro inputs.
     if str(filename).lower().endswith((".xlsm", ".xltm")) and not keep_vba:
         raise NotImplementedError("Macro removal is not implemented; use keep_vba=True")
-    workbook = Workbook(max_memory_bytes=max_memory_bytes)
-    workbook._reader = NativeReader(Path(filename), workbook._max_bytes)
+    if resource_options is not None and not isinstance(
+        resource_options, ResourceOptions
+    ):
+        raise TypeError("resource_options must be ResourceOptions or None")
+    native_resources = (
+        resource_options._native(max_memory_bytes, read_only=bool(read_only))
+        if resource_options is not None
+        else None
+    )
+    maximum = resolve_model_budget(max_memory_bytes, native_resources)
+    workbook = Workbook(max_memory_bytes=maximum)
+    workbook._reader = NativeReader(
+        Path(filename), workbook._max_bytes, native_resources
+    )
     try:
         workbook.read_only = bool(read_only)
         workbook._editor = (
-            None if read_only else NativeEditor(Path(filename), max_memory_bytes)
+            None
+            if read_only
+            else NativeEditor(Path(filename), max_memory_bytes, native_resources)
         )
         workbook.data_only = data_only
         if read_only:

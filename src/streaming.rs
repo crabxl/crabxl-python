@@ -128,6 +128,7 @@ impl NativeReadStream {
         source: SharedFile,
         alive: Arc<AtomicBool>,
         maximum: usize,
+        config: resources::ResourceConfig,
         name: String,
         data_only: bool,
         first_row: u32,
@@ -150,21 +151,10 @@ impl NativeReadStream {
             .name("crabxl-stream".into())
             .spawn(move || {
                 let work = || -> crabxl::Result<()> {
-                    let limits = ResourceLimits {
-                        max_batch_rows: 256,
-                        max_batch_bytes: (maximum / 4).clamp(4096, 2 * 1024 * 1024),
-                        ..ResourceLimits::default()
-                    };
+                    let limits = config.reader_limits(maximum, true);
+                    let strings = config.string_options(maximum, limits)?;
                     let mut book = WorkbookReader::with_limits(source, limits)?;
-                    // Include caller-provided catalog/data allowance plus fixed parser
-                    // reserve, as in ordinary native loading; SST can spill to disk.
-                    let working =
-                        crabxl::memory_allowance(MemoryPolicy::Budget(usize::MAX), limits)?
-                            .working_reserve_bytes;
-                    book.set_shared_string_options(crabxl::SharedStringOptions {
-                        memory_policy: MemoryPolicy::Budget(maximum.saturating_add(working)),
-                        ..Default::default()
-                    });
+                    book.set_shared_string_options(strings);
                     let options = ReadOptions {
                         rows: Some(
                             RowIndex::new(first_row)?

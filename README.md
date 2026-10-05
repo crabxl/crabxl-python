@@ -117,3 +117,54 @@ and file-like I/O remain unimplemented and raise explicit errors. See
 [ownership and cleanup](docs/decisions/0014-optimized-stream-ownership.md).
 
 Optimized-mode and current ordinary performance evidence: [numeric and Unicode workloads](benchmarks/optimized-modes.md).
+
+## Advanced resource controls
+
+`load_workbook(..., resource_options=...)` exposes canonical Rust limits and SST
+strategies as CrabXL extensions:
+
+```python
+from crabxl import AutoMemory, ResourceLimits, ResourceOptions, SharedStringOptions, load_workbook
+
+options = ResourceOptions(
+    auto_memory=AutoMemory(maximum_bytes=64 * 1024**2, concurrent_operations=2),
+    limits=ResourceLimits(max_cell_bytes=128 * 1024, max_batch_rows=128),
+    shared_strings=SharedStringOptions(
+        storage="auto", cache_bytes=1024**2, max_temp_bytes=2 * 1024**3,
+        temp_directory="/path/to/existing/temp-directory",
+    ),
+)
+book = load_workbook("source.xlsx", read_only=True, resource_options=options)
+try:
+    print(book.model_memory_budget_bytes)
+    for row in book.active.values:
+        print(row)
+finally:
+    book.close()
+```
+
+| Controls | Scope |
+| --- | --- |
+| `ResourceLimits` archive, part, XML, value, style, formula and row bounds | Ordinary and read-only loading; applicable XML/archive limits also reach loaded edits |
+| `max_materialized_bytes` | Ordinary loaded worksheet models |
+| `max_batch_rows`, `max_batch_bytes` | Read-only worker batches |
+| `SharedStringOptions.storage` | `auto`, `memory` or `disk`; actual placement stays in Rust |
+| `memory_bytes`, `cache_bytes`, `max_temp_bytes`, `max_entries`, `temp_directory` | SST component policy; memory budget includes parser reserve, cache is decoded disk data |
+| `AutoMemory` fraction, headroom, maximum, availability, concurrency | Derived managed allowance; defaults stay in Rust |
+| `ResourceOptions.max_patch_bytes`, `max_patch_cells` | Loaded editable overlays |
+
+None fields preserve existing defaults. Incompatible mode settings raise errors;
+forced-memory SST storage rejects explicitly supplied disk/cache controls.
+Directories must already exist. Use `max_memory_bytes` for an explicit allowance,
+or `auto_memory` for customized Auto, rather than supplying both.
+
+New ordinary/write-only `Workbook` instances also accept `auto_memory=AutoMemory(...)`.
+Archive/SST read controls belong to `load_workbook`; write-only spool storage uses
+its existing `temp_directory` argument. Compression remains a per-save option.
+
+These limits govern managed operations, not total process RSS. Loaded model,
+catalog, SST and overlay allowances remain separate; Python objects, dependency
+allocations and OS cache are additional. Availability is a snapshot and concurrent
+operation count creates no threads or global reservation. Native Windows/macOS
+probes report host RAM; constrained callers must supply effective availability or
+an explicit budget. See [resource configuration](docs/decisions/0016-canonical-resource-configuration.md).
