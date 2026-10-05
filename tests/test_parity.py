@@ -104,6 +104,56 @@ def test_loaded_numeric_edit_and_sparse_insertion(engine, tmp_path):
     verified.close()
 
 
+@pytest.mark.parametrize("loaded", [False, True])
+def test_values_iteration_observes_edits_between_rows(engine, loaded, tmp_path):
+    workbook = engine.Workbook()
+    worksheet = workbook.active
+    worksheet.append([1, "first", None])
+    worksheet.append([2, "second", "=A2+1"])
+    if loaded:
+        path = tmp_path / "values.xlsx"
+        workbook.save(path)
+        workbook.close()
+        workbook = engine.load_workbook(path)
+        worksheet = workbook.active
+    rows = worksheet.iter_rows(max_row=3, max_col=3, values_only=True)
+    assert next(rows) == (1, "first", None)
+    worksheet["B2"] = "changed"
+    worksheet["C3"] = False
+    assert next(rows) == (2, "changed", "=A2+1")
+    assert next(rows) == (None, None, False)
+    assert list(rows) == []
+    assert list(
+        worksheet.iter_rows(
+            min_row=2, max_row=2, min_col=2, max_col=3, values_only=True
+        )
+    ) == [("changed", "=A2+1")]
+    workbook.close()
+
+
+def test_values_iteration_retains_live_structured_formula_identity(tmp_path):
+    from crabxl.worksheet.formula import ArrayFormula
+
+    path = tmp_path / "values-formula.xlsx"
+    book = crabxl.Workbook()
+    book.active["A1"] = ArrayFormula("A1:A2", "=SUM(B1:B2)")
+    book.save(path)
+    book.close()
+    book = crabxl.load_workbook(path)
+    cell = book.active["A1"]
+    value = cell.value
+    assert (
+        next(book.active.iter_rows(max_row=1, max_col=1, values_only=True))[0] is value
+    )
+    value.text = "=SUM(C1:C2)"
+    assert cell.value.text == "=SUM(C1:C2)"
+    book.save(path)
+    book.close()
+    verified = openpyxl.load_workbook(path)
+    assert verified.active["A1"].value.text == "=SUM(C1:C2)"
+    verified.close()
+
+
 def test_loaded_formula_data_only(engine, tmp_path):
     source = tmp_path / "formula.xlsx"
     workbook = openpyxl.Workbook()

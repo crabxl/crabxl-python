@@ -313,6 +313,42 @@ impl NativeSheet {
         let address = CellAddress::new(row, column).map_err(failure)?;
         self.with(|sheet| Ok(sheet.get(address).is_some()))
     }
+    fn row_values(
+        &self,
+        py: Python<'_>,
+        row: u32,
+        first: u32,
+        last: u32,
+        create_missing: bool,
+    ) -> PyResult<Vec<TaggedValue>> {
+        CellAddress::new(row, first).map_err(failure)?;
+        CellAddress::new(row, last).map_err(failure)?;
+        if first > last {
+            return Ok(Vec::new());
+        }
+        self.with_mut(|sheet| {
+            let mut values = Vec::with_capacity((last - first + 1) as usize);
+            for column in first..=last {
+                let address = CellAddress::new(row, column).map_err(failure)?;
+                if create_missing && sheet.get(address).is_none() {
+                    sheet
+                        .set(Cell {
+                            address,
+                            value: CellValue::Empty,
+                            style: StyleId::new(0),
+                        })
+                        .map_err(failure)?;
+                }
+                values.push(encode(
+                    py,
+                    sheet
+                        .get(address)
+                        .map_or(&CellValue::Empty, |cell| &cell.value),
+                )?);
+            }
+            Ok(values)
+        })
+    }
     fn set(&self, py: Python<'_>, row: u32, column: u32, value: TaggedValue) -> PyResult<()> {
         let cell = Cell {
             address: CellAddress::new(row, column).map_err(failure)?,
