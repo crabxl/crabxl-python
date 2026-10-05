@@ -103,9 +103,10 @@ finally:
 Use `max_memory_bytes` for an explicit managed allowance, or `AutoMemory` to tune
 Auto selection. `ResourceOptions` also exposes input limits, SST RAM/disk
 strategies, cache and temporary-storage limits, and edit-overlay bounds.
-These are managed component allowances, not a total process RSS cap. See
-[resource configuration](docs/decisions/0016-canonical-resource-configuration.md)
-for details.
+Ordinary loaded workbooks share one retained allowance across source catalogs,
+models, overlays and SST/cache; I/O working space remains additional. These
+settings do not cap process RSS. See [loaded resource ownership](docs/decisions/0017-canonical-loaded-workbook-owner.md)
+and [resource configuration](docs/decisions/0016-canonical-resource-configuration.md).
 
 ## Documentation
 

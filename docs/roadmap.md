@@ -34,7 +34,7 @@ see [stream ownership](decisions/0014-optimized-stream-ownership.md).
 
 Target: openpyxl 3.1.5 public calls, mental model and observable behavior. Core capabilities remain governed by the CrabXL M4-M7 roadmap at https://github.com/crabxl/crabxl/blob/main/docs/roadmap.md.
 
-Current acceptance is partial: 544 tests, including 63 unchanged original test bodies, cover supported owned scalar/date/ISO and normal/shared/array/data-table formula models and lazy preserving edits. Typed style editing and rich-string Python objects, loaded structural/feature editing, complete optimized-mode styles, file-like I/O, tokenizer and all advanced baseline features remain required. This is not full-suite compatibility.
+Current acceptance is partial: 545 tests, including 63 unchanged original test bodies, cover supported owned scalar/date/ISO and normal/shared/array/data-table formula models and lazy preserving edits. Typed style editing and rich-string Python objects, loaded structural/feature editing, complete optimized-mode styles, file-like I/O, tokenizer and all advanced baseline features remain required. This is not full-suite compatibility.
 
 Pin and validate the core revision before updates. Shared reference assertions and separate extension tests should evolve independently. Python is first priority; Node and WASM later share an ExcelJS-compatible interface.
 
@@ -65,3 +65,8 @@ not aggregate loaded-bank accounting or complete Python compatibility (ADR 0016)
 Alpha.5 publication and fresh public installation are complete; see
 [release evidence](validation/alpha5-release.md). All 25 wheels and the sdist
 are verified. Core M2 acceptance is closed; full adapter compatibility remains staged.
+
+Ordinary loaded worksheets now share the canonical source-backed bank, imported
+style identities and aggregate source/model/overlay/SST accounting (ADR 0017).
+Pending edits update cached models without repeated binding-owned overlay clones.
+Loaded structural and feature graph operations remain open before A6 acceptance.
