@@ -41,7 +41,7 @@ The adapter now calls canonical core date conversions for loaded clock/duration 
 
 `Workbook(iso_dates=True)` now uses canonical Rust ISO creation. Date-only objects retain their public Python type in owned models; ISO readback preserves date/calendar/clock kinds and numeric readback follows reference date/time conversion. New `Workbook.epoch` getter/setter selects the canonical bank epoch and serialization; loaded epoch getters report the source. Changing loaded ISO storage or epoch rejects explicitly until loaded bank integration. Shared tests cover numeric/ISO creation and loaded value/type parity in both epochs.
 
-Structured formula compatibility includes `crabxl.worksheet.formula.ArrayFormula` and `DataTableFormula`, normal/shared loading, array/table source properties, literal constructor calls and direct property edits through the Rust core. Empty string formula caches project to None in data_only mode. One optional equals prefix is removed exactly once. The pinned core is `d9fddb01abf3da4715fa6f0cc7c00371d5826471`; 577 tests pass, including 63 unchanged original reference test bodies. Shared-group editing, typed cm/vm graph editing and the complete formula API remain staged. Visible annotated values and compatible cache-only projection now follow core behavior. Newly assigned false data-table flags and empty inputs omit on save, while source flag strings retain their spelling; all saved/reloaded properties are compared with the public reference. The native shared-formula benchmark is recorded in the core repository; it does not measure Python adapter conversion costs.
+Structured formula compatibility includes `crabxl.worksheet.formula.ArrayFormula` and `DataTableFormula`, normal/shared loading, array/table source properties, literal constructor calls and direct property edits through the Rust core. Empty string formula caches project to None in data_only mode. One optional equals prefix is removed exactly once. The pinned core is `0a4eadc87387af286065e0a8380a9c2b6cccfc30`; selected compatibility tests retain 63 unchanged original reference test bodies. Shared-group editing, typed cm/vm graph editing and the complete formula API remain staged. Visible annotated values and compatible cache-only projection now follow core behavior. Newly assigned false data-table flags and empty inputs omit on save, while source flag strings retain their spelling; all saved/reloaded properties are compared with the public reference. The native shared-formula benchmark is recorded in the core repository; it does not measure Python adapter conversion costs.
 
 NaN/infinity assignments and scientific overflow reads now use the core nonfinite compatibility policy: owned values remain floats, saves reopen as blank values, and data_only formula caches preserve overflow infinities when loaded from source. Both owned creation and original physical-cell editing are covered by shared public tests. No Python normalization engine or reference fallback is added.
 
@@ -65,7 +65,24 @@ Rust engine remains pinned to its independently verified Git revision.
 Manual alpha numbering, package release checks and PyPI OIDC setup are documented
 in [releases](docs/releases.md).
 
-Python alpha.3 pins canonical Rust alpha.3 commit `d9fddb01abf3da4715fa6f0cc7c00371d5826471`, including bounded editor compression buffering and the earlier streaming and Windows same-path save fixes.
+Python alpha.4 pins canonical Rust alpha.4 commit `0a4eadc87387af286065e0a8380a9c2b6cccfc30`, including configurable ZIP compression, bounded editor compression buffering and the earlier streaming and Windows same-path save fixes.
+
+## ZIP compression
+
+All save modes accept the optional `compression_level` keyword:
+
+```python
+book.save("values.xlsx", compression_level=3)
+```
+
+`None` retains default level 6, levels 1 through 9 use Deflate, and 0 stores
+without compression. The option works for ordinary, write-only and loaded edited
+workbooks. Untouched original package entries retain their compressed bytes.
+Invalid levels are rejected before replacing a target or consuming write-only
+spools. The default wheel backend is pure-Rust zlib-rs; source builders can select
+native zlib with `--no-default-features --features deflate-zlib` and a C toolchain.
+Higher levels do not guarantee smaller files. See the
+[canonical compression measurements](https://github.com/crabxl/crabxl/blob/main/benchmarks/alpha4-compression.md).
 
 ## Optimized modes
 

@@ -23,7 +23,7 @@ from ._native import (
     save_models,
 )
 
-__version__ = "0.1.0a3"
+__version__ = "0.1.0a4"
 _ERRORS = {
     "#NULL!",
     "#DIV/0!",
@@ -779,8 +779,15 @@ class Workbook:
     def __delitem__(self, key):
         self.remove(self[key])
 
-    def save(self, filename):
+    def save(self, filename, *, compression_level=None):
         self._check_open()
+        if compression_level is not None:
+            if isinstance(compression_level, bool) or not isinstance(
+                compression_level, int
+            ):
+                raise TypeError("Compression level must be an integer or None")
+            if not 0 <= compression_level <= 9:
+                raise ValueError("Compression level must be between 0 and 9")
         if not isinstance(filename, (str, Path)):
             raise NotImplementedError("File-like binding output is not implemented")
         if self.read_only:
@@ -796,6 +803,7 @@ class Workbook:
                 self._stream_writer.save(
                     Path(filename),
                     self.index(self.active) if self.active is not None else 0,
+                    compression_level,
                 )
             finally:
                 # Packaging consumes spools even if output fails; never imply retry.
@@ -807,7 +815,7 @@ class Workbook:
                 raise NotImplementedError(
                     "Saving data-only loaded workbooks is not implemented"
                 )
-            self._editor.save(Path(filename), False)
+            self._editor.save(Path(filename), False, compression_level)
         else:
             save_models(
                 Path(filename),
@@ -815,6 +823,7 @@ class Workbook:
                 self.index(self.active) if self.active is not None else 0,
                 self.iso_dates,
                 self._book.date_1904(),
+                compression_level,
             )
 
     def close(self):

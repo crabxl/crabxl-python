@@ -803,7 +803,14 @@ impl NativeEditor {
             .ok_or_else(closed)?
             .patch_bytes())
     }
-    fn save(&self, py: Python<'_>, path: PathBuf, verify: bool) -> PyResult<()> {
+    #[pyo3(signature = (path, verify, compression_level=None))]
+    fn save(
+        &self,
+        py: Python<'_>,
+        path: PathBuf,
+        verify: bool,
+        compression_level: Option<u8>,
+    ) -> PyResult<()> {
         let editor = Arc::clone(&self.editor);
         py.detach(move || {
             lock(&editor)?
@@ -813,6 +820,7 @@ impl NativeEditor {
                     path,
                     SaveOptions {
                         verify_unchanged: verify,
+                        compression_level,
                     },
                 )
                 .map(|_| ())
@@ -889,7 +897,7 @@ fn resolve_model_budget(max_bytes: Option<usize>) -> PyResult<usize> {
     }
 }
 #[pyfunction]
-#[pyo3(signature = (path, sheets, active_sheet=0, iso_dates=false, date_1904=false))]
+#[pyo3(signature = (path, sheets, active_sheet=0, iso_dates=false, date_1904=false, compression_level=None))]
 fn save_models(
     py: Python<'_>,
     path: PathBuf,
@@ -897,6 +905,7 @@ fn save_models(
     active_sheet: usize,
     iso_dates: bool,
     date_1904: bool,
+    compression_level: Option<u8>,
 ) -> PyResult<()> {
     let sheets = sheets
         .iter()
@@ -904,6 +913,7 @@ fn save_models(
         .collect::<Vec<_>>();
     py.detach(move || {
         let mut writer = WorkbookWriter::new(WriteOptions {
+            compression_level,
             active_sheet,
             iso_dates,
             date_1904,
