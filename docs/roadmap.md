@@ -20,7 +20,7 @@ releases. Its M4 stage can be accepted without claiming full graph support or fu
 M4 closure. Core implementation alone does not complete a Python capability.
 Each package release pins the verified published core revision and passes the
 applicable public-reference, resource/cleanup, Ruff, and platform wheel checks.
-The above releases remain planned; alpha.5 is the current published version.
+Alpha.6 is published; A7 and later stages remain planned.
 
 Alpha.5 adds canonical resource/SST/Auto controls and test consolidation, and
 pins the verified M2 core acceptance revision. Core M2 closure does not imply
@@ -35,7 +35,7 @@ see [stream ownership](decisions/0014-optimized-stream-ownership.md).
 
 Target: openpyxl 3.1.5 public calls, mental model and observable behavior. Core capabilities remain governed by the CrabXL M4-M7 roadmap at https://github.com/crabxl/crabxl/blob/main/docs/roadmap.md.
 
-Current acceptance is partial: 545 tests, including 63 unchanged original test bodies, cover supported owned scalar/date/ISO and normal/shared/array/data-table formula models and lazy preserving edits. Typed style editing and rich-string Python objects, loaded structural/feature editing, complete optimized-mode styles, file-like I/O, tokenizer and all advanced baseline features remain required. This is not full-suite compatibility.
+Current acceptance is partial: 547 tests, including 63 unchanged original test bodies, cover supported owned scalar/date/ISO and normal/shared/array/data-table formula models and lazy preserving edits. Typed style editing and rich-string Python objects, loaded structural/feature editing, complete optimized-mode styles, file-like I/O, tokenizer and all advanced baseline features remain required. This is not full-suite compatibility.
 
 Pin and validate the core revision before updates. Shared reference assertions and separate extension tests should evolve independently. Python is first priority; Node and WASM later share an ExcelJS-compatible interface.
 
@@ -71,3 +71,8 @@ Ordinary loaded worksheets now share the canonical source-backed bank, imported
 style identities and aggregate source/model/overlay/SST accounting (ADR 0017).
 Pending edits update cached models without repeated binding-owned overlay clones.
 Loaded structural and feature graph operations remain open before A7 acceptance.
+
+Worksheet visibility and deferred signed active views now use canonical core
+coordination across owned, loaded and write-only workbooks (ADR 0018). Metadata
+edits save without materializing source cells; read-only visibility remains a
+snapshot without a save route. This checkpoint does not complete A7 M4.

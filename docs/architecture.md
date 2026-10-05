@@ -10,6 +10,14 @@ preserving editor/source and joint model/catalog/overlay/SST allowances; see
 [ADR 0017](decisions/0017-canonical-loaded-workbook-owner.md). Compatibility and
 idiomatic extensions remain clearly distinguishable.
 
+Worksheet visibility and deferred signed active-view selection use the canonical
+core coordinator in ordinary loaded mode, the registered bank in owned mode, and
+the streaming writer in write-only mode; see
+[ADR 0018](decisions/0018-canonical-visibility-and-active-views.md). Metadata-only
+loaded changes do not materialize cell models. Read-only visibility is a snapshot
+view and cannot be serialized. Python maps the core's no-visible-sheet error to
+`IndexError`; a single hidden sheet maps to `ValueError`.
+
 The core roadmap and feature inventory are authoritative: https://github.com/crabxl/crabxl/blob/main/docs/roadmap.md and https://github.com/crabxl/crabxl/blob/main/docs/features.json. See docs/binding-contract.md for all adapter priorities.
 
 Optimized streams and ownership are described in [ADR 0014](decisions/0014-optimized-stream-ownership.md). The pinned canonical core uses quick-xml 0.42; the binding contains no duplicated codecs.

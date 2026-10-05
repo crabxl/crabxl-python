@@ -49,8 +49,8 @@ empty holder at construction.
 
 This checkpoint pins published core `ea969d9ffc0b07497f3fec2dba016780c1403cee`.
 All 545 CPython 3.12 tests, Ruff formatting/checking and Clippy pass locally.
-Full multi-ABI/platform release gates remain required before A6 publication.
+Full multi-ABI/platform release gates remain required before A7 publication.
 Loaded typed-date/style mutation, workbook/sheet and row/column structure still
-require subsequent A6 checkpoints. Typed chartsheet/dialog models remain M6;
+require subsequent A7 checkpoints. Typed chartsheet/dialog models remain M6;
 their original parts can survive unrelated worksheet edits through core
 preservation, which is not typed access or full feature completion.

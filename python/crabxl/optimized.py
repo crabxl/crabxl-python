@@ -82,11 +82,21 @@ class ReadOnlyCell:
 
 
 class ReadOnlyWorksheet(Worksheet):
-    __slots__ = ("_dimension",)
+    __slots__ = ("_dimension", "_sheet_state")
 
     def __init__(self, workbook, title):
         super().__init__(workbook, title, _existing=True)
         self._dimension = workbook._reader.dimension(title)
+        self._sheet_state = workbook._reader.sheet_state(title)
+
+    @property
+    def sheet_state(self):
+        return self._sheet_state
+
+    @sheet_state.setter
+    def sheet_state(self, state):
+        # Read-only metadata is a view; this mode cannot serialize a workbook.
+        self._sheet_state = state
 
     def _model(self):
         raise NotImplementedError("Read-only worksheets do not have editable models")
@@ -263,13 +273,24 @@ class WriteOnlyCell:
 
 
 class WriteOnlyWorksheet(Worksheet):
-    __slots__ = ("_id", "_row", "_finished")
+    __slots__ = ("_id", "_row", "_finished", "_sheet_state")
 
     def __init__(self, workbook, title, identifier):
         self.parent, self._title, self._id = workbook, title, identifier
         self._existing, self._native = False, None
         self._cells = WeakValueDictionary()
         self._row, self._finished = 0, False
+        self._sheet_state = "visible"
+
+    @property
+    def sheet_state(self):
+        return self._sheet_state
+
+    @sheet_state.setter
+    def sheet_state(self, state):
+        self.parent._check_open()
+        self.parent._stream_writer.set_sheet_state(self._id, state)
+        self._sheet_state = state
 
     @property
     def title(self):

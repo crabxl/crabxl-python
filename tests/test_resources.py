@@ -292,6 +292,40 @@ def test_loaded_bank_aggregate_failure_preserves_aliases_source_and_repeat_saves
     original.close()
     original_bytes = source.read_bytes()
 
+    # A per-sheet cap too small for either data model proves metadata controls
+    # remain lazy rather than merely hiding a private materialization.
+    metadata = crabxl.load_workbook(
+        source,
+        max_memory_bytes=2 * MIB,
+        resource_options=crabxl.ResourceOptions(
+            limits=crabxl.ResourceLimits(max_materialized_bytes=4096)
+        ),
+    )
+    try:
+        metadata["First"].sheet_state = "hidden"
+        metadata["Second"].sheet_state = "veryHidden"
+        target = tmp_path / "metadata.xlsx"
+        target.write_bytes(b"original target")
+        with pytest.raises(IndexError):
+            metadata.save(target)
+        assert target.read_bytes() == b"original target"
+        assert not list(tmp_path.glob("crabxl-save-*"))
+        metadata["Second"].sheet_state = "visible"
+        metadata.active = metadata["Second"]
+        metadata.save(target)
+        assert metadata.active.title == "Second"
+        assert all(sheet._native is None for sheet in metadata)
+        checked = openpyxl.load_workbook(target, read_only=True)
+        assert checked.active.title == "Second"
+        assert checked["First"].sheet_state == "hidden"
+        assert checked["Second"]["A6000"].value == 5999
+        checked.close()
+        with pytest.raises(MemoryError):
+            _ = metadata["First"]["A1"].value
+        metadata.save(target)
+    finally:
+        metadata.close()
+
     book = crabxl.load_workbook(source, max_memory_bytes=2 * MIB)
     try:
         # Reading and preserving edits share a single seekable source descriptor.
