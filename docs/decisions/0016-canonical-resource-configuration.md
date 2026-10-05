@@ -38,6 +38,9 @@ Auto creation in both modes and atomic editor patch-limit failure/reuse.
 
 An existing optimized-mode SST ownership test now shares generated fixture setup;
 its behavioral assertions remain. Original upstream test files are unchanged.
-The canonical pin is 6d71daa1ff44cb0f545a6d1e45a08b770b9b237f. Ruff, native Clippy
+The initial checkpoint pin was 6d71daa1ff44cb0f545a6d1e45a08b770b9b237f.
+Published alpha.5 pins 6c151ee5391d0d813fea2b5ea21f065d95c0bb3d; public
+installation and all-platform artifacts are verified in
+[release evidence](../validation/alpha5-release.md). Ruff, native Clippy
 and installed-wheel tests validate the checkpoint; this is not full Python
 compatibility or a process RSS limit.
