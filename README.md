@@ -3,13 +3,13 @@
 The public interface targets openpyxl-compatible migration, not a second Python API. Supported code can replace `import openpyxl` with `import crabxl as openpyxl`. Full compatibility remains a staged requirement. This package never calls openpyxl at runtime.
 
 ```sh
-python -m pip install maturin "pytest>=8,<9" "openpyxl==3.1.5" Pillow
+python -m pip install maturin "pytest>=9.1.1,<10" "openpyxl==3.1.5" "Pillow>=12.3" "lxml>=6.1.3"
 maturin build --release --locked --manifest-path Cargo.toml --out dist
 python -m pip install dist/*.whl
 python -m pytest tests -q
 ```
 
-Builds require Rust 1.88 and Python 3.10 or newer. CPython 3.12 is locally verified; CI also checks 3.10. This standalone repository has its own lockfile and pins the canonical Rust core by Git revision. No sibling checkout is required.
+Source builds require Rust 1.99 and Python 3.11 or newer; development and wheel publication use the latest stable Rust toolchain. CI checks CPython 3.11 through 3.15, allowing the 3.15 release candidate until its stable release. Linux x86_64 wheels were built and installed in clean environments on CPython 3.11.16, 3.12.14, 3.13.15, 3.14.7 and 3.15.0rc2; all 547 tests passed on each interpreter with PyO3 0.29.3. Other operating systems and Python implementations are not established by this validation. This standalone repository has its own lockfile and pins the canonical Rust core by Git revision. No sibling checkout is required.
 
 Verified calls include Workbook, active selection and load/save readback, create_sheet/remove/index/move_sheet/copy_worksheet, sheetnames/indexing, Worksheet/Cell indexing, one-based cell(), value/data_type/coordinate, append with lists/dictionaries/generators, iter_rows/iter_cols/values, finite insert/delete/move, model titles and path save. Cached Cell views follow moves and detach on deletion/overwrite. Loaded load_workbook and scalar/formula cell assignment use the original-package editor, including sparse missing-cell insertion and repeatable saves preserving original assets.
 
@@ -41,7 +41,7 @@ The adapter now calls canonical core date conversions for loaded clock/duration 
 
 `Workbook(iso_dates=True)` now uses canonical Rust ISO creation. Date-only objects retain their public Python type in owned models; ISO readback preserves date/calendar/clock kinds and numeric readback follows reference date/time conversion. New `Workbook.epoch` getter/setter selects the canonical bank epoch and serialization; loaded epoch getters report the source. Changing loaded ISO storage or epoch rejects explicitly until loaded bank integration. Shared tests cover numeric/ISO creation and loaded value/type parity in both epochs.
 
-Structured formula compatibility includes `crabxl.worksheet.formula.ArrayFormula` and `DataTableFormula`, normal/shared loading, array/table source properties, literal constructor calls and direct property edits through the Rust core. Empty string formula caches project to None in data_only mode. One optional equals prefix is removed exactly once. The pinned core is `fa5f3b0fb1148803ee312de726fd182be152e504`; 547 tests pass, including 63 unchanged original reference test bodies. Shared-group editing, typed cm/vm graph editing and the complete formula API remain staged. Visible annotated values and compatible cache-only projection now follow core behavior. Newly assigned false data-table flags and empty inputs omit on save, while source flag strings retain their spelling; all saved/reloaded properties are compared with the public reference. The native shared-formula benchmark is recorded in the core repository; it does not measure Python adapter conversion costs.
+Structured formula compatibility includes `crabxl.worksheet.formula.ArrayFormula` and `DataTableFormula`, normal/shared loading, array/table source properties, literal constructor calls and direct property edits through the Rust core. Empty string formula caches project to None in data_only mode. One optional equals prefix is removed exactly once. The pinned core is `92ffab2f4e15b642dad0c03664e43815909b6ccb`; 547 tests pass, including 63 unchanged original reference test bodies. Shared-group editing, typed cm/vm graph editing and the complete formula API remain staged. Visible annotated values and compatible cache-only projection now follow core behavior. Newly assigned false data-table flags and empty inputs omit on save, while source flag strings retain their spelling; all saved/reloaded properties are compared with the public reference. The native shared-formula benchmark is recorded in the core repository; it does not measure Python adapter conversion costs.
 
 NaN/infinity assignments and scientific overflow reads now use the core nonfinite compatibility policy: owned values remain floats, saves reopen as blank values, and data_only formula caches preserve overflow infinities when loaded from source. Both owned creation and original physical-cell editing are covered by shared public tests. No Python normalization engine or reference fallback is added.
 
@@ -54,3 +54,16 @@ Raw data-table flag strings, compatible unused/unknown visible formula hints and
 Saved date/datetime/time/duration default number formats match public assignments through the canonical core. Replacing an owned cell value retains its existing temporal format across repeated saves. Public readback tests verify all four codes; no adapter-side date-format table is introduced. General Python style getters/setters remain staged. See [core temporal style checkpoint](https://github.com/crabxl/crabxl/blob/main/docs/decisions/0038-temporal-number-format-variants.md).
 
 Identical Python temporal replacement/getter/two-save measurements are recorded in [temporal-calls.md](benchmarks/temporal-calls.md).
+
+Compatibility tests require lxml: the pinned public reference uses its XML
+serializer for carriage-return preservation and fixture XML spelling.
+
+Prefer current stable build/test dependencies after compatibility validation.
+Python 3.15 RC is the explicit temporary prerelease exception. The canonical
+Rust engine remains pinned to its independently verified Git revision.
+
+Manual alpha numbering, package release checks and PyPI OIDC setup are documented
+in [releases](docs/releases.md).
+
+The first packaged Python alpha pins the published canonical Rust engine
+`92ffab2f4e15b642dad0c03664e43815909b6ccb` (core `0.1.0-alpha.1`).

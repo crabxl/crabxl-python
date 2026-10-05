@@ -22,7 +22,7 @@ from ._native import (
     save_models,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.1.0a1"
 _ERRORS = {
     "#NULL!",
     "#DIV/0!",
