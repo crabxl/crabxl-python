@@ -27,6 +27,11 @@ affected local defined-name graphs reject atomically pending M5. See
 The pinned packed model's numeric Python cost is recorded in
 [paired measurements](../benchmarks/alpha7-packed-reading.md).
 
+Loaded row/column insertion/deletion and range moves now use the canonical
+preserving coordinator; Python updates existing Cell aliases only after success.
+Later edits/append and repeat saves share that bank. Affected unsupported feature
+graphs reject atomically; see [ADR 0021](decisions/0021-loaded-cell-structure.md).
+
 Ordinary scalar values iteration now projects canonical ordered row cursors
 directly into Python values, retaining live structured-formula objects. Cached
 read-only rows avoid a GIL detach/attach cycle; blocking receives still release

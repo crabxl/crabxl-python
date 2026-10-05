@@ -24,14 +24,16 @@ Alpha.6 is published; A7 and later stages remain planned.
 
 Loaded scalar/formula row append now uses canonical atomic model/package
 updates and is covered by the shared public-reference edit/save workflow.
-Loaded structural operations and the remaining A7 gates are still open.
+Supported loaded row/column insertion/deletion and range moves now coordinate
+canonical cells, live aliases and preserving repeat saves (ADR 0021). Affected
+unimplemented M5/M6 graphs reject atomically; the remaining A7 gates stay open.
 
 Loaded `Worksheet.title` now supports lazy/materialized rename, reference suffix
 selection and repeat preserving saves (ADR 0019). Loaded `Workbook.move_sheet`
 uses canonical bounded display-order updates and deferred active-index semantics
 (ADR 0020). Affected local defined-name owner remapping remains a deferred M5
-dependency. Sheet creation/copy/removal and row/column structural operations
-remain required before A7 acceptance.
+dependency. Sheet creation/copy/removal and remaining affected feature-graph
+dependencies stay tracked before staged A7 acceptance.
 
 Alpha.5 adds canonical resource/SST/Auto controls and test consolidation, and
 pins the verified M2 core acceptance revision. Core M2 closure does not imply
@@ -81,7 +83,9 @@ are verified. Core M2 acceptance is closed; full adapter compatibility remains s
 Ordinary loaded worksheets now share the canonical source-backed bank, imported
 style identities and aggregate source/model/overlay/SST accounting (ADR 0017).
 Pending edits update cached models without repeated binding-owned overlay clones.
-Loaded structural and feature graph operations remain open before A7 acceptance.
+Supported source-backed cell structure is verified in ADR 0021; loaded sheet
+creation/copy/removal and the remaining feature-graph gates stay open before A7
+acceptance.
 
 Worksheet visibility and deferred signed active views now use canonical core
 coordination across owned, loaded and write-only workbooks (ADR 0018). Metadata

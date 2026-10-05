@@ -470,10 +470,6 @@ class Worksheet:
         self._model().append([_encode(value) for value in values])
 
     def _shift(self, idx, amount, rows, insert):
-        if self._existing:
-            raise NotImplementedError(
-                "Existing-file structural editing is not implemented"
-            )
         if idx < 1 or amount < 1:
             raise ValueError("Index and amount must be positive")
         cached = list(self._cells.items())
@@ -510,8 +506,6 @@ class Worksheet:
         self._shift(idx, amount, False, False)
 
     def move_range(self, cell_range, rows=0, cols=0, translate=False):
-        if self._existing:
-            raise NotImplementedError("Existing-file moves are not implemented")
         range_object = cell_range if hasattr(cell_range, "coord") else None
         first_row, first_col, last_row, last_col = _range(
             range_object.coord if range_object is not None else cell_range
