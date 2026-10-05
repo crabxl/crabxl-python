@@ -208,35 +208,26 @@ impl NativeReadStream {
         let Some((index, tagged, _)) = self.next_row(py, false)? else {
             return Ok(None);
         };
-        let mut decode_value = None;
-        let values = tagged
-            .into_iter()
-            .map(|(kind, value)| {
-                if matches!(
-                    kind.as_str(),
-                    "bigint" | "date" | "datetime" | "time" | "duration" | "array" | "table"
-                ) {
-                    if decode_value.is_none() {
-                        decode_value = Some(py.import("crabxl")?.getattr("_decode")?);
-                    }
-                    Ok(decode_value
-                        .as_ref()
-                        .ok_or_else(closed)?
-                        .call1(((kind, value),))?
-                        .unbind())
-                } else {
-                    Ok(value)
-                }
-            })
-            .collect::<PyResult<Vec<_>>>()?;
+        let (values, _) = decode_values(py, tagged, false)?;
         Ok(Some((index, values)))
     }
     fn next_row(&self, py: Python<'_>, include_styles: bool) -> PyResult<Option<DenseRow>> {
         if !self.alive.load(Ordering::Relaxed) {
             return Err(closed());
         }
-        let state = Arc::clone(&self.state);
-        let row = py.detach(move || lock(&state)?.next())?;
+        // Cached rows require neither channel waiting nor a worker join. Keep
+        // the GIL for this short nonblocking path; release it when receiving.
+        let cached = self
+            .state
+            .try_lock()
+            .ok()
+            .and_then(|mut state| state.rows.next());
+        let row = if let Some(row) = cached {
+            Some(row)
+        } else {
+            let state = Arc::clone(&self.state);
+            py.detach(move || lock(&state)?.next())?
+        };
         let Some(row) = row else {
             return Ok(None);
         };

@@ -226,6 +226,17 @@ def test_values_iteration_observes_edits_between_rows(engine, loaded, tmp_path):
             min_row=2, max_row=2, min_col=2, max_col=3, values_only=True
         )
     ) == [("changed", "=A2+1")]
+    worksheet["F2"] = "tail"
+    assert list(
+        worksheet.iter_rows(
+            min_row=2, max_row=2, min_col=4, max_col=7, values_only=True
+        )
+    ) == [(None, None, "tail", None)]
+    assert list(
+        worksheet.iter_rows(
+            min_row=4, max_row=4, min_col=4, max_col=7, values_only=True
+        )
+    ) == [(None, None, None, None)]
     workbook.close()
 
 

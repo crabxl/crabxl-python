@@ -411,16 +411,14 @@ class Worksheet:
         def rows():
             for row in range(min_row, max_row + 1):
                 if values_only:
-                    tagged = self._model().row_values(
+                    values, formulas = self._model().row_values_only(
                         row - 1, min_col - 1, max_col - 1, not self._existing
                     )
                     # Structured formulas remain live cell-bound objects.
-                    yield tuple(
-                        self.cell(row, column).value
-                        if value[0] in ("array", "table")
-                        else _decode(value)
-                        for column, value in enumerate(tagged, min_col)
-                    )
+                    if formulas:
+                        for column in formulas:
+                            values[column] = self.cell(row, min_col + column).value
+                    yield tuple(values)
                     continue
                 cells = tuple(
                     self.cell(row, column) for column in range(min_col, max_col + 1)

@@ -39,6 +39,14 @@ Here, greater speed means lower elapsed time for the same completed operation, a
 
 These are acceptance goals, not assertions about current results. Functional correctness and full planned feature coverage remain required. Record a failed required speed target as unresolved; do not hide it behind a faster unrelated workload or remove the feature.
 
+Both bounded streaming and full-model value loading must pursue lower elapsed
+time than calamine on overlapping reads. Full-model loading must also pursue
+lower peak RSS. Separate parsing, retained-model construction and Python value
+conversion in evidence while including all deferred work in the completed
+operation. Lower RAM does not satisfy an unmet speed target. Future Pandas/Polars
+integration requires efficient bounded data delivery; adoption and adapters are
+not currently implemented or guaranteed by these targets.
+
 Use pinned versions, identical inputs and verified outputs, equivalent semantics/modes, release builds, warmups and alternating repeated runs. Record wall time, CPU time, peak RSS, temporary storage, output size and relevant feature/checksum assertions. Include representative numeric, repeated/high-cardinality text, styled, sparse, multi-sheet and edit workloads as capabilities become available. Separate streaming, materialized and preserving-edit operations; report unequal capabilities explicitly rather than presenting them as equivalent measurements.
 
 Compare Python migration workloads through the Python adapter using compatible calls and include conversion/runtime costs. Report native Rust comparisons separately. Include runtime baselines and avoid subtracting them from headline RSS results. Memory policies remain configurable: bounded streaming, explicit budgets and measured adaptive Auto behavior. Extra memory is useful only where measurements establish a speed benefit; lower RSS must not be claimed by concealing temporary-disk or I/O costs.
