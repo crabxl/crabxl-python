@@ -1,0 +1,84 @@
+{
+  "scope": "One warmup and rotating serial write_only numeric append/save in cold processes. Imports and cleanup included; builds, tests and public readback excluded. No full feature parity claim.",
+  "rows": 100000,
+  "columns": 10,
+  "versions": {
+    "alpha2": "0.1.0a2",
+    "alpha3": "0.1.0a3"
+  },
+  "samples": {
+    "alpha2": [
+      {
+        "seconds": 1.853599493,
+        "cpu_seconds": 1.853307,
+        "peak_rss_kib": 18648,
+        "cells": 1000000,
+        "checksum": 499999500000,
+        "spool_peak_bytes": 32866902,
+        "output_bytes": 2942935
+      },
+      {
+        "seconds": 1.872593087,
+        "cpu_seconds": 1.871824,
+        "peak_rss_kib": 18536,
+        "cells": 1000000,
+        "checksum": 499999500000,
+        "spool_peak_bytes": 32866902,
+        "output_bytes": 2942935
+      },
+      {
+        "seconds": 1.946379721,
+        "cpu_seconds": 1.945803,
+        "peak_rss_kib": 18548,
+        "cells": 1000000,
+        "checksum": 499999500000,
+        "spool_peak_bytes": 32866902,
+        "output_bytes": 2942935
+      }
+    ],
+    "alpha3": [
+      {
+        "seconds": 1.456682175,
+        "cpu_seconds": 1.455286,
+        "peak_rss_kib": 18644,
+        "cells": 1000000,
+        "checksum": 499999500000,
+        "spool_peak_bytes": 32866902,
+        "output_bytes": 2942935
+      },
+      {
+        "seconds": 1.488297618,
+        "cpu_seconds": 1.486788,
+        "peak_rss_kib": 18668,
+        "cells": 1000000,
+        "checksum": 499999500000,
+        "spool_peak_bytes": 32866902,
+        "output_bytes": 2942935
+      },
+      {
+        "seconds": 1.465947935,
+        "cpu_seconds": 1.465787,
+        "peak_rss_kib": 18668,
+        "cells": 1000000,
+        "checksum": 499999500000,
+        "spool_peak_bytes": 32866902,
+        "output_bytes": 2942935
+      }
+    ]
+  },
+  "all_written_values_verified": true,
+  "median": {
+    "alpha2": {
+      "seconds": 1.872593087,
+      "peak_rss_kib": 18548,
+      "spool_peak_bytes": 32866902,
+      "output_bytes": 2942935
+    },
+    "alpha3": {
+      "seconds": 1.465947935,
+      "peak_rss_kib": 18668,
+      "spool_peak_bytes": 32866902,
+      "output_bytes": 2942935
+    }
+  }
+}
