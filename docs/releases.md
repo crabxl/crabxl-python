@@ -79,8 +79,9 @@ benchmarks are formatted and checked.
 Python wheels are compiled using the latest stable Rust toolchain (currently
 1.99). Prebuilt wheel installation does not require Rust. Source builds require
 Rust 1.99 or newer under the adapter manifest, independently of the core crate
-MSRV. The engine is pinned to the post-alpha.1 core revision with the Windows same-path save fix
-`bc24a639f872185a52934008ec2e25981a3e5d92`.
+MSRV. Alpha.2 pins canonical Rust alpha.2 commit
+`ea7cc5a52055bb5990205be408a450afb8b826dd`, including quick-xml 0.42, streaming APIs
+and Windows same-path save replacement. The core crate MSRV is Rust 1.88.
 
 A committed `.github/release-request.json` can also initiate publication on push
 to the default branch, using the same manual-version, feature and test gates.
