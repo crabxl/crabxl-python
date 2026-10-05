@@ -8,3 +8,5 @@ Raw flag and compatible formula-header comparisons are original public API tests
 Temporal default-format readback cases are original shared public API comparisons. The canonical format defaults and style variants live in Rust core. All 63 selected original test bodies/parameters remain unchanged. See ADR 0011.
 
 Temporal replacement/repeated-save tests and same-call benchmarks are original public API comparisons. Canonical temporal assignment and style ownership live in Rust core; the adapter only carries existing IDs. All 63 selected original test bodies and parameters remain unchanged. See ADR 0012.
+
+Literal shared-ID tests and benchmarks are original public API/OOXML fixture comparisons. All 63 selected reference test bodies and parameter sets remain unchanged and verified. The adapter adds no shared-formula codec or translation engine. See ADR 0013.
