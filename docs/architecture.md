@@ -7,3 +7,5 @@ Cargo.toml pins the core Git revision. Compatibility tests and legal provenance 
 Registered new workbooks share the native aggregate sheet bank. Loaded models use the preserving original-package editor and separate per-model allowances. Compatibility and idiomatic extensions remain clearly distinguishable.
 
 The core roadmap and feature inventory are authoritative: https://github.com/crabxl/crabxl/blob/main/docs/roadmap.md and https://github.com/crabxl/crabxl/blob/main/docs/features.json. See docs/binding-contract.md for all adapter priorities.
+
+Optimized streams and ownership are described in [ADR 0014](decisions/0014-optimized-stream-ownership.md). The pinned canonical core uses quick-xml 0.42; the binding contains no duplicated codecs.

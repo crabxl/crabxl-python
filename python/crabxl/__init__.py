@@ -7,13 +7,14 @@ this package never falls back to the Python openpyxl implementation.
 import re
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
-from weakref import WeakValueDictionary
+from weakref import WeakSet, WeakValueDictionary
 
 from ._native import (
     NativeBook,
     NativeEditor,
     NativeReader,
     NativeSheet,
+    NativeWriteBook,
     cell_address,
     column_index,
     column_letters,
@@ -541,20 +542,42 @@ class Workbook:
         "_sheets",
         "_book",
         "_iso_dates",
+        "_stream_writer",
+        "_streams",
+        "_saved",
     )
 
-    def __init__(self, write_only=False, iso_dates=False, *, max_memory_bytes=None):
-        if write_only:
-            raise NotImplementedError("Write-only binding is not implemented")
+    def __init__(
+        self,
+        write_only=False,
+        iso_dates=False,
+        *,
+        max_memory_bytes=None,
+        temp_directory=None,
+    ):
         self._max_bytes = resolve_model_budget(max_memory_bytes)
         self._closed = False
         self._reader = self._editor = None
         self._iso_dates = bool(iso_dates)
-        self.data_only = self.read_only = self.write_only = False
+        self.data_only = self.read_only = False
+        self.write_only = bool(write_only)
+        self._streams = WeakSet()
+        self._saved = False
+        self._stream_writer = (
+            NativeWriteBook(
+                self._max_bytes,
+                bool(iso_dates),
+                False,
+                Path(temp_directory) if temp_directory is not None else None,
+            )
+            if write_only
+            else None
+        )
         self._active = 0
         self._sheets = []
         self._book = NativeBook(self._max_bytes)
-        self.create_sheet("Sheet")
+        if not write_only:
+            self.create_sheet("Sheet")
 
     def _check_open(self):
         if self._closed:
@@ -570,6 +593,8 @@ class Workbook:
             raise NotImplementedError(
                 "Changing loaded date storage requires loaded bank integration"
             )
+        if self.write_only:
+            self._stream_writer.configure(self._book.date_1904(), bool(value))
         self._iso_dates = bool(value)
 
     @property
@@ -590,6 +615,8 @@ class Workbook:
             raise NotImplementedError(
                 "Changing a loaded workbook epoch is not implemented"
             )
+        if self.write_only:
+            self._stream_writer.configure(value == datetime(1904, 1, 1), self.iso_dates)
         self._book.set_date_1904(value == datetime(1904, 1, 1))
 
     @property
@@ -646,6 +673,13 @@ class Workbook:
         return title
 
     def create_sheet(self, title=None, index=None):
+        self._check_open()
+        if self.read_only:
+            from .utils.exceptions import ReadOnlyWorkbookException
+
+            raise ReadOnlyWorkbookException(
+                "Cannot create new sheet in a read-only workbook"
+            )
         if self._editor is not None:
             raise NotImplementedError("Adding existing-file sheets is not implemented")
         title = self._unique_title(title or "Sheet")
@@ -663,6 +697,22 @@ class Workbook:
                 ),
             )
         )
+        if self.write_only:
+            from .optimized import WriteOnlyWorksheet
+
+            if position != len(self._sheets):
+                raise NotImplementedError(
+                    "Reordering streaming sheets is not implemented"
+                )
+            if self._saved:
+                from .utils.exceptions import WorkbookAlreadySaved
+
+                raise WorkbookAlreadySaved("Workbook has already been saved")
+            sheet = WriteOnlyWorksheet(
+                self, title, self._stream_writer.create_sheet(title)
+            )
+            self._sheets.append(sheet)
+            return sheet
         native = self._book.create_sheet(title)
         sheet = Worksheet(self, title, _native=native)
         if position != len(self._sheets):
@@ -674,6 +724,10 @@ class Workbook:
         return self._sheets.index(worksheet)
 
     def move_sheet(self, sheet, offset=0):
+        if self.read_only or self.write_only:
+            raise NotImplementedError(
+                "Reordering optimized worksheets is not implemented"
+            )
         if self._editor is not None:
             raise NotImplementedError("Moving existing-file sheets is not implemented")
         if not isinstance(sheet, Worksheet):
@@ -690,6 +744,8 @@ class Workbook:
         self._sheets.insert(position, sheet)
 
     def copy_worksheet(self, from_worksheet):
+        if self.read_only or self.write_only:
+            raise ValueError("Cannot copy worksheets in read-only or write-only mode")
         if self._editor is not None:
             raise NotImplementedError(
                 "Copying existing-file feature graphs is not implemented"
@@ -708,6 +764,10 @@ class Workbook:
         return copied
 
     def remove(self, worksheet):
+        if self.read_only or self.write_only:
+            raise NotImplementedError(
+                "Removing optimized worksheets is not implemented"
+            )
         if self._editor is not None:
             raise NotImplementedError(
                 "Removing existing-file sheets is not implemented"
@@ -723,7 +783,26 @@ class Workbook:
         self._check_open()
         if not isinstance(filename, (str, Path)):
             raise NotImplementedError("File-like binding output is not implemented")
-        if self._editor is not None:
+        if self.read_only:
+            raise TypeError("Workbook is read-only")
+        if self.write_only:
+            from .utils.exceptions import WorkbookAlreadySaved
+
+            if self._saved:
+                raise WorkbookAlreadySaved("Workbook has already been saved")
+            if not self._sheets:
+                self.create_sheet()
+            try:
+                self._stream_writer.save(
+                    Path(filename),
+                    self.index(self.active) if self.active is not None else 0,
+                )
+            finally:
+                # Packaging consumes spools even if output fails; never imply retry.
+                self._saved = True
+                for sheet in self._sheets:
+                    sheet._finished = True
+        elif self._editor is not None:
             if self.data_only:
                 raise NotImplementedError(
                     "Saving data-only loaded workbooks is not implemented"
@@ -739,9 +818,15 @@ class Workbook:
             )
 
     def close(self):
+        for stream in list(self._streams):
+            stream.close()
+        if self.write_only:
+            self._stream_writer.close()
+            self._closed = True
         if self._reader is not None:
             self._reader.close()
-            self._editor.close()
+            if self._editor is not None:
+                self._editor.close()
             self._closed = True
 
 
@@ -756,9 +841,9 @@ def load_workbook(
     max_memory_bytes=None,
 ):
     """Use openpyxl call names; unsupported modes fail rather than change semantics."""
-    if read_only or not keep_links or rich_text:
+    if not keep_links or rich_text:
         raise NotImplementedError(
-            "Read-only binding, external-link removal and rich-text binding are not implemented"
+            "External-link removal and rich-text binding are not implemented"
         )
     if not isinstance(filename, (str, Path)):
         raise NotImplementedError("File-like binding input is not implemented")
@@ -768,12 +853,22 @@ def load_workbook(
     workbook = Workbook(max_memory_bytes=max_memory_bytes)
     workbook._reader = NativeReader(Path(filename), workbook._max_bytes)
     try:
-        workbook._editor = NativeEditor(Path(filename), max_memory_bytes)
+        workbook.read_only = bool(read_only)
+        workbook._editor = (
+            None if read_only else NativeEditor(Path(filename), max_memory_bytes)
+        )
         workbook.data_only = data_only
-        workbook._sheets = [
-            Worksheet(workbook, name, _existing=True)
-            for name in workbook._reader.names()
-        ]
+        if read_only:
+            from .optimized import ReadOnlyWorksheet
+
+            workbook._sheets = [
+                ReadOnlyWorksheet(workbook, name) for name in workbook._reader.names()
+            ]
+        else:
+            workbook._sheets = [
+                Worksheet(workbook, name, _existing=True)
+                for name in workbook._reader.names()
+            ]
         workbook._active = workbook._reader.active_index()
         workbook._book = None  # Loaded models remain in the original-package path.
     except BaseException:

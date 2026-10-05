@@ -38,7 +38,7 @@ dependencies = [
 [[package]]
 name = "crabxl"
 version = "0.1.0-alpha.1"
-source = "git+https://github.com/crabxl/crabxl.git?rev=bc24a639f872185a52934008ec2e25981a3e5d92#bc24a639f872185a52934008ec2e25981a3e5d92"
+source = "git+https://github.com/crabxl/crabxl.git?rev=92c3fb210042fa7d4dd9e4fc5be8c8814b18eae7#92c3fb210042fa7d4dd9e4fc5be8c8814b18eae7"
 dependencies = [
  "crabxl-core",
  "crabxl-xlsx",
@@ -47,7 +47,7 @@ dependencies = [
 [[package]]
 name = "crabxl-core"
 version = "0.1.0-alpha.1"
-source = "git+https://github.com/crabxl/crabxl.git?rev=bc24a639f872185a52934008ec2e25981a3e5d92#bc24a639f872185a52934008ec2e25981a3e5d92"
+source = "git+https://github.com/crabxl/crabxl.git?rev=92c3fb210042fa7d4dd9e4fc5be8c8814b18eae7#92c3fb210042fa7d4dd9e4fc5be8c8814b18eae7"
 dependencies = [
  "chrono",
 ]
@@ -64,7 +64,7 @@ dependencies = [
 [[package]]
 name = "crabxl-xlsx"
 version = "0.1.0-alpha.1"
-source = "git+https://github.com/crabxl/crabxl.git?rev=bc24a639f872185a52934008ec2e25981a3e5d92#bc24a639f872185a52934008ec2e25981a3e5d92"
+source = "git+https://github.com/crabxl/crabxl.git?rev=92c3fb210042fa7d4dd9e4fc5be8c8814b18eae7#92c3fb210042fa7d4dd9e4fc5be8c8814b18eae7"
 dependencies = [
  "crabxl-core",
  "fast-float2",
@@ -272,9 +272,9 @@ dependencies = [
 
 [[package]]
 name = "quick-xml"
-version = "0.41.0"
+version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e660451e55124f798a69a5af3f49ccfbefbd41910eefd25caf2393e1f3473ec1"
+checksum = "41b1177fdf999d2321d3fb46ff47159d9c1fb9ad66a4879f8c50a0b504615e9b"
 dependencies = [
  "memchr",
 ]
