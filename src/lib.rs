@@ -26,6 +26,7 @@ use std::{
 };
 
 type TaggedValue = (String, Py<PyAny>);
+type DecodedValues = (Vec<Py<PyAny>>, Option<Vec<u32>>);
 type SharedLoaded = Arc<Mutex<Option<LoadedWorkbook<streaming::SharedFile>>>>;
 fn failure(error: Error) -> PyErr {
     let mut text = error.to_string();
@@ -259,6 +260,42 @@ fn encode(py: Python<'_>, value: &CellValue) -> PyResult<TaggedValue> {
     Ok((kind.into(), object))
 }
 
+// Scalar rows reach Python without per-cell tagged tuples or Python decode
+// calls. Editable structured formulas remain live cell views, identified by
+// relative column positions; read-only formulas keep their detached projection.
+fn decode_values(
+    py: Python<'_>,
+    tagged: Vec<TaggedValue>,
+    bound_formulas: bool,
+) -> PyResult<DecodedValues> {
+    let mut values = Vec::with_capacity(tagged.len());
+    let mut formulas = None;
+    let mut decoder = None;
+    for (column, (kind, value)) in tagged.into_iter().enumerate() {
+        if bound_formulas && matches!(kind.as_str(), "array" | "table") {
+            formulas.get_or_insert_with(Vec::new).push(column as u32);
+            values.push(py.None());
+        } else if matches!(
+            kind.as_str(),
+            "bigint" | "date" | "datetime" | "time" | "duration" | "array" | "table"
+        ) {
+            if decoder.is_none() {
+                decoder = Some(py.import("crabxl")?.getattr("_decode")?);
+            }
+            values.push(
+                decoder
+                    .as_ref()
+                    .ok_or_else(closed)?
+                    .call1(((kind, value),))?
+                    .unbind(),
+            );
+        } else {
+            values.push(value);
+        }
+    }
+    Ok((values, formulas))
+}
+
 // A handle owns either a detached worksheet or a stable identity in the shared
 // core bank. No Python object or payload clone lives in the canonical model.
 enum SheetStorage {
@@ -353,24 +390,31 @@ impl NativeSheet {
         last: u32,
         create_missing: bool,
     ) -> PyResult<Vec<TaggedValue>> {
-        CellAddress::new(row, first).map_err(failure)?;
+        let row_index = CellAddress::new(row, first).map_err(failure)?.row;
         CellAddress::new(row, last).map_err(failure)?;
         if first > last {
             return Ok(Vec::new());
         }
         if !create_missing {
             return self.with(|sheet| {
-                (first..=last)
-                    .map(|column| {
-                        let address = CellAddress::new(row, column).map_err(failure)?;
-                        encode(
-                            py,
-                            sheet
-                                .get(address)
-                                .map_or(&CellValue::Empty, |cell| &cell.value),
-                        )
-                    })
-                    .collect()
+                let mut cells = sheet
+                    .row_cells(row_index)
+                    .skip_while(|cell| cell.address.column.get() < first)
+                    .take_while(|cell| cell.address.column.get() <= last)
+                    .peekable();
+                let mut values = Vec::with_capacity((last - first + 1) as usize);
+                for column in first..=last {
+                    let value = if cells
+                        .peek()
+                        .is_some_and(|cell| cell.address.column.get() == column)
+                    {
+                        cells.next().map_or(&CellValue::Empty, |cell| &cell.value)
+                    } else {
+                        &CellValue::Empty
+                    };
+                    values.push(encode(py, value)?);
+                }
+                Ok(values)
             });
         }
         self.with_mut(|sheet| {
@@ -395,6 +439,20 @@ impl NativeSheet {
             }
             Ok(values)
         })
+    }
+    fn row_values_only(
+        &self,
+        py: Python<'_>,
+        row: u32,
+        first: u32,
+        last: u32,
+        create_missing: bool,
+    ) -> PyResult<DecodedValues> {
+        decode_values(
+            py,
+            self.row_values(py, row, first, last, create_missing)?,
+            true,
+        )
     }
     fn set(&self, py: Python<'_>, row: u32, column: u32, value: TaggedValue) -> PyResult<()> {
         let cell = Cell {

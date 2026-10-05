@@ -28,13 +28,21 @@ print(json.dumps({
 
 
 def worker(engine, path, read_only=False):
-    module = __import__(engine)
+    if engine == "python-calamine":
+        from python_calamine import CalamineWorkbook
+    else:
+        module = __import__(engine)
     started = time.perf_counter()
-    options = {"max_memory_bytes": 1024**3} if engine == "crabxl" else {}
-    book = module.load_workbook(path, read_only=read_only, **options)
+    if engine == "python-calamine":
+        book = CalamineWorkbook.from_path(path)
+        rows = book.get_sheet_by_name(book.sheet_names[0]).iter_rows()
+    else:
+        options = {"max_memory_bytes": 1024**3} if engine == "crabxl" else {}
+        book = module.load_workbook(path, read_only=read_only, **options)
+        rows = book.active.iter_rows(values_only=True)
     opened = time.perf_counter()
     count = total = 0
-    for row in book.active.iter_rows(values_only=True):
+    for row in rows:
         count += len(row)
         total += sum(row)
     consumed = time.perf_counter()
@@ -53,7 +61,7 @@ def worker(engine, path, read_only=False):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--worker", choices=("crabxl", "openpyxl"))
+    parser.add_argument("--worker", choices=("crabxl", "openpyxl", "python-calamine"))
     parser.add_argument("--path", type=Path)
     parser.add_argument("--before-python", type=Path)
     parser.add_argument("--after-python", type=Path)
@@ -62,6 +70,7 @@ def main():
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--read-only", action="store_true")
     parser.add_argument("--skip-reference", action="store_true")
+    parser.add_argument("--calamine", action="store_true")
     parser.add_argument(
         "--output",
         type=Path,
@@ -76,6 +85,9 @@ def main():
             "Specify both installed interpreters and the native measure helper"
         )
     import openpyxl
+
+    if args.calamine:
+        import importlib.metadata
 
     report = {
         "semantics": ("Read-only" if args.read_only else "Ordinary editable")
@@ -94,6 +106,16 @@ def main():
         "read_temporary_bytes": 0,
         "cases": [],
     }
+    if args.calamine:
+        report["python_calamine_version"] = importlib.metadata.version(
+            "python-calamine"
+        )
+        report["calamine_semantics"] = (
+            "Retain the first decoded noneditable sheet range, then consume iter_rows. "
+            "Generated numeric values are returned as floats; verified count and sum "
+            "are exact at these scales. This is not a bounded ZIP row stream. "
+            "Both package implementations remain installed references, not adapters."
+        )
     with tempfile.TemporaryDirectory(prefix="crabxl-values-benchmark-") as directory:
         for rows in args.rows:
             path = Path(directory) / f"numbers-{rows}.xlsx"
@@ -111,6 +133,8 @@ def main():
                 del commands["openpyxl_normal"]
             elif args.read_only:
                 commands["openpyxl_read_only"] = commands.pop("openpyxl_normal")
+            if args.calamine:
+                commands["python_calamine"] = (args.after_python, "python-calamine")
             samples = {name: [] for name in commands}
             names = list(commands)
             for index in range(args.runs + 1):

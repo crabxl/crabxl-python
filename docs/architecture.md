@@ -18,6 +18,13 @@ Unsupported source graphs/values remain explicit errors before mutation.
 The pinned packed model's numeric Python cost is recorded in
 [paired measurements](../benchmarks/alpha7-packed-reading.md).
 
+Ordinary scalar values iteration now projects canonical ordered row cursors
+directly into Python values, retaining live structured-formula objects. Cached
+read-only rows avoid a GIL detach/attach cycle; blocking receives still release
+the GIL. Both use one adapter conversion helper and unchanged bounded buffers.
+The [calamine comparison](../benchmarks/alpha7-direct-values.md) records remaining
+parser/model and conversion costs; neither mode meets the speed target yet.
+
 Worksheet visibility and deferred signed active-view selection use the canonical
 core coordinator in ordinary loaded mode, the registered bank in owned mode, and
 the streaming writer in write-only mode; see
