@@ -169,16 +169,34 @@ def test_new_save_public_readback_and_repeat(engine, tmp_path):
 
 
 def test_loaded_numeric_edit_and_sparse_insertion(engine, tmp_path):
+    from openpyxl.workbook.defined_name import DefinedName
+
     source = tmp_path / "source.xlsx"
     original = openpyxl.Workbook()
+    original.active.title = "First"
     original.active.append([1, 2, "=A1+B1"])
+    original.create_sheet("Second")["A1"] = "=First!A1"
+    original.defined_names.add(DefinedName("Pick", attr_text="'First'!$A$1"))
     original.save(source)
+    original.close()
     workbook = engine.load_workbook(source)
+    second = workbook["Second"]
+    second.title = "first"
+    assert second.title == "first1"
+    assert workbook["first1"] is second
     sheet = workbook.active
+    alias = sheet["A1"]
     assert sheet["B1"].value == 2
+    sheet.title = 'Renamed<&" \u65b0'
+    assert workbook[sheet.title] is sheet
+    assert alias.parent is sheet
+    with pytest.raises(ValueError):
+        sheet.title = "Invalid/Name"
+    assert sheet.title == 'Renamed<&" \u65b0'
     sheet["A1"] = 5
     sheet["D5"] = "new"
     assert sheet["A1"].value == 5 and sheet["D5"].value == "new"
+    assert alias.value == 5
     assert sheet.max_row == 5 and sheet.max_column == 4
     assert list(sheet.iter_rows(min_row=5, max_row=5, values_only=True)) == [
         (None, None, None, "new")
@@ -194,6 +212,9 @@ def test_loaded_numeric_edit_and_sparse_insertion(engine, tmp_path):
     workbook.save(tmp_path / "repeat.xlsx")
     workbook.close()
     verified = openpyxl.load_workbook(output)
+    assert verified.sheetnames == ['Renamed<&" \u65b0', "first1"]
+    assert verified["first1"]["A1"].value == "=First!A1"
+    assert verified.defined_names["Pick"].attr_text == "'First'!$A$1"
     assert verified.active["A1"].value == 5 and verified.active["D5"].value == "new"
     assert verified.active["C1"].value == "=A1+B1"
     assert verified.active["C6"].value == "appended"
@@ -302,6 +323,7 @@ def test_loaded_style_image_comment_and_unknown_parts_are_preserved(tmp_path):
     with zipfile.ZipFile(source, "a") as archive:
         archive.writestr("custom/unknown.xml", '<x xmlns="urn:custom">keep</x>')
     loaded = crabxl.load_workbook(source)
+    loaded.active.title = "Renamed"
     loaded.active["A1"] = 9
     for filename in ("first.xlsx", "second.xlsx"):
         target = tmp_path / filename
@@ -310,6 +332,7 @@ def test_loaded_style_image_comment_and_unknown_parts_are_preserved(tmp_path):
             for name in ("xl/media/image1.png", "xl/styles.xml", "custom/unknown.xml"):
                 assert original.read(name) == saved.read(name)
         verified = openpyxl.load_workbook(target)
+        assert verified.active.title == "Renamed"
         assert verified.active["A1"].value == 9
         assert verified.active["A1"].font.bold
         assert verified.active["A1"].comment.text == "comment"

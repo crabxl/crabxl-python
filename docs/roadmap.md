@@ -26,6 +26,10 @@ Loaded scalar/formula row append now uses canonical atomic model/package
 updates and is covered by the shared public-reference edit/save workflow.
 Loaded structural operations and the remaining A7 gates are still open.
 
+Loaded `Worksheet.title` now supports lazy/materialized rename, reference suffix
+selection and repeat preserving saves (ADR 0019). Sheet creation/copy/removal,
+reorder and row/column structural operations remain required before A7 acceptance.
+
 Alpha.5 adds canonical resource/SST/Auto controls and test consolidation, and
 pins the verified M2 core acceptance revision. Core M2 closure does not imply
 complete Python compatibility. Ordinary, write-only and loaded-edit save routes
