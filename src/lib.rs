@@ -422,6 +422,22 @@ impl NativeSheet {
             .into_iter()
             .map(|value| decode(py, value))
             .collect::<PyResult<Vec<_>>>()?;
+        {
+            let storage = lock(&self.storage)?;
+            if let SheetStorage::Loaded { book, id } = &*storage {
+                let book = Arc::clone(book);
+                let id = *id;
+                drop(storage);
+                return py.detach(move || {
+                    lock(&book)?
+                        .as_mut()
+                        .ok_or_else(closed)?
+                        .append(id, values)
+                        .map(|row| row.get())
+                        .map_err(failure)
+                });
+            }
+        }
         self.with_mut(|sheet| sheet.append(values).map(|row| row.get()).map_err(failure))
     }
     fn bounds(&self) -> PyResult<(u32, u32, u32, u32)> {

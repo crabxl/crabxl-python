@@ -1,0 +1,268 @@
+{
+  "semantics": "Ordinary editable load_workbook and iter_rows(values_only=True). Same generated numeric cells, count and exact checksum. One warmup and rotating serial cold-process samples include imports and cleanup; generation/build excluded. Load/iteration boundaries are mode-specific; compare the complete operation, including deferred parsing or model materialization.",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "installed_packages": {
+    "before": {
+      "python": "3.12.14",
+      "crabxl": "0.1.0a6",
+      "openpyxl": "3.1.5",
+      "native_sha256": "b345ea3fa42f1b4706b649cf6514188140d24cf77b8009baec94e2e6eb47135e",
+      "python_source_sha256": "81bc994b3a1994913b5552052748989de77221485575646ddff318ccc3c8ec07"
+    },
+    "after": {
+      "python": "3.12.14",
+      "crabxl": "0.1.0a6",
+      "openpyxl": "3.1.5",
+      "native_sha256": "bc9e3ea9456b74725cb9b0ce3e1d85eaba9ec77e98bfd32e8a73a83c6791403c",
+      "python_source_sha256": "53bac7e674a4aebc0d6e43fe29b9cda17c987ef06e134c23b009fc481a96df1d"
+    }
+  },
+  "reference_version": "3.1.5",
+  "model_allowance_bytes": 1073741824,
+  "read_temporary_bytes": 0,
+  "cases": [
+    {
+      "rows": 1000,
+      "columns": 10,
+      "file_sha256": "6e76bf55844126b67bdd4c9c5c1625f721c001ad2944d98e0d683ab836e6b626",
+      "samples": {
+        "before": [
+          {
+            "seconds": 0.058125975,
+            "cpu_seconds": 0.057988,
+            "peak_rss_kib": 20680,
+            "cells": 10000,
+            "checksum": 49995000,
+            "open_seconds": 0.0005236569995759055,
+            "iterate_seconds": 0.010814594003022648
+          },
+          {
+            "seconds": 0.060368914,
+            "cpu_seconds": 0.060046,
+            "peak_rss_kib": 20616,
+            "cells": 10000,
+            "checksum": 49995000,
+            "open_seconds": 0.0006987590022617951,
+            "iterate_seconds": 0.01146453100227518
+          },
+          {
+            "seconds": 0.056676102,
+            "cpu_seconds": 0.056529,
+            "peak_rss_kib": 20616,
+            "cells": 10000,
+            "checksum": 49995000,
+            "open_seconds": 0.000513840997882653,
+            "iterate_seconds": 0.010694364005757961
+          }
+        ],
+        "after": [
+          {
+            "seconds": 0.05763702,
+            "cpu_seconds": 0.057228,
+            "peak_rss_kib": 20416,
+            "cells": 10000,
+            "checksum": 49995000,
+            "open_seconds": 0.0005423549955594353,
+            "iterate_seconds": 0.00976698100566864
+          },
+          {
+            "seconds": 0.058831209,
+            "cpu_seconds": 0.05869,
+            "peak_rss_kib": 20336,
+            "cells": 10000,
+            "checksum": 49995000,
+            "open_seconds": 0.0005959650006843731,
+            "iterate_seconds": 0.009704087002319284
+          },
+          {
+            "seconds": 0.059471842,
+            "cpu_seconds": 0.059301,
+            "peak_rss_kib": 20528,
+            "cells": 10000,
+            "checksum": 49995000,
+            "open_seconds": 0.0005675520005752333,
+            "iterate_seconds": 0.008911966993764509
+          }
+        ]
+      },
+      "medians": {
+        "before": {
+          "seconds": 0.058125975,
+          "cpu_seconds": 0.057988,
+          "peak_rss_kib": 20616,
+          "open_seconds": 0.0005236569995759055,
+          "iterate_seconds": 0.010814594003022648
+        },
+        "after": {
+          "seconds": 0.058831209,
+          "cpu_seconds": 0.05869,
+          "peak_rss_kib": 20416,
+          "open_seconds": 0.0005675520005752333,
+          "iterate_seconds": 0.009704087002319284
+        }
+      }
+    },
+    {
+      "rows": 10000,
+      "columns": 10,
+      "file_sha256": "98d2fc03f7b092c9b87a17dad08fc9d67fe93cfe25f050078d5af0e6e65d2856",
+      "samples": {
+        "before": [
+          {
+            "seconds": 0.173992242,
+            "cpu_seconds": 0.173715,
+            "peak_rss_kib": 27656,
+            "cells": 100000,
+            "checksum": 4999950000,
+            "open_seconds": 0.0005478530001710169,
+            "iterate_seconds": 0.11613979200046742
+          },
+          {
+            "seconds": 0.164457949,
+            "cpu_seconds": 0.164252,
+            "peak_rss_kib": 27656,
+            "cells": 100000,
+            "checksum": 4999950000,
+            "open_seconds": 0.000538619002327323,
+            "iterate_seconds": 0.11225907299376559
+          },
+          {
+            "seconds": 0.173324212,
+            "cpu_seconds": 0.172997,
+            "peak_rss_kib": 27720,
+            "cells": 100000,
+            "checksum": 4999950000,
+            "open_seconds": 0.0005599009964498691,
+            "iterate_seconds": 0.12118641200504499
+          }
+        ],
+        "after": [
+          {
+            "seconds": 0.137973532,
+            "cpu_seconds": 0.137798,
+            "peak_rss_kib": 23280,
+            "cells": 100000,
+            "checksum": 4999950000,
+            "open_seconds": 0.0005442069959826767,
+            "iterate_seconds": 0.08955257600609912
+          },
+          {
+            "seconds": 0.141169248,
+            "cpu_seconds": 0.140987,
+            "peak_rss_kib": 23152,
+            "cells": 100000,
+            "checksum": 4999950000,
+            "open_seconds": 0.0004994810005882755,
+            "iterate_seconds": 0.09275549599988153
+          },
+          {
+            "seconds": 0.138542677,
+            "cpu_seconds": 0.138368,
+            "peak_rss_kib": 23344,
+            "cells": 100000,
+            "checksum": 4999950000,
+            "open_seconds": 0.0005279429969959892,
+            "iterate_seconds": 0.09217059700313257
+          }
+        ]
+      },
+      "medians": {
+        "before": {
+          "seconds": 0.173324212,
+          "cpu_seconds": 0.172997,
+          "peak_rss_kib": 27656,
+          "open_seconds": 0.0005478530001710169,
+          "iterate_seconds": 0.11613979200046742
+        },
+        "after": {
+          "seconds": 0.138542677,
+          "cpu_seconds": 0.138368,
+          "peak_rss_kib": 23280,
+          "open_seconds": 0.0005279429969959892,
+          "iterate_seconds": 0.09217059700313257
+        }
+      }
+    },
+    {
+      "rows": 100000,
+      "columns": 10,
+      "file_sha256": "413267adcea0671c78401a2893e0ee211dbd8c0c82259c4464c8305a22ae4ae4",
+      "samples": {
+        "before": [
+          {
+            "seconds": 1.308437891,
+            "cpu_seconds": 1.308013,
+            "peak_rss_kib": 97672,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.0005670120008289814,
+            "iterate_seconds": 1.2313705939959618
+          },
+          {
+            "seconds": 1.305371299,
+            "cpu_seconds": 1.303702,
+            "peak_rss_kib": 97672,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.0005558250049944036,
+            "iterate_seconds": 1.2176772549937596
+          },
+          {
+            "seconds": 1.297056436,
+            "cpu_seconds": 1.295252,
+            "peak_rss_kib": 97672,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.0005785089961136691,
+            "iterate_seconds": 1.2153856140066637
+          }
+        ],
+        "after": [
+          {
+            "seconds": 1.090951546,
+            "cpu_seconds": 1.089002,
+            "peak_rss_kib": 51696,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.000619620994257275,
+            "iterate_seconds": 1.0226087440023548
+          },
+          {
+            "seconds": 1.023904644,
+            "cpu_seconds": 1.022857,
+            "peak_rss_kib": 51632,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.0005323289951775223,
+            "iterate_seconds": 0.9638825350048137
+          },
+          {
+            "seconds": 1.014795845,
+            "cpu_seconds": 1.014312,
+            "peak_rss_kib": 51696,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.000520551999215968,
+            "iterate_seconds": 0.961305243006791
+          }
+        ]
+      },
+      "medians": {
+        "before": {
+          "seconds": 1.305371299,
+          "cpu_seconds": 1.303702,
+          "peak_rss_kib": 97672,
+          "open_seconds": 0.0005670120008289814,
+          "iterate_seconds": 1.2176772549937596
+        },
+        "after": {
+          "seconds": 1.023904644,
+          "cpu_seconds": 1.022857,
+          "peak_rss_kib": 51696,
+          "open_seconds": 0.0005323289951775223,
+          "iterate_seconds": 0.9638825350048137
+        }
+      }
+    }
+  ]
+}

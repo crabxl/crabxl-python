@@ -454,10 +454,6 @@ class Worksheet:
         return self.iter_rows(values_only=True)
 
     def append(self, iterable):
-        if self._existing:
-            raise NotImplementedError(
-                "Appending to loaded sheets requires source extent tracking"
-            )
         if isinstance(iterable, (str, bytes)):
             raise TypeError("Append requires a row iterable or column dictionary")
         if isinstance(iterable, dict):

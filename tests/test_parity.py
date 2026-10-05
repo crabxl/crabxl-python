@@ -183,6 +183,12 @@ def test_loaded_numeric_edit_and_sparse_insertion(engine, tmp_path):
     assert list(sheet.iter_rows(min_row=5, max_row=5, values_only=True)) == [
         (None, None, None, "new")
     ]
+    sheet.append({"C": "appended", "D": "=A1+B1"})
+    sheet.append([])
+    sheet.append([8, True])
+    assert sheet["C6"].value == "appended"
+    assert sheet["D6"].value == "=A1+B1"
+    assert sheet["A8"].value == 8 and sheet["B8"].value is True
     output = tmp_path / "output.xlsx"
     workbook.save(output)
     workbook.save(tmp_path / "repeat.xlsx")
@@ -190,6 +196,9 @@ def test_loaded_numeric_edit_and_sparse_insertion(engine, tmp_path):
     verified = openpyxl.load_workbook(output)
     assert verified.active["A1"].value == 5 and verified.active["D5"].value == "new"
     assert verified.active["C1"].value == "=A1+B1"
+    assert verified.active["C6"].value == "appended"
+    assert verified.active["D6"].value == "=A1+B1"
+    assert verified.active["A8"].value == 8 and verified.active["B8"].value is True
     verified.close()
 
 
