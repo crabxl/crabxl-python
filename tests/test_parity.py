@@ -227,6 +227,36 @@ def test_loaded_numeric_edit_and_sparse_insertion(engine, tmp_path):
     assert verified.active["A8"].value == 8 and verified.active["B8"].value is True
     verified.close()
 
+    # Retain one shared loaded workflow for alias coordinates, structural edits,
+    # translated formulas, later scalar edits/append, and repeat-save readback.
+    workbook = engine.load_workbook(output)
+    sheet = workbook.active
+    alias = sheet["A1"]
+    sheet.insert_rows(1, 2)
+    assert alias.coordinate == "A3" and alias.value == 5
+    sheet.delete_rows(1, 2)
+    sheet.insert_cols(1, 2)
+    assert alias.coordinate == "C1" and alias.value == 5
+    sheet.delete_cols(1, 2)
+    assert alias.coordinate == "A1" and alias.value == 5
+    sheet.move_range("C1", rows=2, cols=2, translate=True)
+    assert sheet["C1"].value is None
+    assert sheet["E3"].value == "=C3+D3"
+    sheet["D5"] = "after shift"
+    sheet.append([9])
+    assert sheet["A9"].value == 9
+    for filename in ("shifted.xlsx", "shifted-repeat.xlsx"):
+        workbook.save(tmp_path / filename)
+        verified = openpyxl.load_workbook(tmp_path / filename)
+        assert verified.active["A1"].value == 5
+        assert verified.active["E3"].value == "=C3+D3"
+        assert verified.active["D5"].value == "after shift"
+        assert verified.active["A9"].value == 9
+        assert verified["first1"]["A1"].value == "=First!A1"
+        assert verified.defined_names["Pick"].attr_text == "'First'!$A$1"
+        verified.close()
+    workbook.close()
+
 
 @pytest.mark.parametrize("loaded", [False, True])
 def test_values_iteration_observes_edits_between_rows(engine, loaded, tmp_path):
@@ -335,6 +365,12 @@ def test_loaded_style_image_comment_and_unknown_parts_are_preserved(tmp_path):
     with pytest.raises(NotImplementedError, match="Local defined-name"):
         loaded.move_sheet(loaded.active, offset=1)
     assert loaded.sheetnames == ["Renamed", "Other"]
+    cell = loaded.active["A1"]
+    with pytest.raises(NotImplementedError, match="feature graphs"):
+        loaded.active.insert_rows(1)
+    with pytest.raises(NotImplementedError, match="feature graphs"):
+        loaded.active.move_range("A1", rows=1)
+    assert cell.coordinate == "A1" and cell.value == 1
     loaded.active["A1"] = 9
     for filename in ("first.xlsx", "second.xlsx"):
         target = tmp_path / filename

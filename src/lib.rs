@@ -562,6 +562,32 @@ impl NativeSheet {
     ) -> PyResult<()> {
         let storage = Arc::clone(&self.storage);
         py.detach(move || {
+            {
+                let held = lock(&storage)?;
+                if let SheetStorage::Loaded { book, id } = &*held {
+                    let mut book = lock(book)?;
+                    let book = book.as_mut().ok_or_else(closed)?;
+                    return match (rows, insert) {
+                        (true, true) => {
+                            book.insert_rows(*id, RowIndex::new(index).map_err(failure)?, count)
+                        }
+                        (true, false) => {
+                            book.delete_rows(*id, RowIndex::new(index).map_err(failure)?, count)
+                        }
+                        (false, true) => book.insert_columns(
+                            *id,
+                            ColumnIndex::new(index).map_err(failure)?,
+                            count,
+                        ),
+                        (false, false) => book.delete_columns(
+                            *id,
+                            ColumnIndex::new(index).map_err(failure)?,
+                            count,
+                        ),
+                    }
+                    .map_err(failure);
+                }
+            }
             NativeSheet { storage }.with_mut(|sheet| {
                 match (rows, insert) {
                     (true, true) => {
@@ -597,6 +623,19 @@ impl NativeSheet {
         .map_err(failure)?;
         let storage = Arc::clone(&self.storage);
         py.detach(move || {
+            {
+                let held = lock(&storage)?;
+                if let SheetStorage::Loaded { book, id } = &*held {
+                    let mut book = lock(book)?;
+                    let book = book.as_mut().ok_or_else(closed)?;
+                    return if translate {
+                        book.move_range_translated(*id, range, rows, cols)
+                    } else {
+                        book.move_range(*id, range, rows, cols)
+                    }
+                    .map_err(failure);
+                }
+            }
             NativeSheet { storage }.with_mut(|sheet| {
                 if translate {
                     sheet.move_range_translated(range, rows, cols)
