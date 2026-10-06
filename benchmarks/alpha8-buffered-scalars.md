@@ -51,3 +51,16 @@ not arbitrary rich/Unicode XML or the real NYC fixture. Cold-process CPU time
 can exceed wall time for read-only producer/consumer overlap and is retained
 in the [ordinary](results/alpha8-direct-sst-python-normal.json) and
 [read-only](results/alpha8-direct-sst-python-stream.json) raw reports.
+
+## Writer integration
+
+The adapter now pins `b5990868623e31b8cc3e47f4ba3bf0f906e54865`, adopting
+core ADR 0079's byte-oriented XML escaping. A fresh wheel passes 547 tests,
+Ruff and Clippy. Python write-only numeric append/save compared with A7 is
+1.355817 versus 1.377241 seconds, with 20,524 versus 20,432 KiB median RSS.
+Both produce 2,942,955-byte archives and report a 32,866,902-byte spool peak;
+all values are independently verified after timing. These small differences
+do not establish a meaningful Python numeric-write improvement.
+[Raw observations](results/alpha8-byte-escape-python-writes.json) include native
+module hashes and complete cold-process conversion/save costs. The core's
+larger Unicode/text improvements remain distinct from this numeric workload.

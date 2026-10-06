@@ -17,7 +17,7 @@ deflate-zlib-rs = ["crabxl/deflate-zlib-rs"]
 deflate-zlib = ["crabxl/deflate-zlib"]
 
 [dependencies]
-crabxl = { git = "https://github.com/crabxl/crabxl.git", rev = "4f25c545684a03a879d717c27cf1bb91acd14676", default-features = false }
+crabxl = { git = "https://github.com/crabxl/crabxl.git", rev = "b5990868623e31b8cc3e47f4ba3bf0f906e54865", default-features = false }
 pyo3 = { version = "0.29.3", features = ["extension-module"] }
 tempfile = "3.27"
 
