@@ -234,10 +234,10 @@ class Worksheet:
         )
         self._existing = _existing
         self._native = (
-            None
-            if _existing
-            else _native
+            _native
             if _native is not None
+            else None
+            if _existing
             else NativeSheet(self._title, parent._max_bytes)
         )
         self._cells = WeakValueDictionary()
@@ -706,8 +706,6 @@ class Workbook:
             raise ReadOnlyWorkbookException(
                 "Cannot create new sheet in a read-only workbook"
             )
-        if self._editor is not None:
-            raise NotImplementedError("Adding existing-file sheets is not implemented")
         title = self._unique_title(title or "Sheet")
         Worksheet._validate_title(title)
         if index is not None and not isinstance(index, int):
@@ -738,6 +736,13 @@ class Workbook:
                 self, title, self._stream_writer.create_sheet(title)
             )
             self._sheets.append(sheet)
+            return sheet
+        if self._editor is not None:
+            native = self._editor.create_sheet(title)
+            if position != len(self._sheets):
+                self._editor.move_sheet(title, position)
+            sheet = Worksheet(self, title, _existing=True, _native=native)
+            self._sheets.insert(position, sheet)
             return sheet
         native = self._book.create_sheet(title)
         sheet = Worksheet(self, title, _native=native)

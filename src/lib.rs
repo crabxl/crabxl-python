@@ -1235,6 +1235,25 @@ impl NativeEditor {
             .set_sheet_visibility(name, state)
             .map_err(failure)
     }
+    fn create_sheet(&self, py: Python<'_>, name: String) -> PyResult<NativeSheet> {
+        let book = self.loaded.as_ref().ok_or_else(|| {
+            PyNotImplementedError::new_err("Sheet creation requires the canonical loaded bank")
+        })?;
+        let worker = Arc::clone(book);
+        let id = py.detach(move || {
+            lock(&worker)?
+                .as_mut()
+                .ok_or_else(closed)?
+                .create_sheet(name)
+                .map_err(failure)
+        })?;
+        Ok(NativeSheet {
+            storage: Arc::new(Mutex::new(SheetStorage::Loaded {
+                book: Arc::clone(book),
+                id,
+            })),
+        })
+    }
     fn rename_sheet(&self, py: Python<'_>, name: String, title: String) -> PyResult<()> {
         if let Some(loaded) = &self.loaded {
             let loaded = Arc::clone(loaded);

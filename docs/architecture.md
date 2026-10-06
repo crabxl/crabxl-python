@@ -63,3 +63,7 @@ SST options and Auto controls. Both ordinary and optimized readers inherit the
 same settings; no resource strategy is implemented in Python. Mode applicability,
 original component allowances are documented in ADR 0016; ordinary loaded-bank
 ownership and joint retained accounting now follow ADR 0017.
+
+Loaded `create_sheet()` registers a model in the existing source owner and keeps
+its stable handle in a Python worksheet view. New and original sheets share the
+preserving save transaction; see [ADR 0022](decisions/0022-source-backed-sheet-creation.md).
