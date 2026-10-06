@@ -115,3 +115,16 @@ explicit caller count limits remain enforced. A freshly rebuilt wheel passes
 all 547 compatibility cases, Ruff formatting/checks and strict Clippy. The
 reported NYC workbook is unavailable locally, so this is not a measured claim
 that its complete model fits a particular memory budget.
+
+Released core `f08b8e6d494e575ba39289dde4895b7a9b648242` additionally integrates
+descending block packing and capacity-aware model/growth reservations (core ADRs
+0081-0082). Partial deletion shrinks only within operation headroom; explicitly
+bounded banks retain capacity honestly when shrinking must be skipped. Native
+functional probes support one million numeric cells under 64 MiB and row insertion
+under 384 MiB. Python uses the canonical resource accounting directly.
+
+The final `0.1.0a8` wheel passes 547 compatibility cases, Ruff and strict Clippy.
+Two existing resource fixtures retain their atomic failure, retry, alias and source
+checks with capacities appropriate to the new ledger. Complete numeric/unique-text
+Python measurements, exact preview-wheel identities and remaining limits are in
+[the A8 verification report](../benchmarks/alpha8-python-acceptance.md).

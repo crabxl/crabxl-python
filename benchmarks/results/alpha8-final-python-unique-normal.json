@@ -1,0 +1,93 @@
+{
+  "semantics": "Complete load and values iteration, exact per-cell string and order assertions, length checksum. One warmup then rotating serial cold-process samples include imports, conversion and cleanup. No builds, tests or generation overlap. Calamine retains a noneditable decoded range rather than providing a bounded ZIP stream.",
+  "read_only": false,
+  "cells": 1000000,
+  "source_sha256": "3b3cbcf625c5085968c7d7837bb972227eced2cc322a96089cc2a07c285aea71",
+  "installed_packages": {
+    "before": {
+      "python": "3.12.14",
+      "crabxl": "0.1.0a7",
+      "openpyxl": "3.1.5",
+      "native_sha256": "993bd26ab84dbcdb6e08f362603e8973a402a7c9387e598770e0c88b610f862c",
+      "python_source_sha256": "1119db456549effdff888d14b36b9c62dca88a4b5ae6834f50a091e15fb72b64"
+    },
+    "after": {
+      "python": "3.12.14",
+      "crabxl": "0.1.0a7",
+      "openpyxl": "3.1.5",
+      "native_sha256": "a9eaf23e8ccbc73a7153d4282c9a4aafc4fd0ab8ff24656225975f550c508e42",
+      "python_source_sha256": "1119db456549effdff888d14b36b9c62dca88a4b5ae6834f50a091e15fb72b64"
+    }
+  },
+  "resources": "CrabXL 1 GiB model allowance and forced RAM SST with 256 MiB component budget. No read temporary files; not an RSS cap.",
+  "samples": {
+    "before": [
+      {
+        "seconds": 1.67798429,
+        "cpu_seconds": 1.677498,
+        "peak_rss_kib": 239592
+      },
+      {
+        "seconds": 1.580006202,
+        "cpu_seconds": 1.579442,
+        "peak_rss_kib": 239464
+      },
+      {
+        "seconds": 1.679177213,
+        "cpu_seconds": 1.677633,
+        "peak_rss_kib": 239592
+      }
+    ],
+    "after": [
+      {
+        "seconds": 1.061687215,
+        "cpu_seconds": 1.06138,
+        "peak_rss_kib": 239596
+      },
+      {
+        "seconds": 1.010939965,
+        "cpu_seconds": 1.010572,
+        "peak_rss_kib": 239616
+      },
+      {
+        "seconds": 1.083998005,
+        "cpu_seconds": 1.083342,
+        "peak_rss_kib": 239508
+      }
+    ],
+    "python_calamine": [
+      {
+        "seconds": 1.186817061,
+        "cpu_seconds": 1.186631,
+        "peak_rss_kib": 321540
+      },
+      {
+        "seconds": 1.164700953,
+        "cpu_seconds": 1.1635,
+        "peak_rss_kib": 321548
+      },
+      {
+        "seconds": 1.26131979,
+        "cpu_seconds": 1.261056,
+        "peak_rss_kib": 321648
+      }
+    ]
+  },
+  "medians": {
+    "before": {
+      "seconds": 1.67798429,
+      "cpu_seconds": 1.677498,
+      "peak_rss_kib": 239592
+    },
+    "after": {
+      "seconds": 1.061687215,
+      "cpu_seconds": 1.06138,
+      "peak_rss_kib": 239596
+    },
+    "python_calamine": {
+      "seconds": 1.186817061,
+      "cpu_seconds": 1.186631,
+      "peak_rss_kib": 321548
+    }
+  }
+}

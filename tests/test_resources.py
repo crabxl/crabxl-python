@@ -280,12 +280,13 @@ def test_shared_string_placement_thresholds_limits_and_cleanup(
 def test_loaded_bank_aggregate_failure_preserves_aliases_source_and_repeat_saves(
     tmp_path,
 ):
+    rows = 30_000
     source = tmp_path / "joint.xlsx"
     original = openpyxl.Workbook()
     first = original.active
     first.title = "First"
     second = original.create_sheet("Second")
-    for value in range(6000):
+    for value in range(rows):
         first.append([value])
         second.append([value])
     original.save(source)
@@ -318,7 +319,7 @@ def test_loaded_bank_aggregate_failure_preserves_aliases_source_and_repeat_saves
         checked = openpyxl.load_workbook(target, read_only=True)
         assert checked.active.title == "Second"
         assert checked["First"].sheet_state == "hidden"
-        assert checked["Second"]["A6000"].value == 5999
+        assert checked["Second"][f"A{rows}"].value == rows - 1
         checked.close()
         with pytest.raises(MemoryError):
             _ = metadata["First"]["A1"].value
@@ -363,7 +364,7 @@ def test_loaded_bank_aggregate_failure_preserves_aliases_source_and_repeat_saves
                 assert checked["First"]["A1"].value == 42
                 assert checked["First"]["A2"].value == 99
                 assert checked["Second"]["A1"].value == "queued before loading"
-                assert checked["Second"]["A6000"].value == 5999
+                assert checked["Second"][f"A{rows}"].value == rows - 1
             finally:
                 checked.close()
             assert not list(tmp_path.glob("crabxl-save-*"))
