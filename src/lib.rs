@@ -697,7 +697,13 @@ impl NativeBook {
         // Validate the ID atomically under the bank lock. Release the handle
         // lock before detaching so GIL reacquisition cannot block a remover.
         drop(storage);
-        let new = py.detach(move || lock(&bank)?.copy_sheet(id, name).map_err(failure))?;
+        let new = py.detach(move || {
+            let mut bank = lock(&bank)?;
+            let new = bank.copy_sheet(id, name).map_err(failure)?;
+            bank.set_sheet_visibility(new, SheetVisibility::Visible)
+                .map_err(failure)?;
+            Ok::<_, PyErr>(new)
+        })?;
         Ok(NativeSheet::in_bank(Arc::clone(&self.book), new))
     }
     fn move_sheet(&self, sheet: &NativeSheet, position: usize) -> PyResult<()> {
@@ -1234,6 +1240,30 @@ impl NativeEditor {
             .ok_or_else(closed)?
             .set_sheet_visibility(name, state)
             .map_err(failure)
+    }
+    fn copy_sheet(&self, py: Python<'_>, source: String, name: String) -> PyResult<NativeSheet> {
+        let book = self.loaded.as_ref().ok_or_else(|| {
+            PyNotImplementedError::new_err("Sheet copy requires the canonical loaded bank")
+        })?;
+        let worker = Arc::clone(book);
+        let id = py.detach(move || {
+            let mut handle = lock(&worker)?;
+            let loaded = handle.as_mut().ok_or_else(closed)?;
+            let source = loaded
+                .sheet_id(&source)
+                .ok_or_else(|| PyKeyError::new_err(source))?;
+            let id = loaded.copy_sheet(source, name).map_err(failure)?;
+            loaded
+                .set_sheet_visibility(id, SheetVisibility::Visible)
+                .map_err(failure)?;
+            Ok::<_, PyErr>(id)
+        })?;
+        Ok(NativeSheet {
+            storage: Arc::new(Mutex::new(SheetStorage::Loaded {
+                book: Arc::clone(book),
+                id,
+            })),
+        })
     }
     fn create_sheet(&self, py: Python<'_>, name: String) -> PyResult<NativeSheet> {
         let book = self.loaded.as_ref().ok_or_else(|| {

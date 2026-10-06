@@ -67,3 +67,7 @@ ownership and joint retained accounting now follow ADR 0017.
 Loaded `create_sheet()` registers a model in the existing source owner and keeps
 its stable handle in a Python worksheet view. New and original sheets share the
 preserving save transaction; see [ADR 0022](decisions/0022-source-backed-sheet-creation.md).
+
+Loaded `copy_worksheet()` delegates requested duplication and source-template
+preservation to core and maps compatible visible-copy behavior in the adapter;
+see [ADR 0023](decisions/0023-source-backed-worksheet-copy.md).
