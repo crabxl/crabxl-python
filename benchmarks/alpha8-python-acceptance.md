@@ -43,4 +43,9 @@ checks. Their finite fixtures now exercise real vector expansion and aggregate
 retention instead of relying on the obsolete fixed per-cell estimate. No test
 functions or timing assertions were added. Final wheel tests pass in 4.51 seconds;
 Ruff formatting/checks and strict Clippy also pass. Platform release artifacts
-and fresh public-package verification remain separate gates.
+and fresh public-package verification are complete. Release workflow
+[37411371452](https://github.com/crabxl/crabxl-python/actions/runs/37411371452)
+succeeded for all five platforms and OIDC upload at binding commit
+`1c9256563ea222341cd594b74fdadfe3cb8143ad`. PyPI contains 25 Python 3.11-3.15
+wheels and one sdist. Installing `crabxl==0.1.0a8` freshly from public PyPI on
+CPython 3.12.14 passes all 547 compatibility cases in 4.57 seconds.
