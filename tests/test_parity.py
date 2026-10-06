@@ -257,6 +257,32 @@ def test_loaded_numeric_edit_and_sparse_insertion(engine, tmp_path):
         verified.close()
     workbook.close()
 
+    # Adding sheets uses the same loaded owner and retains live worksheet views.
+    workbook = engine.load_workbook(output)
+    original_sheet = workbook.active
+    added = workbook.create_sheet("Added", index=0)
+    assert workbook.worksheets[0] is added
+    added["A1"] = "created"
+    added.append([42, "=A1"])
+    alias = added["A1"]
+    added.insert_rows(1)
+    assert alias.coordinate == "A2" and alias.value == "created"
+    added.title = 'Added<&"'
+    added.sheet_state = "hidden"
+    workbook.active = original_sheet
+    for filename in ("created.xlsx", "created-repeat.xlsx"):
+        workbook.save(tmp_path / filename)
+        verified = openpyxl.load_workbook(tmp_path / filename)
+        assert verified.sheetnames == ['Added<&"', "first1", 'Renamed<&" \u65b0']
+        assert verified['Added<&"'].sheet_state == "hidden"
+        assert verified['Added<&"']["A2"].value == "created"
+        assert verified['Added<&"']["A3"].value == 42
+        assert verified['Added<&"']["B3"].value == "=A1"
+        assert verified.active["A1"].value == 5
+        assert verified.defined_names["Pick"].attr_text == "'First'!$A$1"
+        verified.close()
+    workbook.close()
+
 
 @pytest.mark.parametrize("loaded", [False, True])
 def test_values_iteration_observes_edits_between_rows(engine, loaded, tmp_path):
