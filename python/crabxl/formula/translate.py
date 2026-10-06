@@ -1,10 +1,11 @@
-"""A1 translator compatibility entry point; tokenizer API remains staged."""
+"""A1 translator compatibility entry point backed by canonical Rust tools."""
 
 import re
 
 from .._native import formula_position
 from .._native import translate_axis as _axis
 from .._native import translate_formula as _translate
+from .tokenizer import Tokenizer
 
 
 class TranslatorError(ValueError):
@@ -21,13 +22,14 @@ class Translator:
     def __init__(self, formula, origin):
         self.formula = formula
         self.row, self.col = formula_position(origin)
+        self._tokenizer = Tokenizer(formula)
 
     @property
     def tokenizer(self):
-        raise NotImplementedError("The complete formula tokenizer is not implemented")
+        return self._tokenizer
 
     def get_tokens(self):
-        raise NotImplementedError("The complete formula tokenizer is not implemented")
+        return self.tokenizer.items
 
     @classmethod
     def _invoke(cls, function, *args):
@@ -63,8 +65,9 @@ class Translator:
         if dest is not None:
             row, col = formula_position(dest)
             row_delta, col_delta = row - self.row, col - self.col
-        if not self.formula.startswith("="):
-            return self.formula
+        formula = self.tokenizer.render()
+        if not formula.startswith("="):
+            return formula
         return self._invoke(
-            _translate, self.formula, row_delta, col_delta, self.MAX_FORMULA_BYTES
+            _translate, formula, row_delta, col_delta, self.MAX_FORMULA_BYTES
         )
