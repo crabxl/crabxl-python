@@ -1,0 +1,100 @@
+{
+  "scope": "One warmup and rotating serial write_only numeric append/save in cold processes. Imports and cleanup included; builds, tests and public readback excluded. No full feature parity claim.",
+  "rows": 100000,
+  "columns": 10,
+  "versions": {
+    "before": "0.1.0a7",
+    "after": "0.1.0a7"
+  },
+  "installed_packages": {
+    "before": {
+      "python": "3.12.14",
+      "crabxl": "0.1.0a7",
+      "openpyxl": "3.1.5",
+      "native_sha256": "993bd26ab84dbcdb6e08f362603e8973a402a7c9387e598770e0c88b610f862c",
+      "python_source_sha256": "1119db456549effdff888d14b36b9c62dca88a4b5ae6834f50a091e15fb72b64"
+    },
+    "after": {
+      "python": "3.12.14",
+      "crabxl": "0.1.0a7",
+      "openpyxl": "3.1.5",
+      "native_sha256": "c3de1cc1fe25d7fdae9cca683f4c7318249c8c997f27465652e15d0ca2f71d59",
+      "python_source_sha256": "1119db456549effdff888d14b36b9c62dca88a4b5ae6834f50a091e15fb72b64"
+    }
+  },
+  "samples": {
+    "before": [
+      {
+        "seconds": 1.377241217,
+        "cpu_seconds": 1.37702,
+        "peak_rss_kib": 20432,
+        "cells": 1000000,
+        "checksum": 499999500000,
+        "spool_peak_bytes": 32866902,
+        "output_bytes": 2942955
+      },
+      {
+        "seconds": 1.459737575,
+        "cpu_seconds": 1.458116,
+        "peak_rss_kib": 20504,
+        "cells": 1000000,
+        "checksum": 499999500000,
+        "spool_peak_bytes": 32866902,
+        "output_bytes": 2942955
+      },
+      {
+        "seconds": 1.367765125,
+        "cpu_seconds": 1.367532,
+        "peak_rss_kib": 20380,
+        "cells": 1000000,
+        "checksum": 499999500000,
+        "spool_peak_bytes": 32866902,
+        "output_bytes": 2942955
+      }
+    ],
+    "after": [
+      {
+        "seconds": 1.444150649,
+        "cpu_seconds": 1.443333,
+        "peak_rss_kib": 20524,
+        "cells": 1000000,
+        "checksum": 499999500000,
+        "spool_peak_bytes": 32866902,
+        "output_bytes": 2942955
+      },
+      {
+        "seconds": 1.355817068,
+        "cpu_seconds": 1.35562,
+        "peak_rss_kib": 20524,
+        "cells": 1000000,
+        "checksum": 499999500000,
+        "spool_peak_bytes": 32866902,
+        "output_bytes": 2942955
+      },
+      {
+        "seconds": 1.349729079,
+        "cpu_seconds": 1.34897,
+        "peak_rss_kib": 20652,
+        "cells": 1000000,
+        "checksum": 499999500000,
+        "spool_peak_bytes": 32866902,
+        "output_bytes": 2942955
+      }
+    ]
+  },
+  "all_written_values_verified": true,
+  "median": {
+    "before": {
+      "seconds": 1.377241217,
+      "peak_rss_kib": 20432,
+      "spool_peak_bytes": 32866902,
+      "output_bytes": 2942955
+    },
+    "after": {
+      "seconds": 1.355817068,
+      "peak_rss_kib": 20524,
+      "spool_peak_bytes": 32866902,
+      "output_bytes": 2942955
+    }
+  }
+}

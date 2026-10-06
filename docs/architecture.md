@@ -102,3 +102,9 @@ SST entries from bounded buffered XML (core ADR 0078), with direct canonical
 shared ownership. Fresh-wheel compatibility remains 547 passing cases. Both
 ordinary and read-only Python unique-text operations improve against A7 in
 complete conversion-inclusive measurements; the report retains their scope.
+
+Core `1bcb47ffc99a8f414f9bfdbab6bc289456956c5e` adds byte-oriented XML
+escaping (core ADR 0079) without changing the binding's value model. Fresh-wheel
+compatibility remains 547 passing cases; Python write-only regression measurements
+include conversion/save and independent full-value readback. Their small numeric
+differences are not described as a broad writer speed improvement.

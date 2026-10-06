@@ -7,6 +7,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from values_calls import identity
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -19,7 +21,7 @@ def main():
     args = parser.parse_args()
     import openpyxl
 
-    interpreters = {"alpha2": args.before_python, "alpha3": args.after_python}
+    interpreters = {"before": args.before_python, "after": args.after_python}
     report = {
         "scope": "One warmup and rotating serial write_only numeric append/save "
         "in cold processes. Imports and cleanup included; builds, tests and public "
@@ -32,6 +34,9 @@ def main():
                 text=True,
             ).strip()
             for name, executable in interpreters.items()
+        },
+        "installed_packages": {
+            name: identity(executable) for name, executable in interpreters.items()
         },
         "samples": {name: [] for name in interpreters},
     }
