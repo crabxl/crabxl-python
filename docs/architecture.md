@@ -71,3 +71,8 @@ preserving save transaction; see [ADR 0022](decisions/0022-source-backed-sheet-c
 Loaded `copy_worksheet()` delegates requested duplication and source-template
 preservation to core and maps compatible visible-copy behavior in the adapter;
 see [ADR 0023](decisions/0023-source-backed-worksheet-copy.md).
+
+Loaded removal transfers the shared worksheet handle to its detached canonical
+model after checked core disposal. Python dispatch changes only after success,
+so title reuse cannot reconnect old cell aliases; see
+[ADR 0024](decisions/0024-source-backed-worksheet-removal.md).

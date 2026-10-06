@@ -1,6 +1,6 @@
 # ADR 0023: Source-backed worksheet copy
 
-Status: implemented for the staged supported subset; removal remains pending.
+Status: implemented for the staged supported subset; removal is added in ADR 0024.
 
 `copy_worksheet()` uses the canonical loaded bank pinned at
 `f93033a7d08044567013dffa7bbe27faa2d82624`. Python retains a stable new native

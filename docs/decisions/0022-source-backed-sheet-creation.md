@@ -1,6 +1,6 @@
 # ADR 0022: Source-backed worksheet creation
 
-Status: implemented; loaded copy/removal remain pending.
+Status: implemented; loaded copy/removal are added in ADRs 0023/0024.
 
 `Workbook.create_sheet(title=None, index=None)` delegates loaded creation to the
 canonical Rust bank pinned at `e21df2058cf423ec2be8a3aefa2fc1abf4f4a130`.

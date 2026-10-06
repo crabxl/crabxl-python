@@ -299,6 +299,37 @@ def test_loaded_numeric_edit_and_sparse_insertion(engine, tmp_path):
         assert verified[copied.title].sheet_state == "hidden"
         assert verified[again.title].sheet_state == "visible"
         verified.close()
+    removed_alias = original_sheet["A1"]
+    old_title = original_sheet.title
+    workbook.remove(original_sheet)
+    assert old_title not in workbook.sheetnames
+    assert removed_alias.value == 5
+    original_sheet["A1"] = 222
+    replacement = workbook.create_sheet(old_title)
+    replacement["A1"] = 8
+    assert removed_alias.value == 222 and replacement["A1"].value == 8
+    workbook.remove(added)
+    assert added["A2"].value == "created"
+    del workbook[copied.title]
+    workbook.active = again
+    for filename in ("removed.xlsx", "removed-repeat.xlsx"):
+        workbook.save(tmp_path / filename)
+        verified = openpyxl.load_workbook(tmp_path / filename)
+        assert verified.sheetnames == ["first1", again.title, replacement.title]
+        assert verified.active["A1"].value == 101
+        assert verified[replacement.title]["A1"].value == 8
+        assert verified.defined_names["Pick"].attr_text == "'First'!$A$1"
+        verified.close()
+    for worksheet in list(workbook.worksheets):
+        workbook.remove(worksheet)
+    assert workbook.sheetnames == []
+    with pytest.raises(IndexError):
+        workbook.save(tmp_path / "empty.xlsx")
+    workbook.create_sheet("Recovered")["A1"] = 3
+    workbook.save(tmp_path / "recovered.xlsx")
+    verified = openpyxl.load_workbook(tmp_path / "recovered.xlsx")
+    assert verified.sheetnames == ["Recovered"] and verified.active["A1"].value == 3
+    verified.close()
     workbook.close()
 
 
@@ -414,6 +445,9 @@ def test_loaded_style_image_comment_and_unknown_parts_are_preserved(tmp_path):
         loaded.active.insert_rows(1)
     with pytest.raises(NotImplementedError, match="feature graphs"):
         loaded.active.move_range("A1", rows=1)
+    with pytest.raises(NotImplementedError):
+        loaded.remove(loaded.active)
+    assert loaded.sheetnames == ["Renamed", "Other"]
     assert cell.coordinate == "A1" and cell.value == 1
     loaded.active["A1"] = 9
     for filename in ("first.xlsx", "second.xlsx"):
