@@ -353,15 +353,15 @@ class Worksheet:
         self.cell(row, column).value = value
 
     def __delitem__(self, key):
-        if self._existing:
-            raise NotImplementedError(
-                "Deleting existing physical cells is not implemented"
-            )
+        self.parent._check_open()
         row, column = _address(key)
-        cell = self._cells.pop((row, column), None)
+        cell = self._cells.get((row, column))
+        if self._native is None and self._existing:
+            self._native = self.parent._editor.sheet_handle(self.title)
+        old = self._model().remove(row - 1, column - 1, cell is not None)
         if cell is not None:
-            cell._detached = cell._tagged()
-        self._model().remove(row - 1, column - 1)
+            self._cells.pop((row, column), None)
+            cell._detached = old if old is not None else ("n", None)
 
     @property
     def _current_row(self):

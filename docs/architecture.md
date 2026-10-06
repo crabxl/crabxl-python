@@ -76,3 +76,9 @@ Loaded removal transfers the shared worksheet handle to its detached canonical
 model after checked core disposal. Python dispatch changes only after success,
 so title reuse cannot reconnect old cell aliases; see
 [ADR 0024](decisions/0024-source-backed-worksheet-removal.md).
+
+Physical-cell deletion on ordinary loaded worksheets calls the canonical guarded
+Rust removal operation. Existing Python cell aliases retain the removed value,
+while subsequent coordinate access creates an independent cell view. Aliases are
+updated only after native success, so rejected affected graphs retain the original
+view and value. Missing-cell removal leaves source XML and formula caches intact.

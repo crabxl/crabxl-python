@@ -242,6 +242,14 @@ def test_loaded_numeric_edit_and_sparse_insertion(engine, tmp_path):
     sheet.move_range("C1", rows=2, cols=2, translate=True)
     assert sheet["C1"].value is None
     assert sheet["E3"].value == "=C3+D3"
+    deleted = sheet["B1"]
+    assert deleted.value == 2
+    del sheet["B1"]
+    assert deleted.value == 2
+    assert sheet["B1"].value is None and sheet["B1"] is not deleted
+    sheet["B1"] = 27
+    assert deleted.value == 2 and sheet["B1"].value == 27
+    del sheet["X100"]
     sheet["D5"] = "after shift"
     sheet.append([9])
     assert sheet["A9"].value == 9
@@ -250,6 +258,7 @@ def test_loaded_numeric_edit_and_sparse_insertion(engine, tmp_path):
         verified = openpyxl.load_workbook(tmp_path / filename)
         assert verified.active["A1"].value == 5
         assert verified.active["E3"].value == "=C3+D3"
+        assert verified.active["B1"].value == 27
         assert verified.active["D5"].value == "after shift"
         assert verified.active["A9"].value == 9
         assert verified["first1"]["A1"].value == "=First!A1"
@@ -445,6 +454,9 @@ def test_loaded_style_image_comment_and_unknown_parts_are_preserved(tmp_path):
         loaded.active.insert_rows(1)
     with pytest.raises(NotImplementedError, match="feature graphs"):
         loaded.active.move_range("A1", rows=1)
+    with pytest.raises(NotImplementedError):
+        del loaded.active["A1"]
+    assert loaded.active["A1"] is cell
     with pytest.raises(NotImplementedError):
         loaded.remove(loaded.active)
     assert loaded.sheetnames == ["Renamed", "Other"]

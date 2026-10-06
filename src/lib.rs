@@ -474,12 +474,32 @@ impl NativeSheet {
             sheet.set(cell).map_err(failure)
         })
     }
-    fn remove(&self, row: u32, column: u32) -> PyResult<()> {
+    #[pyo3(signature = (row, column, retain=false))]
+    fn remove(
+        &self,
+        py: Python<'_>,
+        row: u32,
+        column: u32,
+        retain: bool,
+    ) -> PyResult<Option<EncodedValue>> {
         let address = CellAddress::new(row, column).map_err(failure)?;
-        self.with_mut(|sheet| {
-            sheet.remove(address);
-            Ok(())
-        })
+        let storage = Arc::clone(&self.storage);
+        let removed = py.detach(move || {
+            let mut storage = lock(&storage)?;
+            let removed = match &mut *storage {
+                SheetStorage::Standalone(sheet) => sheet.edit().remove(address),
+                SheetStorage::Bank { book, id } => {
+                    lock(book)?.sheet_mut(*id).map_err(failure)?.remove(address)
+                }
+                SheetStorage::Loaded { book, id } => lock(book)?
+                    .as_mut()
+                    .ok_or_else(closed)?
+                    .remove_cell(*id, address)
+                    .map_err(failure)?,
+            };
+            Ok::<_, PyErr>(if retain { removed } else { None })
+        })?;
+        removed.map(|cell| encode(py, &cell.value)).transpose()
     }
     fn append(&self, py: Python<'_>, values: Vec<TaggedValue>) -> PyResult<u32> {
         let values = values
