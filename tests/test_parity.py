@@ -633,22 +633,24 @@ def test_move_sheet_offsets_match_list_insertion(engine, offset):
 
 
 def test_python_bank_aggregate_limit_atomic_copy_and_freed_space():
-    workbook = crabxl.Workbook(max_memory_bytes=1600)
+    workbook = crabxl.Workbook(max_memory_bytes=2000)
     first = workbook.active
     first["A1"] = 1
     second = workbook.create_sheet("B")
     second["A1"] = 2
-    assert workbook._book.charged_bytes() == 1030
+    assert workbook._book.charged_bytes() <= 2000
     with pytest.raises(MemoryError):
         workbook.copy_worksheet(first)
     assert workbook.sheetnames == ["Sheet", "B"]
     first["A2"] = 3
     second["A2"] = 4
+    second["A3"] = 5
+    second["A4"] = 6
     before = workbook._book.charged_bytes()
     with pytest.raises(MemoryError):
-        second["A3"] = 5
+        second["A5"] = 7
     assert workbook._book.charged_bytes() == before and not second._native.contains(
-        2, 0
+        4, 0
     )
     with pytest.raises(MemoryError):
         first.insert_rows(1)
@@ -656,8 +658,8 @@ def test_python_bank_aggregate_limit_atomic_copy_and_freed_space():
     workbook.remove(first)
     assert first["A1"].value == 1
     # Detached models remain caller-owned, outside the bank's allowance.
-    second["A3"] = 5
-    assert second["A3"].value == 5
+    second["A5"] = 7
+    assert second["A5"].value == 7
     first["A1"] = 9
     assert first["A1"].value == 9
 

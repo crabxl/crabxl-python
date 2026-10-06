@@ -1,0 +1,144 @@
+{
+  "semantics": "Read-only load_workbook and iter_rows(values_only=True). Same generated numeric cells, count and exact checksum. One warmup and rotating serial cold-process samples include imports and cleanup; generation/build excluded. Load/iteration boundaries are mode-specific; compare the complete operation, including deferred parsing or model materialization.",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "installed_packages": {
+    "before": {
+      "python": "3.12.14",
+      "crabxl": "0.1.0a7",
+      "openpyxl": "3.1.5",
+      "native_sha256": "993bd26ab84dbcdb6e08f362603e8973a402a7c9387e598770e0c88b610f862c",
+      "python_source_sha256": "1119db456549effdff888d14b36b9c62dca88a4b5ae6834f50a091e15fb72b64"
+    },
+    "after": {
+      "python": "3.12.14",
+      "crabxl": "0.1.0a7",
+      "openpyxl": "3.1.5",
+      "native_sha256": "a9eaf23e8ccbc73a7153d4282c9a4aafc4fd0ab8ff24656225975f550c508e42",
+      "python_source_sha256": "1119db456549effdff888d14b36b9c62dca88a4b5ae6834f50a091e15fb72b64"
+    }
+  },
+  "reference_version": "3.1.5",
+  "model_allowance_bytes": 1073741824,
+  "read_temporary_bytes": 0,
+  "cases": [
+    {
+      "rows": 100000,
+      "columns": 10,
+      "file_sha256": "fddd22819fd5cd125e33bc89e05a75b8802bdcdf4ebe4fd1a2d33c935fb56113",
+      "samples": {
+        "before": [
+          {
+            "seconds": 0.652869878,
+            "cpu_seconds": 0.777251,
+            "peak_rss_kib": 20208,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.000900000988622196,
+            "iterate_seconds": 0.6024981000082335
+          },
+          {
+            "seconds": 0.712903305,
+            "cpu_seconds": 0.836869,
+            "peak_rss_kib": 20276,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.0009027259948197752,
+            "iterate_seconds": 0.6636501870088978
+          },
+          {
+            "seconds": 0.603875481,
+            "cpu_seconds": 0.684165,
+            "peak_rss_kib": 20336,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.0009218750055879354,
+            "iterate_seconds": 0.5554929960053414
+          }
+        ],
+        "after": [
+          {
+            "seconds": 0.31311818,
+            "cpu_seconds": 0.424498,
+            "peak_rss_kib": 20224,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.0009456599946133792,
+            "iterate_seconds": 0.2631439990072977
+          },
+          {
+            "seconds": 0.305090473,
+            "cpu_seconds": 0.421561,
+            "peak_rss_kib": 20608,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.0008724900108063594,
+            "iterate_seconds": 0.25712632900103927
+          },
+          {
+            "seconds": 0.287646689,
+            "cpu_seconds": 0.379825,
+            "peak_rss_kib": 20484,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.0009881040023174137,
+            "iterate_seconds": 0.2393463499902282
+          }
+        ],
+        "python_calamine": [
+          {
+            "seconds": 0.520931836,
+            "cpu_seconds": 0.519976,
+            "peak_rss_kib": 87460,
+            "cells": 1000000,
+            "checksum": 499999500000.0,
+            "open_seconds": 0.44996413300395943,
+            "iterate_seconds": 0.028062494995538145
+          },
+          {
+            "seconds": 0.511340472,
+            "cpu_seconds": 0.510653,
+            "peak_rss_kib": 87620,
+            "cells": 1000000,
+            "checksum": 499999500000.0,
+            "open_seconds": 0.44478939099644776,
+            "iterate_seconds": 0.026158615000895225
+          },
+          {
+            "seconds": 0.508409554,
+            "cpu_seconds": 0.508323,
+            "peak_rss_kib": 87596,
+            "cells": 1000000,
+            "checksum": 499999500000.0,
+            "open_seconds": 0.44361435499740764,
+            "iterate_seconds": 0.02578704699408263
+          }
+        ]
+      },
+      "medians": {
+        "before": {
+          "seconds": 0.652869878,
+          "cpu_seconds": 0.777251,
+          "peak_rss_kib": 20276,
+          "open_seconds": 0.0009027259948197752,
+          "iterate_seconds": 0.6024981000082335
+        },
+        "after": {
+          "seconds": 0.305090473,
+          "cpu_seconds": 0.421561,
+          "peak_rss_kib": 20484,
+          "open_seconds": 0.0009456599946133792,
+          "iterate_seconds": 0.25712632900103927
+        },
+        "python_calamine": {
+          "seconds": 0.511340472,
+          "cpu_seconds": 0.510653,
+          "peak_rss_kib": 87596,
+          "open_seconds": 0.44478939099644776,
+          "iterate_seconds": 0.026158615000895225
+        }
+      }
+    }
+  ],
+  "python_calamine_version": "0.8.2",
+  "calamine_semantics": "Retain the first decoded noneditable sheet range, then consume iter_rows. Generated numeric values are returned as floats; verified count and sum are exact at these scales. This is not a bounded ZIP row stream. Both package implementations remain installed references, not adapters."
+}
