@@ -778,10 +778,6 @@ class Workbook:
     def copy_worksheet(self, from_worksheet):
         if self.read_only or self.write_only:
             raise ValueError("Cannot copy worksheets in read-only or write-only mode")
-        if self._editor is not None:
-            raise NotImplementedError(
-                "Copying existing-file feature graphs is not implemented"
-            )
         if (
             not isinstance(from_worksheet, Worksheet)
             or from_worksheet.parent is not self
@@ -790,6 +786,11 @@ class Workbook:
         self.index(from_worksheet)
         title = self._unique_title(from_worksheet.title + " Copy")
         Worksheet._validate_title(title)
+        if self._editor is not None:
+            native = self._editor.copy_sheet(from_worksheet.title, title)
+            copied = Worksheet(self, title, _existing=True, _native=native)
+            self._sheets.append(copied)
+            return copied
         native = self._book.copy_sheet(from_worksheet._native, title)
         copied = Worksheet(self, title, _native=native)
         self._sheets.append(copied)

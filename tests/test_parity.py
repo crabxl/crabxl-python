@@ -281,6 +281,24 @@ def test_loaded_numeric_edit_and_sparse_insertion(engine, tmp_path):
         assert verified.active["A1"].value == 5
         assert verified.defined_names["Pick"].attr_text == "'First'!$A$1"
         verified.close()
+    copied = workbook.copy_worksheet(original_sheet)
+    assert copied["A1"].value == 5 and copied["D5"].value == "new"
+    copied["A1"] = 101
+    assert original_sheet["A1"].value == 5
+    copied.sheet_state = "hidden"
+    again = workbook.copy_worksheet(copied)
+    assert again.sheet_state == "visible" and again["A1"].value == 101
+    workbook.active = again
+    for filename in ("copied.xlsx", "copied-repeat.xlsx"):
+        workbook.save(tmp_path / filename)
+        verified = openpyxl.load_workbook(tmp_path / filename)
+        assert verified[copied.title]["A1"].value == 101
+        assert verified[original_sheet.title]["A1"].value == 5
+        assert verified.active.title == again.title
+        assert verified.active["A1"].value == 101
+        assert verified[copied.title].sheet_state == "hidden"
+        assert verified[again.title].sheet_state == "visible"
+        verified.close()
     workbook.close()
 
 

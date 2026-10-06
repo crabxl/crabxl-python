@@ -95,3 +95,7 @@ snapshot without a save route. This checkpoint does not complete A7 M4.
 Loaded worksheet creation, including insertion position and subsequent edits,
 now shares the canonical bank (ADR 0022). Loaded worksheet copy/removal and the
 remaining A7 release gates stay open.
+
+Supported loaded worksheet copies, including copies of copies, now use the
+canonical bank (ADR 0023). Affected unsupported graphs reject explicitly;
+loaded removal and the staged A7 acceptance gates remain open.
