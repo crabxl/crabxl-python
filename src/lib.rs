@@ -17,7 +17,7 @@ use pyo3::{
         PyValueError,
     },
     prelude::*,
-    types::PyDict,
+    types::{PyDict, PyList},
 };
 use std::{
     fs::File,
@@ -1427,6 +1427,28 @@ impl NativeEditor {
     }
 }
 #[pyfunction]
+fn tokenize_formula<'py>(
+    py: Python<'py>,
+    expression: &str,
+    max_bytes: usize,
+) -> PyResult<Bound<'py, PyList>> {
+    let tokens = crabxl::tokenize_formula(expression, max_bytes).map_err(failure)?;
+    PyList::new(
+        py,
+        tokens.iter().map(|token| {
+            (
+                token.value.as_ref(),
+                token.kind.as_str(),
+                token.subtype.as_str(),
+            )
+        }),
+    )
+}
+#[pyfunction]
+fn classify_formula_operand(value: &str) -> &'static str {
+    crabxl::classify_formula_operand(value).as_str()
+}
+#[pyfunction]
 fn translate_formula(
     expression: &str,
     rows: i64,
@@ -1561,6 +1583,8 @@ fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(resolve_model_budget, module)?)?;
     module.add_function(wrap_pyfunction!(cell_address, module)?)?;
     module.add_function(wrap_pyfunction!(translate_formula, module)?)?;
+    module.add_function(wrap_pyfunction!(tokenize_formula, module)?)?;
+    module.add_function(wrap_pyfunction!(classify_formula_operand, module)?)?;
     module.add_function(wrap_pyfunction!(formula_position, module)?)?;
     module.add_function(wrap_pyfunction!(translate_axis, module)?)?;
     module.add_function(wrap_pyfunction!(column_index, module)?)?;

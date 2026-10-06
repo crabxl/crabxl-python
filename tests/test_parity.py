@@ -551,6 +551,77 @@ def test_formula_translation_context(engine, source, expected):
 
 
 def test_formula_move_translation_and_failure_atomicity(engine):
+    from importlib import import_module
+
+    module = import_module(engine.__name__ + ".formula.tokenizer")
+    translator = import_module(engine.__name__ + ".formula.translate").Translator
+    cases = [
+        (
+            '=IF(A1>=2,"a""b",#N/A)',
+            [
+                ("IF(", "FUNC", "OPEN"),
+                ("A1", "OPERAND", "RANGE"),
+                (">=", "OPERATOR-INFIX", ""),
+                ("2", "OPERAND", "NUMBER"),
+                (",", "SEP", "ARG"),
+                ('"a""b"', "OPERAND", "TEXT"),
+                (",", "SEP", "ARG"),
+                ("#N/A", "OPERAND", "ERROR"),
+                (")", "FUNC", "CLOSE"),
+            ],
+        ),
+        (
+            "=-1.2E-3%+TRUE",
+            [
+                ("-", "OPERATOR-PREFIX", ""),
+                ("1.2E-3", "OPERAND", "NUMBER"),
+                ("%", "OPERATOR-POSTFIX", ""),
+                ("+", "OPERATOR-INFIX", ""),
+                ("TRUE", "OPERAND", "LOGICAL"),
+            ],
+        ),
+        ("=A1\nB1", [("\n", "WHITE-SPACE", ""), ("A1B1", "OPERAND", "RANGE")]),
+        (
+            "={1,2;3,4}",
+            [
+                ("{", "ARRAY", "OPEN"),
+                ("1", "OPERAND", "NUMBER"),
+                (",", "SEP", "ARG"),
+                ("2", "OPERAND", "NUMBER"),
+                (";", "SEP", "ROW"),
+                ("3", "OPERAND", "NUMBER"),
+                (",", "SEP", "ARG"),
+                ("4", "OPERAND", "NUMBER"),
+                ("}", "ARRAY", "CLOSE"),
+            ],
+        ),
+    ]
+    for source, expected in cases:
+        parsed = module.Tokenizer(source)
+        assert [(t.value, t.type, t.subtype) for t in parsed.items] == expected
+        assert parsed.render() == "=" + "".join(t[0] for t in expected)
+    live = translator("=A1+2", "A1")
+    assert live.get_tokens() is live.tokenizer.items
+    live.get_tokens()[0].value = "B2"
+    assert live.translate_formula("B2") == "=C3+2"
+    for value, subtype in [
+        ("1", "NUMBER"),
+        ("NaN", "NUMBER"),
+        ("true", "RANGE"),
+        ("TRUE", "LOGICAL"),
+        ('"text"', "TEXT"),
+        ("#N/A", "ERROR"),
+    ]:
+        token = module.Token.make_operand(value)
+        assert (token.value, token.type, token.subtype) == (value, "OPERAND", subtype)
+    for value, kind in [("(", "PAREN"), ("SUM(", "FUNC"), ("{", "ARRAY")]:
+        token = module.Token.make_subexp(value)
+        assert (token.type, token.subtype) == (kind, "OPEN")
+        closer = token.get_closer()
+        assert (closer.type, closer.subtype) == (kind, "CLOSE")
+    for source in ['="text', "='Sheet!A1", "=Table[A1", "=#SPILL!", "=A1#"]:
+        with pytest.raises(module.TokenizerError):
+            module.Tokenizer(source)
     workbook = engine.Workbook()
     sheet = workbook.active
     sheet["B2"] = "=C3+$D$4"

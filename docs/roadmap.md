@@ -101,3 +101,9 @@ A7 staged M4 evidence is consolidated in the canonical core's
 `docs/validation/alpha7-m4-stage-acceptance.md`. The adapter pins its exact A7
 release revision and passes a fresh CPython 3.12 release-wheel run (547 tests),
 Ruff format/check and strict native Clippy. A7 public multi-platform publication is verified in the core audit; the deferred M5/M6 graph interactions still keep full M4 open.
+
+The selected M5 formula-token checkpoint now exposes Rust-backed Token/Tokenizer
+objects and live translator token mutation. Existing shared assertions cover
+selected lexical factories/rendering and malformed cases; complete tokenizer edge
+auditing and all other assigned M5 features remain open. See
+[the measured token-tool decision](decisions/0025-borrowed-formula-tokens.md).

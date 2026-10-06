@@ -1,0 +1,129 @@
+{
+  "python": "3.12.14 (main, Sep 24 2026, 17:57:43) [Clang 22.1.3 ]",
+  "source_sha256": "2769df361de122c8761d7932ba00c95033872d0c84e7c383c5ab5793475685bf",
+  "formulas": [
+    "=IF(A1>=2,\"a\"\"b\",#N/A)",
+    "=-1.2E-3%+TRUE",
+    "={1,2;3,4}",
+    "='it''s a sheet'!A1+T[[#Headers],[B]]",
+    "=SUM((A1:B2 C1:D3))",
+    "=A1\nB1",
+    "=1:2+A:B+$1:$2+$A:$B",
+    "=LOG10(A1)+SUM(A1:B2:C3)"
+  ],
+  "samples": [
+    {
+      "engine": "openpyxl",
+      "seconds": 3.368322171008913,
+      "peak_rss_kib": 31308,
+      "calls": 200000,
+      "tokens": 1225000,
+      "checksum": 1244300000,
+      "native_sha256": null
+    },
+    {
+      "engine": "crabxl",
+      "seconds": 1.4300556579983095,
+      "peak_rss_kib": 18316,
+      "calls": 200000,
+      "tokens": 1225000,
+      "checksum": 1244300000,
+      "native_sha256": "b2b1af827d2519ae28fc2ac956cdfe469224e3dd323d2e68b559289f495e75f3"
+    },
+    {
+      "engine": "crabxl",
+      "seconds": 1.4982996210019337,
+      "peak_rss_kib": 18316,
+      "calls": 200000,
+      "tokens": 1225000,
+      "checksum": 1244300000,
+      "native_sha256": "b2b1af827d2519ae28fc2ac956cdfe469224e3dd323d2e68b559289f495e75f3"
+    },
+    {
+      "engine": "openpyxl",
+      "seconds": 3.1796794599940768,
+      "peak_rss_kib": 31176,
+      "calls": 200000,
+      "tokens": 1225000,
+      "checksum": 1244300000,
+      "native_sha256": null
+    },
+    {
+      "engine": "openpyxl",
+      "seconds": 3.2391210770001635,
+      "peak_rss_kib": 31216,
+      "calls": 200000,
+      "tokens": 1225000,
+      "checksum": 1244300000,
+      "native_sha256": null
+    },
+    {
+      "engine": "crabxl",
+      "seconds": 1.4989886270050192,
+      "peak_rss_kib": 18444,
+      "calls": 200000,
+      "tokens": 1225000,
+      "checksum": 1244300000,
+      "native_sha256": "b2b1af827d2519ae28fc2ac956cdfe469224e3dd323d2e68b559289f495e75f3"
+    },
+    {
+      "engine": "crabxl",
+      "seconds": 1.5648655879922444,
+      "peak_rss_kib": 18444,
+      "calls": 200000,
+      "tokens": 1225000,
+      "checksum": 1244300000,
+      "native_sha256": "b2b1af827d2519ae28fc2ac956cdfe469224e3dd323d2e68b559289f495e75f3"
+    },
+    {
+      "engine": "openpyxl",
+      "seconds": 3.3980741609993856,
+      "peak_rss_kib": 31164,
+      "calls": 200000,
+      "tokens": 1225000,
+      "checksum": 1244300000,
+      "native_sha256": null
+    },
+    {
+      "engine": "openpyxl",
+      "seconds": 3.1530962999968324,
+      "peak_rss_kib": 31308,
+      "calls": 200000,
+      "tokens": 1225000,
+      "checksum": 1244300000,
+      "native_sha256": null
+    },
+    {
+      "engine": "crabxl",
+      "seconds": 1.420769439995638,
+      "peak_rss_kib": 18316,
+      "calls": 200000,
+      "tokens": 1225000,
+      "checksum": 1244300000,
+      "native_sha256": "b2b1af827d2519ae28fc2ac956cdfe469224e3dd323d2e68b559289f495e75f3"
+    }
+  ],
+  "summary": {
+    "openpyxl": {
+      "median_seconds": 3.2391210770001635,
+      "median_peak_rss_kib": 31216
+    },
+    "crabxl": {
+      "median_seconds": 1.4982996210019337,
+      "median_peak_rss_kib": 18316
+    }
+  },
+  "boundary": "Warm imports precede timing; tokenization, Python objects, complete iteration, rendering and token spelling/category checksum are timed. Separate serial processes; no worksheet processing or temp files.",
+  "identity": {
+    "core_revision": "263c45b5cc6fdfe7339eabfb7dc2520c1a48f2d0",
+    "binding_parent": "fe3c4d6",
+    "binding_status": "unreleased working tree tokenizer checkpoint; wheel still labeled 0.1.0a8",
+    "openpyxl": "3.1.5",
+    "native_sha256": "b2b1af827d2519ae28fc2ac956cdfe469224e3dd323d2e68b559289f495e75f3",
+    "source_sha256": {
+      "src/lib.rs": "d3961e842c1e1e8926607dd276b272946b558add1a8bb132d8a49d8ed6ea3a7e",
+      "python/crabxl/formula/tokenizer.py": "7dab3eb8784511560c99d13878556d6c0a939f2632ab815a7d101ad316df1424",
+      "python/crabxl/formula/translate.py": "f512b2e03148402f396c855818a99b7fff1d685460bb304f7bb6e1ddb340cc29"
+    }
+  }
+}

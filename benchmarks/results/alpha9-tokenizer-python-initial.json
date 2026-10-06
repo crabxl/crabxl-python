@@ -1,0 +1,117 @@
+{
+  "python": "3.12.14 (main, Sep 24 2026, 17:57:43) [Clang 22.1.3 ]",
+  "source_sha256": "2769df361de122c8761d7932ba00c95033872d0c84e7c383c5ab5793475685bf",
+  "formulas": [
+    "=IF(A1>=2,\"a\"\"b\",#N/A)",
+    "=-1.2E-3%+TRUE",
+    "={1,2;3,4}",
+    "='it''s a sheet'!A1+T[[#Headers],[B]]",
+    "=SUM((A1:B2 C1:D3))",
+    "=A1\nB1",
+    "=1:2+A:B+$1:$2+$A:$B",
+    "=LOG10(A1)+SUM(A1:B2:C3)"
+  ],
+  "samples": [
+    {
+      "engine": "openpyxl",
+      "seconds": 0.3341475100023672,
+      "peak_rss_kib": 31204,
+      "calls": 20000,
+      "tokens": 122500,
+      "checksum": 124430000,
+      "native_sha256": null
+    },
+    {
+      "engine": "crabxl",
+      "seconds": 0.1485232539998833,
+      "peak_rss_kib": 18424,
+      "calls": 20000,
+      "tokens": 122500,
+      "checksum": 124430000,
+      "native_sha256": "b2b1af827d2519ae28fc2ac956cdfe469224e3dd323d2e68b559289f495e75f3"
+    },
+    {
+      "engine": "crabxl",
+      "seconds": 0.143221068996354,
+      "peak_rss_kib": 18444,
+      "calls": 20000,
+      "tokens": 122500,
+      "checksum": 124430000,
+      "native_sha256": "b2b1af827d2519ae28fc2ac956cdfe469224e3dd323d2e68b559289f495e75f3"
+    },
+    {
+      "engine": "openpyxl",
+      "seconds": 0.3130561770085478,
+      "peak_rss_kib": 31244,
+      "calls": 20000,
+      "tokens": 122500,
+      "checksum": 124430000,
+      "native_sha256": null
+    },
+    {
+      "engine": "openpyxl",
+      "seconds": 0.310949132006499,
+      "peak_rss_kib": 31348,
+      "calls": 20000,
+      "tokens": 122500,
+      "checksum": 124430000,
+      "native_sha256": null
+    },
+    {
+      "engine": "crabxl",
+      "seconds": 0.13810030699823983,
+      "peak_rss_kib": 18316,
+      "calls": 20000,
+      "tokens": 122500,
+      "checksum": 124430000,
+      "native_sha256": "b2b1af827d2519ae28fc2ac956cdfe469224e3dd323d2e68b559289f495e75f3"
+    },
+    {
+      "engine": "crabxl",
+      "seconds": 0.13931067500379868,
+      "peak_rss_kib": 18444,
+      "calls": 20000,
+      "tokens": 122500,
+      "checksum": 124430000,
+      "native_sha256": "b2b1af827d2519ae28fc2ac956cdfe469224e3dd323d2e68b559289f495e75f3"
+    },
+    {
+      "engine": "openpyxl",
+      "seconds": 0.46873982799297664,
+      "peak_rss_kib": 31336,
+      "calls": 20000,
+      "tokens": 122500,
+      "checksum": 124430000,
+      "native_sha256": null
+    },
+    {
+      "engine": "openpyxl",
+      "seconds": 0.33828916000493336,
+      "peak_rss_kib": 31248,
+      "calls": 20000,
+      "tokens": 122500,
+      "checksum": 124430000,
+      "native_sha256": null
+    },
+    {
+      "engine": "crabxl",
+      "seconds": 0.14247827300278004,
+      "peak_rss_kib": 18428,
+      "calls": 20000,
+      "tokens": 122500,
+      "checksum": 124430000,
+      "native_sha256": "b2b1af827d2519ae28fc2ac956cdfe469224e3dd323d2e68b559289f495e75f3"
+    }
+  ],
+  "summary": {
+    "openpyxl": {
+      "median_seconds": 0.3341475100023672,
+      "median_peak_rss_kib": 31248
+    },
+    "crabxl": {
+      "median_seconds": 0.14247827300278004,
+      "median_peak_rss_kib": 18428
+    }
+  },
+  "boundary": "Warm imports precede timing; tokenization, Python objects, complete iteration, rendering and token spelling/category checksum are timed. Separate serial processes; no worksheet processing or temp files."
+}
