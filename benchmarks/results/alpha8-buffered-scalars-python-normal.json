@@ -1,0 +1,261 @@
+{
+  "semantics": "Ordinary editable load_workbook and iter_rows(values_only=True). Same generated numeric cells, count and exact checksum. One warmup and rotating serial cold-process samples include imports and cleanup; generation/build excluded. Load/iteration boundaries are mode-specific; compare the complete operation, including deferred parsing or model materialization.",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "installed_packages": {
+    "before": {
+      "python": "3.12.14",
+      "crabxl": "0.1.0a7",
+      "openpyxl": "3.1.5",
+      "native_sha256": "993bd26ab84dbcdb6e08f362603e8973a402a7c9387e598770e0c88b610f862c",
+      "python_source_sha256": "1119db456549effdff888d14b36b9c62dca88a4b5ae6834f50a091e15fb72b64"
+    },
+    "after": {
+      "python": "3.12.14",
+      "crabxl": "0.1.0a7",
+      "openpyxl": "3.1.5",
+      "native_sha256": "72b74d4ba2b4d850242e7d5ce549fb1dd01e3b9f432d91952eb63444814c5c37",
+      "python_source_sha256": "1119db456549effdff888d14b36b9c62dca88a4b5ae6834f50a091e15fb72b64"
+    }
+  },
+  "reference_version": "3.1.5",
+  "model_allowance_bytes": 1073741824,
+  "read_temporary_bytes": 0,
+  "cases": [
+    {
+      "rows": 10000,
+      "columns": 10,
+      "file_sha256": "a0984f9fa6490ab1919d590d453dd0af64b731410872a506bdb62cd368b4570d",
+      "samples": {
+        "before": [
+          {
+            "seconds": 0.130151514,
+            "cpu_seconds": 0.129886,
+            "peak_rss_kib": 23544,
+            "cells": 100000,
+            "checksum": 4999950000,
+            "open_seconds": 0.05949865099682938,
+            "iterate_seconds": 0.008125927997753024
+          },
+          {
+            "seconds": 0.11077646,
+            "cpu_seconds": 0.110631,
+            "peak_rss_kib": 23480,
+            "cells": 100000,
+            "checksum": 4999950000,
+            "open_seconds": 0.05832864400872495,
+            "iterate_seconds": 0.007933388988021761
+          },
+          {
+            "seconds": 0.119032444,
+            "cpu_seconds": 0.118873,
+            "peak_rss_kib": 23416,
+            "cells": 100000,
+            "checksum": 4999950000,
+            "open_seconds": 0.0629045980022056,
+            "iterate_seconds": 0.008202743993024342
+          }
+        ],
+        "after": [
+          {
+            "seconds": 0.081612324,
+            "cpu_seconds": 0.081382,
+            "peak_rss_kib": 23756,
+            "cells": 100000,
+            "checksum": 4999950000,
+            "open_seconds": 0.02522126300027594,
+            "iterate_seconds": 0.00894087199412752
+          },
+          {
+            "seconds": 0.083952715,
+            "cpu_seconds": 0.083663,
+            "peak_rss_kib": 23628,
+            "cells": 100000,
+            "checksum": 4999950000,
+            "open_seconds": 0.026882869002292864,
+            "iterate_seconds": 0.008683264997671358
+          },
+          {
+            "seconds": 0.084059261,
+            "cpu_seconds": 0.083847,
+            "peak_rss_kib": 23756,
+            "cells": 100000,
+            "checksum": 4999950000,
+            "open_seconds": 0.026127543998882174,
+            "iterate_seconds": 0.008926912007154897
+          }
+        ],
+        "python_calamine": [
+          {
+            "seconds": 0.095422428,
+            "cpu_seconds": 0.095267,
+            "peak_rss_kib": 24440,
+            "cells": 100000,
+            "checksum": 4999950000.0,
+            "open_seconds": 0.053261130989994854,
+            "iterate_seconds": 0.0026412580045871437
+          },
+          {
+            "seconds": 0.081416015,
+            "cpu_seconds": 0.081247,
+            "peak_rss_kib": 24504,
+            "cells": 100000,
+            "checksum": 4999950000.0,
+            "open_seconds": 0.04484001701348461,
+            "iterate_seconds": 0.0027371019968995824
+          },
+          {
+            "seconds": 0.086470984,
+            "cpu_seconds": 0.086308,
+            "peak_rss_kib": 24372,
+            "cells": 100000,
+            "checksum": 4999950000.0,
+            "open_seconds": 0.04636072299035732,
+            "iterate_seconds": 0.002983441998367198
+          }
+        ]
+      },
+      "medians": {
+        "before": {
+          "seconds": 0.119032444,
+          "cpu_seconds": 0.118873,
+          "peak_rss_kib": 23480,
+          "open_seconds": 0.05949865099682938,
+          "iterate_seconds": 0.008125927997753024
+        },
+        "after": {
+          "seconds": 0.083952715,
+          "cpu_seconds": 0.083663,
+          "peak_rss_kib": 23756,
+          "open_seconds": 0.026127543998882174,
+          "iterate_seconds": 0.008926912007154897
+        },
+        "python_calamine": {
+          "seconds": 0.086470984,
+          "cpu_seconds": 0.086308,
+          "peak_rss_kib": 24440,
+          "open_seconds": 0.04636072299035732,
+          "iterate_seconds": 0.0027371019968995824
+        }
+      }
+    },
+    {
+      "rows": 100000,
+      "columns": 10,
+      "file_sha256": "f28a7042729048ab38cb613421ccf9549140b705a6d23df8a769d00113357afb",
+      "samples": {
+        "before": [
+          {
+            "seconds": 0.744996679,
+            "cpu_seconds": 0.74431,
+            "peak_rss_kib": 52152,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.6045776890096022,
+            "iterate_seconds": 0.08725303399842232
+          },
+          {
+            "seconds": 0.740572025,
+            "cpu_seconds": 0.739975,
+            "peak_rss_kib": 52208,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.5958658989984542,
+            "iterate_seconds": 0.08902556799876038
+          },
+          {
+            "seconds": 0.731375594,
+            "cpu_seconds": 0.731124,
+            "peak_rss_kib": 52152,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.5919576190062799,
+            "iterate_seconds": 0.0873404759913683
+          }
+        ],
+        "after": [
+          {
+            "seconds": 0.404172506,
+            "cpu_seconds": 0.403967,
+            "peak_rss_kib": 52236,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.2518300759984413,
+            "iterate_seconds": 0.10066473600454628
+          },
+          {
+            "seconds": 0.4170569,
+            "cpu_seconds": 0.416861,
+            "peak_rss_kib": 52108,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.25547227200877387,
+            "iterate_seconds": 0.10273831899394281
+          },
+          {
+            "seconds": 0.403643525,
+            "cpu_seconds": 0.403487,
+            "peak_rss_kib": 52236,
+            "cells": 1000000,
+            "checksum": 499999500000,
+            "open_seconds": 0.24968994199298322,
+            "iterate_seconds": 0.10091706900857389
+          }
+        ],
+        "python_calamine": [
+          {
+            "seconds": 0.526771107,
+            "cpu_seconds": 0.526223,
+            "peak_rss_kib": 87596,
+            "cells": 1000000,
+            "checksum": 499999500000.0,
+            "open_seconds": 0.4594610259955516,
+            "iterate_seconds": 0.026713996005128138
+          },
+          {
+            "seconds": 0.552669052,
+            "cpu_seconds": 0.552466,
+            "peak_rss_kib": 87736,
+            "cells": 1000000,
+            "checksum": 499999500000.0,
+            "open_seconds": 0.47920395800611004,
+            "iterate_seconds": 0.027744214996346273
+          },
+          {
+            "seconds": 0.525630492,
+            "cpu_seconds": 0.525328,
+            "peak_rss_kib": 87716,
+            "cells": 1000000,
+            "checksum": 499999500000.0,
+            "open_seconds": 0.46109162300126627,
+            "iterate_seconds": 0.026350727988756262
+          }
+        ]
+      },
+      "medians": {
+        "before": {
+          "seconds": 0.740572025,
+          "cpu_seconds": 0.739975,
+          "peak_rss_kib": 52152,
+          "open_seconds": 0.5958658989984542,
+          "iterate_seconds": 0.0873404759913683
+        },
+        "after": {
+          "seconds": 0.404172506,
+          "cpu_seconds": 0.403967,
+          "peak_rss_kib": 52236,
+          "open_seconds": 0.2518300759984413,
+          "iterate_seconds": 0.10091706900857389
+        },
+        "python_calamine": {
+          "seconds": 0.526771107,
+          "cpu_seconds": 0.526223,
+          "peak_rss_kib": 87716,
+          "open_seconds": 0.46109162300126627,
+          "iterate_seconds": 0.026713996005128138
+        }
+      }
+    }
+  ],
+  "python_calamine_version": "0.8.2",
+  "calamine_semantics": "Retain the first decoded noneditable sheet range, then consume iter_rows. Generated numeric values are returned as floats; verified count and sum are exact at these scales. This is not a bounded ZIP row stream. Both package implementations remain installed references, not adapters."
+}

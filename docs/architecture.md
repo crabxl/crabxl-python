@@ -89,3 +89,10 @@ writeback, active cache and shared-memory pages do not. The adapter adds no
 separate detector. Explicit budgets and caller-supplied Auto availability keep
 their existing behavior. A fresh wheel pinned to core
 `f0c8fdba794f059c376ab26c311fffc9f102c09e` passes all 547 compatibility cases.
+
+The adapter now pins core `30ea8c47e61eaad724839aece8a2ff4d6de8d778` for
+bounded buffered scalar decoding (core ADR 0077). Python uses the same native
+stream and loaded model; no separate scalar parser or compatibility fallback is
+added. All 547 compatibility cases and Ruff/Clippy pass with a freshly rebuilt
+wheel. Complete Python-operation measurements and remaining performance gaps
+are recorded in [the A8 report](../benchmarks/alpha8-buffered-scalars.md).
