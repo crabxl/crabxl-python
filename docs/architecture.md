@@ -108,3 +108,10 @@ escaping (core ADR 0079) without changing the binding's value model. Fresh-wheel
 compatibility remains 547 passing cases; Python write-only regression measurements
 include conversion/save and independent full-value readback. Their small numeric
 differences are not described as a broad writer speed improvement.
+
+Core `24e2ec4e1b467cec03518eef803d5907f44495a6` removes arbitrary default
+model cardinality caps (core ADR 0080). Coordinate bounds, byte budgets and
+explicit caller count limits remain enforced. A freshly rebuilt wheel passes
+all 547 compatibility cases, Ruff formatting/checks and strict Clippy. The
+reported NYC workbook is unavailable locally, so this is not a measured claim
+that its complete model fits a particular memory budget.
