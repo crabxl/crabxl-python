@@ -100,5 +100,4 @@ compatibility/resource/platform acceptance and publication remain open.
 A7 staged M4 evidence is consolidated in the canonical core's
 `docs/validation/alpha7-m4-stage-acceptance.md`. The adapter pins its exact A7
 release revision and passes a fresh CPython 3.12 release-wheel run (547 tests),
-Ruff format/check and strict native Clippy. Public multi-platform publication
-remains pending; the deferred M5/M6 graph interactions still keep full M4 open.
+Ruff format/check and strict native Clippy. A7 public multi-platform publication is verified in the core audit; the deferred M5/M6 graph interactions still keep full M4 open.

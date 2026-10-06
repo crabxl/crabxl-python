@@ -82,3 +82,10 @@ Rust removal operation. Existing Python cell aliases retain the removed value,
 while subsequent coordinate access creates an independent cell view. Aliases are
 updated only after native success, so rejected affected graphs retain the original
 view and value. Missing-cell removal leaves source XML and formula caches intact.
+
+Linux Auto availability now follows canonical core ADR 0076: clean inactive
+cgroup file cache contributes to estimated available capacity, while dirty,
+writeback, active cache and shared-memory pages do not. The adapter adds no
+separate detector. Explicit budgets and caller-supplied Auto availability keep
+their existing behavior. A fresh wheel pinned to core
+`3cfb8c4b2c08f360b32f060b6b34246e010cdb28` passes all 547 compatibility cases.
