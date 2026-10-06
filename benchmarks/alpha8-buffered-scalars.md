@@ -29,3 +29,25 @@ This establishes improvement for the generated numeric workload, not general
 Python read acceptance. Unique shared strings remain slower in core comparisons;
 large real-world NYC data, all text layouts, editing/write targets and conservative
 model resource accounting remain separate gates. A8 has not been released.
+
+## Shared-text integration
+
+The adapter now pins `4f25c545684a03a879d717c27cf1bb91acd14676`, adding core
+ADR 0078's simple SST preparation. A rebuilt wheel passes all 547 compatibility
+tests, Ruff and Clippy. Compared with the same A7 baseline, complete reads of
+one million unique shared strings include conversion, exact per-cell text/order
+assertions, imports and cleanup. RAM SST uses an explicit 256 MiB component
+budget with a 1 GiB model allowance; no read temporary files are used.
+
+| Unique shared strings | A7 seconds | Candidate seconds | python-calamine seconds |
+| --- | ---: | ---: | ---: |
+| Ordinary load and values iteration | 1.646715 | 1.054141 | 1.300432 |
+| Read-only load and values iteration | 1.347921 | 0.897952 | 1.288530 |
+
+Ordinary median RSS is 239,752 KiB versus calamine's 321,748 KiB. Read-only
+RSS is 161,992 KiB versus 321,716 KiB; retained SST metadata is additional to
+the bounded row stream. The workload is generated plain ASCII shared text,
+not arbitrary rich/Unicode XML or the real NYC fixture. Cold-process CPU time
+can exceed wall time for read-only producer/consumer overlap and is retained
+in the [ordinary](results/alpha8-direct-sst-python-normal.json) and
+[read-only](results/alpha8-direct-sst-python-stream.json) raw reports.

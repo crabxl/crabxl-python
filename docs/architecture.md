@@ -96,3 +96,9 @@ stream and loaded model; no separate scalar parser or compatibility fallback is
 added. All 547 compatibility cases and Ruff/Clippy pass with a freshly rebuilt
 wheel. Complete Python-operation measurements and remaining performance gaps
 are recorded in [the A8 report](../benchmarks/alpha8-buffered-scalars.md).
+
+Core `4f25c545684a03a879d717c27cf1bb91acd14676` additionally prepares simple
+SST entries from bounded buffered XML (core ADR 0078), with direct canonical
+shared ownership. Fresh-wheel compatibility remains 547 passing cases. Both
+ordinary and read-only Python unique-text operations improve against A7 in
+complete conversion-inclusive measurements; the report retains their scope.
