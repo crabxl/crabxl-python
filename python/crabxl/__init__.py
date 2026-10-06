@@ -801,12 +801,15 @@ class Workbook:
             raise NotImplementedError(
                 "Removing optimized worksheets is not implemented"
             )
-        if self._editor is not None:
-            raise NotImplementedError(
-                "Removing existing-file sheets is not implemented"
-            )
+        self._check_open()
         self.index(worksheet)
-        self._book.remove_sheet(worksheet._native)
+        if self._editor is not None:
+            if worksheet._native is None:
+                worksheet._native = self._editor.sheet_handle(worksheet.title)
+            self._editor.remove_sheet(worksheet._native)
+            worksheet._existing = False
+        else:
+            self._book.remove_sheet(worksheet._native)
         self._sheets.remove(worksheet)
 
     def __delitem__(self, key):

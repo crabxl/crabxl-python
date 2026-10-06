@@ -345,6 +345,11 @@ impl NativeSheet {
             )),
         }
     }
+    fn in_loaded(book: SharedLoaded, id: SheetId) -> Self {
+        Self {
+            storage: Arc::new(Mutex::new(SheetStorage::Loaded { book, id })),
+        }
+    }
     fn in_bank(book: Arc<Mutex<Workbook>>, id: SheetId) -> Self {
         Self {
             storage: Arc::new(Mutex::new(SheetStorage::Bank { book, id })),
@@ -917,9 +922,7 @@ impl NativeReader {
                 loaded.sheet(id).map_err(failure)?;
                 Ok::<_, PyErr>(id)
             })?;
-            return Ok(NativeSheet {
-                storage: Arc::new(Mutex::new(SheetStorage::Loaded { book, id })),
-            });
+            return Ok(NativeSheet::in_loaded(book, id));
         }
         let max_bytes = max_bytes
             .min(self.max_bytes)
@@ -1241,6 +1244,44 @@ impl NativeEditor {
             .set_sheet_visibility(name, state)
             .map_err(failure)
     }
+    fn sheet_handle(&self, name: &str) -> PyResult<NativeSheet> {
+        let book = self.loaded.as_ref().ok_or_else(|| {
+            PyNotImplementedError::new_err("Lazy handles require the canonical loaded bank")
+        })?;
+        let id = lock(book)?
+            .as_ref()
+            .ok_or_else(closed)?
+            .sheet_id(name)
+            .ok_or_else(|| PyKeyError::new_err(name.to_owned()))?;
+        Ok(NativeSheet::in_loaded(Arc::clone(book), id))
+    }
+    fn remove_sheet(&self, py: Python<'_>, sheet: &NativeSheet) -> PyResult<()> {
+        let book = self.loaded.as_ref().ok_or_else(|| {
+            PyNotImplementedError::new_err("Sheet removal requires the canonical loaded bank")
+        })?;
+        let book = Arc::clone(book);
+        let storage = Arc::clone(&sheet.storage);
+        py.detach(move || {
+            let mut storage = lock(&storage)?;
+            let SheetStorage::Loaded { book: owner, id } = &*storage else {
+                return Err(PyValueError::new_err(
+                    "Sheet is not registered in the loaded workbook",
+                ));
+            };
+            if !Arc::ptr_eq(owner, &book) {
+                return Err(PyValueError::new_err(
+                    "Sheet belongs to a different workbook",
+                ));
+            }
+            let removed = lock(&book)?
+                .as_mut()
+                .ok_or_else(closed)?
+                .remove_sheet(*id)
+                .map_err(failure)?;
+            *storage = SheetStorage::Standalone(removed);
+            Ok(())
+        })
+    }
     fn copy_sheet(&self, py: Python<'_>, source: String, name: String) -> PyResult<NativeSheet> {
         let book = self.loaded.as_ref().ok_or_else(|| {
             PyNotImplementedError::new_err("Sheet copy requires the canonical loaded bank")
@@ -1258,12 +1299,7 @@ impl NativeEditor {
                 .map_err(failure)?;
             Ok::<_, PyErr>(id)
         })?;
-        Ok(NativeSheet {
-            storage: Arc::new(Mutex::new(SheetStorage::Loaded {
-                book: Arc::clone(book),
-                id,
-            })),
-        })
+        Ok(NativeSheet::in_loaded(Arc::clone(book), id))
     }
     fn create_sheet(&self, py: Python<'_>, name: String) -> PyResult<NativeSheet> {
         let book = self.loaded.as_ref().ok_or_else(|| {
@@ -1277,12 +1313,7 @@ impl NativeEditor {
                 .create_sheet(name)
                 .map_err(failure)
         })?;
-        Ok(NativeSheet {
-            storage: Arc::new(Mutex::new(SheetStorage::Loaded {
-                book: Arc::clone(book),
-                id,
-            })),
-        })
+        Ok(NativeSheet::in_loaded(Arc::clone(book), id))
     }
     fn rename_sheet(&self, py: Python<'_>, name: String, title: String) -> PyResult<()> {
         if let Some(loaded) = &self.loaded {

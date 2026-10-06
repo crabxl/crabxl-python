@@ -92,10 +92,7 @@ coordination across owned, loaded and write-only workbooks (ADR 0018). Metadata
 edits save without materializing source cells; read-only visibility remains a
 snapshot without a save route. This checkpoint does not complete A7 M4.
 
-Loaded worksheet creation, including insertion position and subsequent edits,
-now shares the canonical bank (ADR 0022). Loaded worksheet copy/removal and the
-remaining A7 release gates stay open.
-
-Supported loaded worksheet copies, including copies of copies, now use the
-canonical bank (ADR 0023). Affected unsupported graphs reject explicitly;
-loaded removal and the staged A7 acceptance gates remain open.
+Loaded worksheet creation, copy and removal now share the canonical bank and
+package transaction (ADRs 0022-0024), including live/detached aliases and repeated
+saves. Unsupported graph owners remain explicitly staged for M5/M6. Final A7
+compatibility/resource/platform acceptance and publication remain open.
