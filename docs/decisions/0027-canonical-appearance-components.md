@@ -1,6 +1,6 @@
 # Canonical appearance components
 
-Status: pinned A10 candidate verified locally; platform publication pending.
+Status: A10 published and verified from public registries.
 
 `crabxl.styles` exposes font, color, pattern/gradient fill, side/border, alignment
 and protection values with familiar constructor aliases. Editable/loaded cell
@@ -39,3 +39,9 @@ versions are `0.1.0-alpha.10` / `0.1.0a10`.
 
 The actual `0.1.0a10` release wheel passed all 547 cases in 4.61 seconds
 on CPython 3.12.14; platform and public-registry receipts remain pending.
+
+Release workflow 37561869461 passed all five platform jobs and CPython 3.11–3.15
+gates before OIDC publication. PyPI now contains 25 wheels and one source archive.
+A clean CPython 3.12 installation of the public manylinux 2.28 wheel passed the
+release commit's unchanged 547 cases in 4.88 seconds. See the canonical
+[artifact receipt](https://github.com/crabxl/crabxl/blob/main/docs/validation/alpha10-release.json).
