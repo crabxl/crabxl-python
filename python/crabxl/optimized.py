@@ -3,7 +3,17 @@
 from weakref import WeakValueDictionary
 
 from . import Worksheet, _decode, _encode, _letters
+from .styles import Alignment, Border, Font, GradientFill, PatternFill, Protection
+from .styles._base import StyleProxy
 from .utils.exceptions import WorkbookAlreadySaved
+
+_STYLE_COMPONENT_TYPES = {
+    "font": Font,
+    "fill": (PatternFill, GradientFill),
+    "border": Border,
+    "alignment": Alignment,
+    "protection": Protection,
+}
 
 
 class EmptyCell:
@@ -77,7 +87,14 @@ class ReadOnlyCell:
 
     def __getattr__(self, name):
         if name in ("font", "fill", "border", "alignment", "protection"):
-            raise NotImplementedError(f"Read-only {name} objects are not implemented")
+            from .styles._base import StyleProxy, component
+
+            return StyleProxy(
+                component(
+                    name,
+                    self.parent.parent._reader.style_component(self._style_id, name),
+                )
+            )
         raise AttributeError(name)
 
 
@@ -242,11 +259,12 @@ class ReadOnlyWorksheet(Worksheet):
 
 
 class WriteOnlyCell:
-    __slots__ = ("parent", "value", "row", "column", "_number_format")
+    __slots__ = ("parent", "value", "row", "column", "_number_format", "_components")
 
     def __init__(self, ws=None, value=None):
         self.parent, self.value, self.row, self.column = ws, value, 1, 1
         self._number_format = None
+        self._components = {}
 
     @property
     def number_format(self):
@@ -268,16 +286,27 @@ class WriteOnlyCell:
     def coordinate(self):
         return f"{_letters(self.column)}{self.row}"
 
+    def __getattr__(self, name):
+        if name in ("font", "fill", "border", "alignment", "protection"):
+            from ._native import default_style_component
+            from .styles._base import StyleProxy, component
+
+            value = self._components.get(name)
+            if value is None:
+                value = component(name, default_style_component(name))
+            return StyleProxy(value)
+        raise AttributeError(name)
+
     def __setattr__(self, name, value):
-        if name in (
-            "font",
-            "fill",
-            "border",
-            "alignment",
-            "protection",
-            "hyperlink",
-            "comment",
-        ):
+        if name in ("font", "fill", "border", "alignment", "protection"):
+            expected = _STYLE_COMPONENT_TYPES[name]
+            if isinstance(value, StyleProxy):
+                value = value._target
+            if not isinstance(value, expected):
+                raise TypeError(f"Invalid {name} component")
+            self._components[name] = value
+            return
+        if name in ("hyperlink", "comment"):
             raise NotImplementedError(f"Write-only {name} is not implemented")
         object.__setattr__(self, name, value)
 
@@ -345,11 +374,16 @@ class WriteOnlyWorksheet(Worksheet):
             if column >= 16384:
                 raise ValueError("Row exceeds Excel column limits")
             if isinstance(value, WriteOnlyCell):
-                if value._number_format is not None:
+                if value._number_format is not None or value._components:
                     if formats is None:
                         formats = []
-                    formats.append((column, value._number_format))
-                    retained += len(value._number_format.encode("utf-8"))
+                    directives = {
+                        name: item._native() for name, item in value._components.items()
+                    }
+                    if value._number_format is not None:
+                        directives["number_format"] = value._number_format
+                    formats.append((column, directives))
+                    retained += _style_payload_bytes(directives)
                 value = value.value
             encoded = _encode(value)
             payload = encoded[1]
@@ -380,3 +414,17 @@ class WriteOnlyWorksheet(Worksheet):
         )
 
     insert_cols = delete_rows = delete_cols = move_range = insert_rows
+
+
+def _style_payload_bytes(value):
+    if hasattr(value, "retained_bytes"):
+        return value.retained_bytes
+    if isinstance(value, str):
+        return len(value.encode("utf-8")) + 64
+    if isinstance(value, dict):
+        return 128 + sum(
+            _style_payload_bytes(k) + _style_payload_bytes(v) for k, v in value.items()
+        )
+    if isinstance(value, (list, tuple)):
+        return 64 + sum(_style_payload_bytes(v) for v in value)
+    return 32

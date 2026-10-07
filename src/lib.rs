@@ -1,6 +1,7 @@
 //! Foreign objects and naming remain outside the canonical Rust core.
 mod resources;
 mod streaming;
+mod styles;
 
 use crabxl::{
     Cell, CellAddress, CellRange, CellValue, ColumnIndex, DataTableOptions, DateEpoch, DateKind,
@@ -483,6 +484,73 @@ impl NativeSheet {
                 .as_mut()
                 .ok_or_else(closed)?
                 .set_number_format(*id, address, code.into())
+                .map_err(failure),
+        }
+    }
+    fn style_component<'py>(
+        &self,
+        py: Python<'py>,
+        row: u32,
+        column: u32,
+        name: &str,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let address = CellAddress::new(row, column).map_err(failure)?;
+        let storage = lock(&self.storage)?;
+        let resolve = |book: &Workbook, id| {
+            let style = book
+                .sheet(id)
+                .map_err(failure)?
+                .get(address)
+                .map_or(StyleId::new(0), |cell| cell.style);
+            if let Some(catalog) = book.style_catalog() {
+                styles::encode(py, name, catalog.cell_style(style).map_err(failure)?)
+            } else {
+                styles::default_component(py, name)
+            }
+        };
+        match &*storage {
+            SheetStorage::Bank { book, id } => resolve(&*lock(book)?, *id),
+            SheetStorage::Loaded { book, id } => {
+                resolve(lock(book)?.as_ref().ok_or_else(closed)?.model(), *id)
+            }
+            SheetStorage::Standalone(_) => Err(PyNotImplementedError::new_err(
+                "Detached sheet style catalog is unavailable",
+            )),
+        }
+    }
+    fn set_style_component(
+        &self,
+        row: u32,
+        column: u32,
+        _name: &str,
+        value: PyRef<'_, styles::NativeStyleComponent>,
+    ) -> PyResult<()> {
+        let component = value.component.clone();
+        let address = CellAddress::new(row, column).map_err(failure)?;
+        let storage = lock(&self.storage)?;
+        match &*storage {
+            SheetStorage::Standalone(_) => Err(PyNotImplementedError::new_err(
+                "Detached sheet style registration remains unimplemented",
+            )),
+            SheetStorage::Bank { book, id } => {
+                let mut book = lock(book)?;
+                let previous = book
+                    .sheet(*id)
+                    .map_err(failure)?
+                    .get(address)
+                    .map_or(StyleId::new(0), |cell| cell.style);
+                let style = book
+                    .derive_style_component(previous, component)
+                    .map_err(failure)?;
+                book.sheet_mut(*id)
+                    .map_err(failure)?
+                    .set_appearance_style(address, style)
+                    .map_err(failure)
+            }
+            SheetStorage::Loaded { book, id } => lock(book)?
+                .as_mut()
+                .ok_or_else(closed)?
+                .set_style_component(*id, address, component)
                 .map_err(failure),
         }
     }
@@ -1136,6 +1204,40 @@ impl NativeReader {
             .unwrap_or("General")
             .to_owned())
     }
+    fn style_component<'py>(
+        &self,
+        py: Python<'py>,
+        style: u32,
+        name: &str,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let resolve = |catalog: Option<&crabxl::StyleCatalog>| {
+            if let Some(catalog) = catalog {
+                styles::encode(
+                    py,
+                    name,
+                    catalog.cell_style(StyleId::new(style)).map_err(failure)?,
+                )
+            } else {
+                styles::default_component(py, name)
+            }
+        };
+        if let Some(loaded) = &self.loaded {
+            return resolve(
+                lock(loaded)?
+                    .as_ref()
+                    .ok_or_else(closed)?
+                    .model()
+                    .style_catalog(),
+            );
+        }
+        resolve(
+            lock(&self.reader)?
+                .as_mut()
+                .ok_or_else(closed)?
+                .style_catalog()
+                .map_err(failure)?,
+        )
+    }
     fn stream(
         &self,
         name: String,
@@ -1689,6 +1791,11 @@ fn save_models(
         Ok(active_after)
     })
 }
+#[pyfunction]
+fn default_style_component<'py>(py: Python<'py>, name: &str) -> PyResult<Bound<'py, PyDict>> {
+    styles::default_component(py, name)
+}
+
 #[pymodule]
 fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<NativeSheet>()?;
@@ -1698,6 +1805,8 @@ fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<NativeReader>()?;
     module.add_class::<resources::NativeResources>()?;
     module.add_class::<NativeEditor>()?;
+    module.add_function(wrap_pyfunction!(default_style_component, module)?)?;
+    module.add_function(wrap_pyfunction!(styles::make_style_component, module)?)?;
     module.add_function(wrap_pyfunction!(save_models, module)?)?;
     module.add_function(wrap_pyfunction!(resolve_model_budget, module)?)?;
     module.add_function(wrap_pyfunction!(cell_address, module)?)?;

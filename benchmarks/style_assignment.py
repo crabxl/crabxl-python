@@ -12,6 +12,7 @@ import sys
 import tempfile
 import threading
 import time
+import tomllib
 from datetime import date
 from pathlib import Path
 
@@ -25,7 +26,7 @@ def peak_rss_kib():
     return peak // 1024 if sys.platform == "darwin" else peak
 
 
-def worker(engine, mode, rows, source):
+def worker(engine, mode, rows, source, components=False):
     with tempfile.TemporaryDirectory(prefix="crabxl-styles-") as directory:
         root = Path(directory)
         spools = root / "spools"
@@ -57,6 +58,18 @@ def worker(engine, mode, rows, source):
         else:
             book = module.Workbook(write_only=mode == "write_only")
             sheet = book.create_sheet() if mode == "write_only" else book.active
+        appearance = {}
+        if components:
+            styles = importlib.import_module(engine + ".styles")
+            appearance = {
+                "font": styles.Font(name="Benchmark", bold=True, color="FF123456"),
+                "fill": styles.PatternFill(fill_type="solid", fgColor="FFABCDEF"),
+                "border": styles.Border(
+                    bottom=styles.Side(style="thin", color="FF112233")
+                ),
+                "alignment": styles.Alignment(horizontal="center", wrap_text=True),
+                "protection": styles.Protection(locked=False, hidden=True),
+            }
         if mode == "write_only":
             cell_type = importlib.import_module(engine + ".cell.cell").WriteOnlyCell
         for row in range(rows):
@@ -65,14 +78,17 @@ def worker(engine, mode, rows, source):
                 cells = [cell_type(sheet, value) for value in values]
                 for column, cell in enumerate(cells):
                     cell.number_format = "General" if column == 0 else "0.0000"
+                    for name, component in appearance.items():
+                        setattr(cell, name, component)
                 sheet.append(cells)
             else:
                 if mode == "owned":
                     sheet.append(values)
                 for column in range(10):
-                    sheet.cell(row + 1, column + 1).number_format = (
-                        "General" if column == 0 else "0.0000"
-                    )
+                    cell = sheet.cell(row + 1, column + 1)
+                    cell.number_format = "General" if column == 0 else "0.0000"
+                    for name, component in appearance.items():
+                        setattr(cell, name, component)
         output = root / "output.xlsx"
         book.save(output)
         book.close()
@@ -95,6 +111,16 @@ def worker(engine, mode, rows, source):
                 expected = 45293 if column == 0 else row * 10 + column
                 assert cell.value == expected and type(cell.value) is int
                 assert cell.number_format == ("General" if column == 0 else "0.0000")
+                if components:
+                    assert cell.font.name == "Benchmark" and cell.font.bold
+                    assert cell.font.color.rgb == "FF123456"
+                    assert cell.fill.fgColor.rgb == "FFABCDEF"
+                    assert cell.border.bottom.style == "thin"
+                    assert (
+                        cell.alignment.horizontal == "center"
+                        and cell.alignment.wrapText
+                    )
+                    assert not cell.protection.locked and cell.protection.hidden
                 checksum += expected
                 count += 1
         assert count == rows * 10
@@ -131,9 +157,14 @@ def main():
     parser.add_argument("--rows", type=int, default=10000)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--source", type=Path)
+    parser.add_argument("--components", action="store_true")
     args = parser.parse_args()
     if args.worker:
-        print(json.dumps(worker(args.worker, args.mode, args.rows, args.source)))
+        print(
+            json.dumps(
+                worker(args.worker, args.mode, args.rows, args.source, args.components)
+            )
+        )
         return
 
     import openpyxl
@@ -161,6 +192,7 @@ def main():
                     str(args.rows),
                     "--source",
                     str(source),
+                    *(["--components"] if args.components else []),
                 ],
                 text=True,
             )
@@ -196,8 +228,24 @@ def main():
         for mode in ("owned", "loaded", "write_only")
     }
     record = {
-        "status": "Unreleased A9 binding preview, not the public A8 package",
-        "core_revision": "84b7aa06e587ce1c4f7f5779d954bdef4a7788a4",
+        "status": "Unreleased full-component A10 candidate"
+        if args.components
+        else "Number-format assignment",
+        "core_revision": tomllib.loads(
+            (Path(__file__).resolve().parents[1] / "Cargo.toml").read_text()
+        )["dependencies"]["crabxl"]["rev"],
+        "full_components": args.components,
+        "feature_assertions": [
+            "all cell values",
+            "coordinate order",
+            "number formats",
+            "temporary cleanup",
+            *(
+                ["font", "fill", "border", "alignment", "protection"]
+                if args.components
+                else []
+            ),
+        ],
         "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "measurement": "One warm-up and three alternating fresh-process samples. Owned/write-only include creation, conversion, all style assignments and ZIP finalization; loaded includes load, all style assignments and finalization. Feature read-back excluded. RSS recorded before validation, using Linux process VmHWM to exclude inherited pre-exec parent peaks (getrusage fallback elsewhere). A shared source fixture is generated once in the parent before all workers; CrabXL imports the validation engine only after timing and RSS collection. Temp spools sampled every 5 ms; output ZIP excluded. All values, coordinate order, format codes and cleanup verified. No native competitor or published-version performance claim.",
         "samples": samples,

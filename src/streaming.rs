@@ -349,7 +349,7 @@ impl NativeWriteBook {
         id: usize,
         index: u32,
         values: Vec<TaggedValue>,
-        formats: Option<Vec<(u32, String)>>,
+        formats: Option<Vec<(u32, Py<PyDict>)>>,
     ) -> PyResult<()> {
         let index = RowIndex::new(index).map_err(failure)?;
         if values.len() > 16_384 {
@@ -365,8 +365,34 @@ impl NativeWriteBook {
                 "Invalid write-only format coordinates",
             ));
         }
+        let mut decoded_formats = Vec::with_capacity(formats.len());
+        let mut format_bytes = 0usize;
+        for (column, value) in formats {
+            let value = value.bind(py);
+            let number = value
+                .get_item("number_format")?
+                .filter(|v| !v.is_none())
+                .map(|v| v.extract::<String>())
+                .transpose()?;
+            format_bytes = format_bytes.saturating_add(number.as_ref().map_or(0, String::len));
+            let mut components = Vec::new();
+            for name in ["font", "fill", "border", "alignment", "protection"] {
+                if let Some(item) = value.get_item(name)? {
+                    let native = item.extract::<PyRef<'_, styles::NativeStyleComponent>>()?;
+                    format_bytes = format_bytes.saturating_add(native.retained_bytes());
+                    if format_bytes > self.maximum_row {
+                        return Err(PyMemoryError::new_err(
+                            "Write-only row styles exceed their byte allowance",
+                        ));
+                    }
+                    components.push(native.component.clone());
+                }
+            }
+            decoded_formats.push((column, number, components));
+        }
+        let formats = decoded_formats;
         let mut row = Row::new(index);
-        let mut bytes = values.len() * std::mem::size_of::<Cell>();
+        let mut bytes = format_bytes.saturating_add(values.len() * std::mem::size_of::<Cell>());
         for (column, value) in values.into_iter().enumerate() {
             let value = decode(py, value)?;
             bytes = bytes.saturating_add(value.heap_bytes());
@@ -377,7 +403,7 @@ impl NativeWriteBook {
             }
             if !matches!(value, CellValue::Empty)
                 || formats
-                    .binary_search_by_key(&(column as u32), |(column, _)| *column)
+                    .binary_search_by_key(&(column as u32), |(column, ..)| *column)
                     .is_ok()
             {
                 row.cells.push(Cell {
@@ -396,16 +422,30 @@ impl NativeWriteBook {
             for cell in &mut row.cells {
                 if formats
                     .peek()
-                    .is_some_and(|(column, _)| *column == cell.address.column.get())
+                    .is_some_and(|(column, ..)| *column == cell.address.column.get())
                 {
-                    let (_, code) = formats.next().ok_or_else(closed)?;
-                    let style = writer
-                        .register_style(crabxl::CellStyle {
-                            number_format: code.into(),
-                            ..Default::default()
-                        })
-                        .map_err(failure)?;
-                    cell.set_style(style);
+                    let (_, code, components) = formats.next().ok_or_else(closed)?;
+                    let code_was_explicit = code.is_some();
+                    let mut style = if let Some(code) = code {
+                        writer
+                            .register_style(crabxl::CellStyle {
+                                number_format: code.into(),
+                                ..Default::default()
+                            })
+                            .map_err(failure)?
+                    } else {
+                        StyleId::new(0)
+                    };
+                    for component in components {
+                        style = writer
+                            .derive_style_component(style, component)
+                            .map_err(failure)?;
+                    }
+                    if code_was_explicit {
+                        cell.set_style(style);
+                    } else {
+                        cell.set_appearance_style(style);
+                    }
                 }
             }
             writer.write_row(&row).map_err(failure)

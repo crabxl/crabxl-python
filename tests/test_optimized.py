@@ -244,7 +244,7 @@ def test_read_only_close_cancels_live_iterator_and_modes_reject_unsupported_feat
     cell = WriteOnlyCell()
     cell.number_format = "0.00"
     assert cell.number_format == "0.00"
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(TypeError):
         cell.font = None
 
 
