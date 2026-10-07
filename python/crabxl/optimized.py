@@ -242,10 +242,21 @@ class ReadOnlyWorksheet(Worksheet):
 
 
 class WriteOnlyCell:
-    __slots__ = ("parent", "value", "row", "column")
+    __slots__ = ("parent", "value", "row", "column", "_number_format")
 
     def __init__(self, ws=None, value=None):
         self.parent, self.value, self.row, self.column = ws, value, 1, 1
+        self._number_format = None
+
+    @property
+    def number_format(self):
+        return self._number_format or "General"
+
+    @number_format.setter
+    def number_format(self, code):
+        if not isinstance(code, str):
+            raise TypeError("Number format must be a string")
+        self._number_format = code
 
     @property
     def data_type(self):
@@ -264,7 +275,6 @@ class WriteOnlyCell:
             "border",
             "alignment",
             "protection",
-            "number_format",
             "hyperlink",
             "comment",
         ):
@@ -328,12 +338,18 @@ class WriteOnlyWorksheet(Worksheet):
         if isinstance(iterable, (str, bytes, dict)):
             raise TypeError("Write-only append requires a row iterable")
         tagged = []
+        formats = None
         retained = 0
         allowance = min(self.parent._max_bytes, 1024 * 1024)
         for column, value in enumerate(iterable):
             if column >= 16384:
                 raise ValueError("Row exceeds Excel column limits")
             if isinstance(value, WriteOnlyCell):
+                if value._number_format is not None:
+                    if formats is None:
+                        formats = []
+                    formats.append((column, value._number_format))
+                    retained += len(value._number_format.encode("utf-8"))
                 value = value.value
             encoded = _encode(value)
             payload = encoded[1]
@@ -349,7 +365,7 @@ class WriteOnlyWorksheet(Worksheet):
             if retained > allowance:
                 raise MemoryError("Write-only row exceeds its byte allowance")
             tagged.append(encoded)
-        self.parent._stream_writer.append(self._id, self._row, tagged)
+        self.parent._stream_writer.append(self._id, self._row, tagged, formats)
         self._row += 1
 
     def close(self):

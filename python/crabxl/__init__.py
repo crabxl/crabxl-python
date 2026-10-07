@@ -171,13 +171,13 @@ class Cell:
     def value(self, value):
         if self._detached is not None:
             tag = _encode(value)
-            self._detached = (_data_type(tag), value)
+            self._detached = (_data_type(tag), value, *self._detached[2:])
         else:
             self.parent._set(self.row, self.column, value)
 
     def _tagged(self):
         return (
-            self._detached
+            self._detached[:2]
             if self._detached is not None
             else self.parent._get(self.row, self.column)
         )
@@ -199,9 +199,45 @@ class Cell:
     def internal_value(self):
         return self.value
 
+    def _snapshot(self):
+        return (*self._tagged(), self.style_id, self.number_format)
+
+    @property
+    def style_id(self):
+        if self._detached is not None:
+            return self._detached[2] if len(self._detached) > 2 else 0
+        return self.parent._model().style_id(self.row - 1, self.column - 1)
+
+    @property
+    def has_style(self):
+        if self._detached is not None:
+            return self.style_id != 0 or self.number_format != "General"
+        return self.parent._model().has_style(self.row - 1, self.column - 1)
+
+    @property
+    def number_format(self):
+        if self._detached is not None:
+            return self._detached[3] if len(self._detached) > 3 else "General"
+        return self.parent._model().number_format(self.row - 1, self.column - 1)
+
+    @number_format.setter
+    def number_format(self, code):
+        if not isinstance(code, str):
+            raise TypeError("Number format must be a string")
+        if self._detached is not None:
+            self._detached = (*self._detached[:2], self.style_id, code)
+        else:
+            self.parent._model().set_number_format(self.row - 1, self.column - 1, code)
+
     @property
     def is_date(self):
-        return self.data_type == "d"
+        if self.data_type == "d":
+            return True
+        return (
+            self._detached is None
+            and self.data_type == "n"
+            and self.parent._model().is_date_format(self.row - 1, self.column - 1)
+        )
 
 
 def _data_type(tag):
@@ -358,10 +394,11 @@ class Worksheet:
         cell = self._cells.get((row, column))
         if self._native is None and self._existing:
             self._native = self.parent._editor.sheet_handle(self.title)
+        style = (cell.style_id, cell.number_format) if cell is not None else None
         old = self._model().remove(row - 1, column - 1, cell is not None)
         if cell is not None:
             self._cells.pop((row, column), None)
-            cell._detached = old if old is not None else ("n", None)
+            cell._detached = (*(old if old is not None else ("n", None)), *style)
 
     @property
     def _current_row(self):
@@ -474,7 +511,7 @@ class Worksheet:
             raise ValueError("Index and amount must be positive")
         cached = list(self._cells.items())
         detached = {
-            (row, col): cell._tagged()
+            (row, col): cell._snapshot()
             for (row, col), cell in cached
             if not insert and idx <= (row if rows else col) < idx + amount
         }
@@ -512,7 +549,7 @@ class Worksheet:
         )
         cached = list(self._cells.items())
         overwritten = {
-            (row, col): cell._tagged()
+            (row, col): cell._snapshot()
             for (row, col), cell in cached
             if first_row + rows <= row <= last_row + rows
             and first_col + cols <= col <= last_col + cols
@@ -860,6 +897,7 @@ class Workbook:
                 self.iso_dates,
                 self._book.date_1904(),
                 compression_level,
+                self._book,
             )
             self._book.set_active_view_index(self._active)
 

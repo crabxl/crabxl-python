@@ -342,16 +342,28 @@ impl NativeWriteBook {
             .set_temporal_options(date_1904, iso_dates)
             .map_err(failure)
     }
+    #[pyo3(signature = (id, index, values, formats=None))]
     fn append(
         &self,
         py: Python<'_>,
         id: usize,
         index: u32,
         values: Vec<TaggedValue>,
+        formats: Option<Vec<(u32, String)>>,
     ) -> PyResult<()> {
         let index = RowIndex::new(index).map_err(failure)?;
         if values.len() > 16_384 {
             return Err(PyValueError::new_err("Row exceeds Excel column limits"));
+        }
+        let formats = formats.unwrap_or_default();
+        if formats.windows(2).any(|pair| pair[0].0 >= pair[1].0)
+            || formats
+                .last()
+                .is_some_and(|(column, _)| *column as usize >= values.len())
+        {
+            return Err(PyValueError::new_err(
+                "Invalid write-only format coordinates",
+            ));
         }
         let mut row = Row::new(index);
         let mut bytes = values.len() * std::mem::size_of::<Cell>();
@@ -363,7 +375,11 @@ impl NativeWriteBook {
                     "Write-only row exceeds its byte allowance",
                 ));
             }
-            if !matches!(value, CellValue::Empty) {
+            if !matches!(value, CellValue::Empty)
+                || formats
+                    .binary_search_by_key(&(column as u32), |(column, _)| *column)
+                    .is_ok()
+            {
                 row.cells.push(Cell {
                     address: CellAddress::new(index.get(), column as u32).map_err(failure)?,
                     value,
@@ -371,11 +387,27 @@ impl NativeWriteBook {
                 });
             }
         }
+        let mut formats = formats.into_iter().peekable();
         let state = Arc::clone(&self.state);
         py.detach(move || {
             let mut state = lock(&state)?;
             let writer = state.writer.as_mut().ok_or_else(closed)?;
             writer.activate_sheet(id).map_err(failure)?;
+            for cell in &mut row.cells {
+                if formats
+                    .peek()
+                    .is_some_and(|(column, _)| *column == cell.address.column.get())
+                {
+                    let (_, code) = formats.next().ok_or_else(closed)?;
+                    let style = writer
+                        .register_style(crabxl::CellStyle {
+                            number_format: code.into(),
+                            ..Default::default()
+                        })
+                        .map_err(failure)?;
+                    cell.set_style(style);
+                }
+            }
             writer.write_row(&row).map_err(failure)
         })
     }

@@ -241,8 +241,11 @@ def test_read_only_close_cancels_live_iterator_and_modes_reject_unsupported_feat
     assert list(book._streams) == []
     from crabxl.cell.cell import WriteOnlyCell
 
+    cell = WriteOnlyCell()
+    cell.number_format = "0.00"
+    assert cell.number_format == "0.00"
     with pytest.raises(NotImplementedError):
-        WriteOnlyCell().number_format = "0.00"
+        cell.font = None
 
 
 def test_read_only_selected_prefix_skips_invalid_unread_tail(tmp_path):

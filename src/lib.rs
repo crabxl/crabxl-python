@@ -384,6 +384,108 @@ impl NativeSheet {
             )
         })
     }
+    fn style_id(&self, row: u32, column: u32) -> PyResult<u32> {
+        let address = CellAddress::new(row, column).map_err(failure)?;
+        self.with(|sheet| Ok(sheet.get(address).map_or(0, |cell| cell.style.get())))
+    }
+    fn has_style(&self, row: u32, column: u32) -> PyResult<bool> {
+        let address = CellAddress::new(row, column).map_err(failure)?;
+        let storage = lock(&self.storage)?;
+        let resolve = |book: &Workbook, id| -> PyResult<bool> {
+            let style = book
+                .sheet(id)
+                .map_err(failure)?
+                .get(address)
+                .map_or(StyleId::new(0), |cell| cell.style);
+            Ok(book
+                .style_catalog()
+                .and_then(|catalog| catalog.cell_format(style))
+                .is_some_and(|format| {
+                    format.number_format_id != 0
+                        || format.font_id != 0
+                        || format.fill_id != 0
+                        || format.border_id != 0
+                        || format.base_format_id.unwrap_or(0) != 0
+                        || format.quote_prefix == Some(true)
+                        || format.pivot_button == Some(true)
+                        || format
+                            .alignment
+                            .as_deref()
+                            .is_some_and(|value| value != &Default::default())
+                        || format.protection.is_some_and(|value| {
+                            value.locked == Some(false) || value.hidden == Some(true)
+                        })
+                }))
+        };
+        match &*storage {
+            SheetStorage::Standalone(sheet) => {
+                Ok(sheet.get(address).is_some_and(|cell| cell.style.get() != 0))
+            }
+            SheetStorage::Bank { book, id } => resolve(&*lock(book)?, *id),
+            SheetStorage::Loaded { book, id } => {
+                resolve(lock(book)?.as_ref().ok_or_else(closed)?.model(), *id)
+            }
+        }
+    }
+    fn is_date_format(&self, row: u32, column: u32) -> PyResult<bool> {
+        Ok(crabxl::classify_number_format(&self.number_format(row, column)?).is_some())
+    }
+    fn number_format(&self, row: u32, column: u32) -> PyResult<String> {
+        let address = CellAddress::new(row, column).map_err(failure)?;
+        let storage = lock(&self.storage)?;
+        let resolve = |book: &Workbook, id| -> PyResult<String> {
+            let style = book
+                .sheet(id)
+                .map_err(failure)?
+                .get(address)
+                .map_or(StyleId::new(0), |cell| cell.style);
+            Ok(book
+                .style_catalog()
+                .and_then(|catalog| {
+                    catalog
+                        .cell_format(style)
+                        .and_then(|format| catalog.number_format(format.number_format_id))
+                })
+                .unwrap_or("General")
+                .to_owned())
+        };
+        match &*storage {
+            SheetStorage::Standalone(_) => Ok("General".to_owned()),
+            SheetStorage::Bank { book, id } => resolve(&*lock(book)?, *id),
+            SheetStorage::Loaded { book, id } => {
+                resolve(lock(book)?.as_ref().ok_or_else(closed)?.model(), *id)
+            }
+        }
+    }
+    fn set_number_format(&self, row: u32, column: u32, code: String) -> PyResult<()> {
+        let address = CellAddress::new(row, column).map_err(failure)?;
+        let storage = lock(&self.storage)?;
+        match &*storage {
+            SheetStorage::Standalone(_) => Err(PyNotImplementedError::new_err(
+                "Detached sheet style registration remains unimplemented",
+            )),
+            SheetStorage::Bank { book, id } => {
+                let mut book = lock(book)?;
+                let previous = book
+                    .sheet(*id)
+                    .map_err(failure)?
+                    .get(address)
+                    .map_or(StyleId::new(0), |cell| cell.style);
+                let style = book
+                    .derive_number_format(previous, code.into())
+                    .map_err(failure)?;
+                book.sheet_mut(*id)
+                    .map_err(failure)?
+                    .set_style(address, style)
+                    .map_err(failure)
+            }
+            SheetStorage::Loaded { book, id } => lock(book)?
+                .as_mut()
+                .ok_or_else(closed)?
+                .set_number_format(*id, address, code.into())
+                .map_err(failure),
+        }
+    }
     fn contains(&self, row: u32, column: u32) -> PyResult<bool> {
         let address = CellAddress::new(row, column).map_err(failure)?;
         self.with(|sheet| Ok(sheet.get(address).is_some()))
@@ -1520,7 +1622,9 @@ fn resolve_model_budget(
     }
 }
 #[pyfunction]
-#[pyo3(signature = (path, sheets, active_sheet=0, iso_dates=false, date_1904=false, compression_level=None))]
+#[pyo3(signature = (path, sheets, active_sheet=0, iso_dates=false, date_1904=false, compression_level=None, book=None))]
+// Preserve the legacy private binding arguments while accepting its canonical owner.
+#[allow(clippy::too_many_arguments)]
 fn save_models(
     py: Python<'_>,
     path: PathBuf,
@@ -1529,26 +1633,41 @@ fn save_models(
     iso_dates: bool,
     date_1904: bool,
     compression_level: Option<u8>,
+    book: Option<PyRef<'_, NativeBook>>,
 ) -> PyResult<i64> {
+    let book = book.map(|book| Arc::clone(&book.book));
     let sheets = sheets
         .iter()
         .map(|sheet| Arc::clone(&sheet.borrow(py).storage))
         .collect::<Vec<_>>();
     py.detach(move || {
-        let mut writer = WorkbookWriter::new(WriteOptions {
+        let options = WriteOptions {
             compression_level,
             iso_dates,
             date_1904,
             ..WriteOptions::default()
-        })
-        .map_err(failure)?;
+        };
+        let mut writer = if let Some(book) = &book {
+            let book = lock(book)?;
+            let mut writer = if let Some(catalog) = book.style_catalog() {
+                WorkbookWriter::from_style_catalog(options, catalog.clone())
+            } else {
+                WorkbookWriter::new(options)
+            }
+            .map_err(failure)?;
+            writer.write_workbook(&book).map_err(failure)?;
+            writer
+        } else {
+            let mut writer = WorkbookWriter::new(options).map_err(failure)?;
+            for sheet in sheets {
+                NativeSheet { storage: sheet }
+                    .with(|sheet| writer.write_worksheet(sheet).map_err(failure))?;
+            }
+            writer
+        };
         writer
             .set_active_view_index(active_sheet)
             .map_err(failure)?;
-        for sheet in sheets {
-            NativeSheet { storage: sheet }
-                .with(|sheet| writer.write_worksheet(sheet).map_err(failure))?;
-        }
         let active_after = writer
             .active_view_selection()
             .map_err(failure)?
