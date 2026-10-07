@@ -244,7 +244,7 @@ impl NativeEditor {
                 .ok_or_else(closed)?
                 .remove_sheet(*id)
                 .map_err(failure)?;
-            *storage = SheetStorage::Standalone(removed);
+            *storage = SheetStorage::Standalone(Box::new(removed));
             Ok(())
         })
     }

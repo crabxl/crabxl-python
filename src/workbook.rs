@@ -122,7 +122,7 @@ impl NativeBook {
         }
         let removed = lock(&self.book)?.remove_sheet(*id).map_err(failure)?;
         // Removed Python worksheet/cell aliases remain usable, as in openpyxl.
-        *storage = SheetStorage::Standalone(removed);
+        *storage = SheetStorage::Standalone(Box::new(removed));
         Ok(())
     }
     pub(crate) fn date_1904(&self) -> PyResult<bool> {

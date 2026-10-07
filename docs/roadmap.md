@@ -127,3 +127,8 @@ relationship-resolved stylesheet rewrites. Retained deleted/overwritten cell
 views keep their value/format snapshot. Complete component APIs remain A10 work.
 Signed/unknown style sections, sources without a stylesheet and affected
 unmodeled source graphs retain explicit errors. A9 publication is pending.
+
+W12 exposes canonical sparse merge geometry, lazy read-only covered cells and
+source-backed merge/unmerge operations. See [the merge-view checkpoint](
+decisions/0029-sparse-merged-cell-views.md). W13 and consolidated A11 acceptance
+remain open; this checkpoint does not close M4/M5.
