@@ -13,7 +13,15 @@ if TYPE_CHECKING:
 class Cell:
     """A live Python view of a Rust-owned cell; coordinates are one-based."""
 
-    __slots__ = ("parent", "row", "column", "_detached", "_formula", "__weakref__")
+    __slots__ = (
+        "parent",
+        "row",
+        "column",
+        "_detached",
+        "_detached_hyperlink",
+        "_formula",
+        "__weakref__",
+    )
 
     font = cell_component("font", Font)
     fill = cell_component("fill", (PatternFill, GradientFill))
@@ -24,6 +32,7 @@ class Cell:
     def __init__(self, worksheet, row, column):
         self.parent, self.row, self.column = worksheet, row, column
         self._detached = None
+        self._detached_hyperlink = None
         self._formula = None
 
     @property
@@ -61,7 +70,7 @@ class Cell:
     @property
     def hyperlink(self):
         if self._detached is not None:
-            raise NotImplementedError("Detached hyperlink access is not implemented")
+            return self._detached_hyperlink
         retained = self.parent._hyperlink_views.get((self.row, self.column))
         if retained is not None:
             return retained
@@ -81,7 +90,22 @@ class Cell:
     @hyperlink.setter
     def hyperlink(self, value):
         if self._detached is not None:
-            raise NotImplementedError("Detached hyperlink editing is not implemented")
+            from .._native import initial_hyperlink_value
+            from ..worksheet.hyperlink import Hyperlink
+
+            if isinstance(value, str):
+                value = Hyperlink(ref=self.coordinate, target=value)
+            if value is not None and not isinstance(value, Hyperlink):
+                raise TypeError("Hyperlink must be a string, Hyperlink or None")
+            if value is not None:
+                value.ref = self.coordinate
+                if self._detached[1] is None:
+                    self._detached = (
+                        *initial_hyperlink_value(value._fields(self.coordinate)),
+                        *self._detached[2:],
+                    )
+            self._detached_hyperlink = value
+            return
         if value is None:
             self.parent._model().set_hyperlink(self.row - 1, self.column - 1, None)
             self.parent._hyperlink_views.pop((self.row, self.column), None)

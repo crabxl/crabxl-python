@@ -12,18 +12,43 @@ pub(super) type LinkFields = (
 
 fn fields(links: &crabxl::Hyperlinks, address: CellAddress) -> Option<LinkFields> {
     let link = links.get(address)?;
-    Some((
+    let mut fields = owned_fields(link);
+    if links.covering_range(address).is_some() {
+        fields.5 = None;
+    }
+    Some(fields)
+}
+
+pub(super) fn owned_fields(link: &crabxl::Hyperlink) -> LinkFields {
+    (
         link.target.as_deref().map(str::to_owned),
         link.location.as_deref().map(str::to_owned),
         link.tooltip.as_deref().map(str::to_owned),
         link.display.as_deref().map(str::to_owned),
         link.relationship_id.as_deref().map(str::to_owned),
-        if links.covering_range(address).is_some() {
-            None
-        } else {
-            link.reference.as_deref().map(str::to_owned)
-        },
-    ))
+        link.reference.as_deref().map(str::to_owned),
+    )
+}
+
+fn decode(fields: LinkFields) -> crabxl::Hyperlink {
+    let (target, location, tooltip, display, relationship_id, reference) = fields;
+    crabxl::Hyperlink {
+        reference: reference.map(String::into_boxed_str),
+        target: target.map(String::into_boxed_str),
+        location: location.map(String::into_boxed_str),
+        tooltip: tooltip.map(String::into_boxed_str),
+        display: display.map(String::into_boxed_str),
+        relationship_id: relationship_id.map(String::into_boxed_str),
+        external: true,
+    }
+}
+
+#[pyfunction]
+pub(crate) fn initial_hyperlink_value(
+    py: Python<'_>,
+    fields: LinkFields,
+) -> PyResult<EncodedValue> {
+    encode(py, &decode(fields).initial_cell_value())
 }
 
 impl NativeSheet {
@@ -55,17 +80,7 @@ impl NativeSheet {
         initialize_value: bool,
     ) -> PyResult<()> {
         let address = CellAddress::new(row, column).map_err(failure)?;
-        let link = value.map(
-            |(target, location, tooltip, display, relationship_id, reference)| crabxl::Hyperlink {
-                reference: reference.map(String::into_boxed_str),
-                target: target.map(String::into_boxed_str),
-                location: location.map(String::into_boxed_str),
-                tooltip: tooltip.map(String::into_boxed_str),
-                display: display.map(String::into_boxed_str),
-                relationship_id: relationship_id.map(String::into_boxed_str),
-                external: true,
-            },
-        );
+        let link = value.map(decode);
         let mut storage = lock(&self.storage)?;
         match &mut *storage {
             SheetStorage::Standalone(sheet) => if initialize_value {

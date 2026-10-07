@@ -287,13 +287,30 @@ class Worksheet:
         if self._native is None and self._existing:
             self._native = self.parent._editor.sheet_handle(self.title)
         style = cell._snapshot()[2:] if cell is not None else None
-        old = self._model().remove(row - 1, column - 1, cell is not None)
-        self._hyperlink_views.pop((row, column), None)
+        old, removed_hyperlink = self._model().remove(
+            row - 1, column - 1, cell is not None
+        )
+        hyperlink = self._hyperlink_views.pop((row, column), None)
         self._rich_views.pop((row, column), None)
         self._assigned_rich_views.pop((row, column), None)
         if cell is not None:
             self._cells.pop((row, column), None)
             cell._detached = (*(old if old is not None else ("n", None)), *style)
+            if hyperlink is None and removed_hyperlink is not None:
+                from .hyperlink import Hyperlink
+
+                target, location, tooltip, display, identity, reference = (
+                    removed_hyperlink
+                )
+                hyperlink = Hyperlink(
+                    reference or cell.coordinate,
+                    location,
+                    tooltip,
+                    display,
+                    identity,
+                    target,
+                )
+            cell._detached_hyperlink = hyperlink
 
     @property
     def _current_row(self):
