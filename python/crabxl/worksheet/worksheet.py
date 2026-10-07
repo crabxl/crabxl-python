@@ -27,6 +27,7 @@ class Worksheet:
         "_column_dimensions",
         "_merged_cells",
         "_rich_views",
+        "_assigned_rich_views",
         "_hyperlink_views",
         "__weakref__",
     )
@@ -46,6 +47,7 @@ class Worksheet:
         )
         self._cells = WeakValueDictionary()
         self._rich_views = WeakValueDictionary()
+        self._assigned_rich_views = {}
         self._hyperlink_views = {}
         self._row_dimensions = self._column_dimensions = None
         self._merged_cells = None
@@ -206,16 +208,19 @@ class Worksheet:
         else:
             self._native.set(row - 1, column - 1, tagged)
         self._rich_views.pop((row, column), None)
+        self._assigned_rich_views.pop((row, column), None)
 
     def _relocate_rich_views(self, transform):
         retained = list(self._rich_views.items())
+        assigned = set(self._assigned_rich_views)
         self._rich_views.clear()
+        self._assigned_rich_views.clear()
         for (row, column), value in retained:
             value._bindings.get(self, set()).discard((row, column))
         for (row, column), value in retained:
             target = transform(row, column)
             if target is not None:
-                value._bind(self, *target)
+                value._bind(self, *target, retain=(row, column) in assigned)
 
     def cell(self, row, column, value=None):
         if (
@@ -285,6 +290,7 @@ class Worksheet:
         old = self._model().remove(row - 1, column - 1, cell is not None)
         self._hyperlink_views.pop((row, column), None)
         self._rich_views.pop((row, column), None)
+        self._assigned_rich_views.pop((row, column), None)
         if cell is not None:
             self._cells.pop((row, column), None)
             cell._detached = (*(old if old is not None else ("n", None)), *style)

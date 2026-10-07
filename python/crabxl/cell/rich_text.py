@@ -23,20 +23,23 @@ def _sync(values):
                     continue
                 previous = worksheet._get(row, column)
                 retained.add((row, column))
-                updates.append((value, worksheet, row, column, previous, payload))
+                assigned = (row, column) in worksheet._assigned_rich_views
+                updates.append(
+                    (value, worksheet, row, column, previous, payload, assigned)
+                )
             value._bindings[worksheet] = retained
     committed = []
     try:
-        for value, sheet, row, column, previous, payload in updates:
+        for value, sheet, row, column, previous, payload, assigned in updates:
             sheet._set_tagged(row, column, ("rich", payload))
-            committed.append((value, sheet, row, column, previous))
+            committed.append((value, sheet, row, column, previous, assigned))
     except BaseException:
-        for value, sheet, row, column, previous in reversed(committed):
+        for value, sheet, row, column, previous, assigned in reversed(committed):
             sheet._set_tagged(row, column, _encode(_decode(previous)))
-            sheet._rich_views[row, column] = value
+            value._bind(sheet, row, column, retain=assigned)
         raise
-    for value, sheet, row, column, _, _ in updates:
-        sheet._rich_views[row, column] = value
+    for value, sheet, row, column, _, _, assigned in updates:
+        value._bind(sheet, row, column, retain=assigned)
     for value in values:
         value._observe()
 
@@ -128,10 +131,12 @@ class CellRichText(list):
         result._phonetic_properties = fields.get("phonetic_properties")
         return result
 
-    def _bind(self, worksheet, row, column):
+    def _bind(self, worksheet, row, column, *, retain=True):
         self._bindings.setdefault(worksheet, set()).add((row, column))
         self._observe()
         worksheet._rich_views[row, column] = self
+        if retain:
+            worksheet._assigned_rich_views[row, column] = self
         return self
 
     def _change(self, action):
