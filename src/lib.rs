@@ -48,5 +48,7 @@ fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(column_index, module)?)?;
     module.add_function(wrap_pyfunction!(column_letters, module)?)?;
     module.add_function(wrap_pyfunction!(finite_range, module)?)?;
+    module.add_function(wrap_pyfunction!(rich_text::rich_text_from_xml, module)?)?;
+    module.add_function(wrap_pyfunction!(rich_text::rich_text_to_xml, module)?)?;
     Ok(())
 }
