@@ -61,3 +61,5 @@ its single loaded sample took 17.206 seconds before the repeated validation fix.
 It is not a repeated before/after median. These workloads establish the required
 openpyxl speed target for this scope, not a general native-competitor performance
 claim or complete M5 acceptance.
+
+The A9 release pins published core `511d91e60df0b2cc492658f0d867362646f1da20`, with an exact Cargo prerelease version constraint as well as the Git revision. The actual `0.1.0a9` CPython 3.12 release wheel passes all 547 cases and strict Clippy; five-platform workflow/OIDC publication and public-install verification remain pending. Earlier benchmark hashes continue to identify the measured pre-release binary.
