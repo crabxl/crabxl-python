@@ -8,9 +8,18 @@ Follow the canonical [Alpha.6 and later release plan](https://github.com/crabxl/
 - **A7:** M4 loaded bank/resource integration, existing-file sheet mutations,
   append and row/column structural operations for supported content.
 - **A8:** measured read/write/edit and Python binding performance backlog.
-- **A9–A19:** staged M5 releases, starting with A9 style assignment and explicit temporal formats.
-- **A20–A26:** images, charts, pivots, external links and complex metadata graphs, including deferred M4 integration.
-- **A27–A28:** complete measured performance and full M7 compatibility/release-quality acceptance.
+- **A9/A10:** published style assignment/temporal formats and complete cell appearance components.
+- **A11:** named styles/themes, row/column styles, merges/dimensions/outlines, hyperlinks and editable rich text.
+- **A12:** remaining M5 features and complete M5 acceptance.
+- **A13:** images, anchors, chart families/chartsheets and loaded drawing graph edits.
+- **A14:** pivots/cache records, external links, macro/template policies and complex metadata.
+- **A15:** complete M4/M6 feature integration and acceptance.
+- **A16:** full-feature performance/RAM work and M7 compatibility/platform/release quality.
+
+On 2026-10-07 the user approved approximately six remaining publications.
+The complete scope of the former A11–A28 targets is retained as work packages.
+Implement coherent feature groups before concentrating missing tests and fixes;
+retain the relevant acceptance gates before each publication.
 
 The user selected staged M4 acceptance. A7 must reject affected unimplemented
 M5/M6 graphs before mutation and retain their dependency cases for later feature
@@ -19,7 +28,7 @@ M4 closure. Core implementation alone does not complete a Python capability.
 Each package release pins the verified published core revision and passes the
 applicable public-reference, resource/cleanup, Ruff, and platform wheel checks.
 Alpha.6–Alpha.10 are published and verified from public registries. A11 named styles, themes and row/column appearance are in progress; later targets remain planned.
-The finer [Alpha 9–28 integration plan](https://github.com/crabxl/crabxl/blob/main/docs/alpha-9-28-plan.md) supersedes the previous single-release M5 target.
+The consolidated [Alpha 9–28 scope and publication plan](https://github.com/crabxl/crabxl/blob/main/docs/alpha-9-28-plan.md) supersedes the previous single-release M5 target.
 
 Loaded scalar/formula row append now uses canonical atomic model/package
 updates and is covered by the shared public-reference edit/save workflow.
