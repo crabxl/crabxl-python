@@ -29,3 +29,14 @@ Finite ranges, imported empty-anchor values, detached views, write-only metadata
 generated id visibility after save and complete structural acceptance remain open.
 The read-only public reference does not expose hyperlink on ReadOnlyCell, as verified
 through public behavior; no artificial read-only hyperlink API is required.
+# Field mutation follow-up
+
+The adapter now pins core revision
+`bafc45e55ced37b23bbfece297bb36d02b1e3063`. Live hyperlink field synchronization
+and rollback use the canonical metadata-only update operation. Initial assignment
+still initializes an empty cell from the target or location; later field edits
+preserve the current cell value. Missing source stylesheets and themes use the
+new native package-graph creation path through the existing style APIs.
+
+This is implementation integration only. Additional behavioral acceptance and
+interoperability checks will run once the complete A11 scope is ready.

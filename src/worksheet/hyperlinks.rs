@@ -48,6 +48,7 @@ impl NativeSheet {
         row: u32,
         column: u32,
         value: Option<LinkFields>,
+        initialize_value: bool,
     ) -> PyResult<()> {
         let address = CellAddress::new(row, column).map_err(failure)?;
         let link = value.map(
@@ -63,17 +64,32 @@ impl NativeSheet {
         );
         let mut storage = lock(&self.storage)?;
         match &mut *storage {
-            SheetStorage::Standalone(sheet) => sheet.set_hyperlink(address, link).map_err(failure),
-            SheetStorage::Bank { book, id } => lock(book)?
-                .sheet_mut(*id)
-                .map_err(failure)?
-                .set_hyperlink(address, link)
-                .map_err(failure),
-            SheetStorage::Loaded { book, id } => lock(book)?
-                .as_mut()
-                .ok_or_else(closed)?
-                .set_hyperlink(*id, address, link)
-                .map_err(failure),
+            SheetStorage::Standalone(sheet) => if initialize_value {
+                sheet.set_hyperlink(address, link)
+            } else {
+                sheet.update_hyperlink(address, link)
+            }
+            .map_err(failure),
+            SheetStorage::Bank { book, id } => {
+                let mut bank = lock(book)?;
+                let mut sheet = bank.sheet_mut(*id).map_err(failure)?;
+                if initialize_value {
+                    sheet.set_hyperlink(address, link)
+                } else {
+                    sheet.update_hyperlink(address, link)
+                }
+                .map_err(failure)
+            }
+            SheetStorage::Loaded { book, id } => {
+                let mut loaded = lock(book)?;
+                let loaded = loaded.as_mut().ok_or_else(closed)?;
+                if initialize_value {
+                    loaded.set_hyperlink(*id, address, link)
+                } else {
+                    loaded.update_hyperlink(*id, address, link)
+                }
+                .map_err(failure)
+            }
         }
     }
 }

@@ -134,7 +134,16 @@ impl NativeSheet {
         column: u32,
         value: Option<hyperlinks::LinkFields>,
     ) -> PyResult<()> {
-        self.replace_hyperlink(row, column, value)
+        self.replace_hyperlink(row, column, value, true)
+    }
+
+    pub(crate) fn update_hyperlink(
+        &self,
+        row: u32,
+        column: u32,
+        value: Option<hyperlinks::LinkFields>,
+    ) -> PyResult<()> {
+        self.replace_hyperlink(row, column, value, false)
     }
 
     #[new]
