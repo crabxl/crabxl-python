@@ -145,8 +145,9 @@ alias/structural acceptance remain open; this is not an A11 release checkpoint.
 
 Live hyperlink ref updates and shared point aliases are integrated in ADR 0032.
 Compact range declarations and per-cell views are integrated in ADR 0035.
-Write-only links, imported empty-anchor values,
-alias scaling remain tracked A11/performance gates. Ordinary saved public IDs
+Write-only links and alias scaling remain tracked A11/performance gates.
+Imported display initialization is integrated in ADR 0039; original-order empty
+value binding for overlapping declarations remains open. Ordinary saved public IDs
 are now synchronized through the borrowed native output planner (ADR 0038).
 ReadOnlyCell has no hyperlink surface in the pinned public reference.
 
