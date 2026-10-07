@@ -1,0 +1,6 @@
+rows=2000 prepare=0.029641 save=0.006620 load_scan_edit_save=0.043865 checksum=56893 peak_rss_kib=28272
+rows=2000 prepare=0.033877 save=0.009535 load_scan_edit_save=0.052468 checksum=56893 peak_rss_kib=28272
+rows=2000 prepare=0.030425 save=0.007387 load_scan_edit_save=0.045656 checksum=56893 peak_rss_kib=27952
+rows=8000 prepare=0.137969 save=0.026123 load_scan_edit_save=0.216805 checksum=230893 peak_rss_kib=50576
+rows=8000 prepare=0.129552 save=0.025894 load_scan_edit_save=0.203239 checksum=230893 peak_rss_kib=50520
+rows=8000 prepare=0.139956 save=0.029222 load_scan_edit_save=0.236981 checksum=230893 peak_rss_kib=50588

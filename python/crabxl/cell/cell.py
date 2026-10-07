@@ -59,6 +59,40 @@ class Cell:
         self.parent._model().set_named_style(self.row - 1, self.column - 1, value)
 
     @property
+    def hyperlink(self):
+        if self._detached is not None:
+            raise NotImplementedError("Detached hyperlink access is not implemented")
+        retained = self.parent._hyperlink_views.get((self.row, self.column))
+        if retained is not None:
+            return retained
+        fields = self.parent._model().hyperlink(self.row - 1, self.column - 1)
+        if fields is None:
+            return None
+        from ..worksheet.hyperlink import Hyperlink
+
+        target, location, tooltip, display, identity = fields
+        value = Hyperlink(self.coordinate, location, tooltip, display, identity, target)
+        value._bindings.setdefault(self.parent, set()).add((self.row, self.column))
+        self.parent._hyperlink_views[self.row, self.column] = value
+        return value
+
+    @hyperlink.setter
+    def hyperlink(self, value):
+        if self._detached is not None:
+            raise NotImplementedError("Detached hyperlink editing is not implemented")
+        if value is None:
+            self.parent._model().set_hyperlink(self.row - 1, self.column - 1, None)
+            self.parent._hyperlink_views.pop((self.row, self.column), None)
+            return
+        from ..worksheet.hyperlink import Hyperlink
+
+        if isinstance(value, str):
+            value = Hyperlink(ref=self.coordinate, target=value)
+        if not isinstance(value, Hyperlink):
+            raise TypeError("Hyperlink must be a string, Hyperlink or None")
+        value._bind(self.parent, self.row, self.column)
+
+    @property
     def coordinate(self):
         return f"{_letters(self.column)}{self.row}"
 

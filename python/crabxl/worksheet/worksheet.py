@@ -27,6 +27,7 @@ class Worksheet:
         "_column_dimensions",
         "_merged_cells",
         "_rich_views",
+        "_hyperlink_views",
         "__weakref__",
     )
 
@@ -45,6 +46,7 @@ class Worksheet:
         )
         self._cells = WeakValueDictionary()
         self._rich_views = WeakValueDictionary()
+        self._hyperlink_views = {}
         self._row_dimensions = self._column_dimensions = None
         self._merged_cells = None
         self._validate_title(self._title)
@@ -281,6 +283,7 @@ class Worksheet:
             self._native = self.parent._editor.sheet_handle(self.title)
         style = cell._snapshot()[2:] if cell is not None else None
         old = self._model().remove(row - 1, column - 1, cell is not None)
+        self._hyperlink_views.pop((row, column), None)
         self._rich_views.pop((row, column), None)
         if cell is not None:
             self._cells.pop((row, column), None)
