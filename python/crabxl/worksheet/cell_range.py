@@ -175,5 +175,12 @@ class CellRange:
     __and__ = intersection
 
 
-# Public compatibility import; the container only depends on the range view.
-from .multi_cell_range import MultiCellRange as MultiCellRange  # noqa: E402
+__all__ = ["CellRange", "MultiCellRange"]
+
+
+def __getattr__(name):
+    if name == "MultiCellRange":
+        from .multi_cell_range import MultiCellRange
+
+        return MultiCellRange
+    raise AttributeError(name)
