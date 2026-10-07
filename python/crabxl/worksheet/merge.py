@@ -51,6 +51,7 @@ class MultiCellRange:
                 raise RuntimeError("Merged range membership changed during iteration")
             first_row, first_col, last_row, last_col = native.merged_range(index)
             result = MergedCellRange.__new__(MergedCellRange)
+            result.title = None
             result.min_row, result.min_col = first_row, first_col
             result.max_row, result.max_col = last_row, last_col
             result._worksheet = ref(worksheet)
