@@ -166,3 +166,20 @@ additional tests. Use only necessary compilation and formatting checks during
 implementation. Add missing high-value tests once at pre-release acceptance, fix
 failures together, then run the relevant regression and publication checks.
 Intermediate feature checkpoints are not occasions for adding tests or full suites.
+
+## Development stop checkpoint
+
+On 2026-10-07 the user requested committing/pushing current progress and stopping
+development. A11 is unfinished and unpublished; A12–A16 have not started.
+The adapter pins core `c2850ce61c8d56990f142b733c2896ab4294ac3d` for the integrated
+live write-only hyperlink functionality (ADR 0041). Later native commit
+`8eea544167419c712e3cc5f498d227df22668c77` adds independent raw merge declarations
+and realized virtual patterns (core ADR 0101). The adapter has not adopted or
+exposed that mutation checkpoint yet.
+
+Resume with bound mutable merged sets, stable live coordinate views and bulk
+replacement, then finish rich utility/shared-object edge cases and applicable
+structural interactions. Consolidated pre-release correctness, resources,
+performance and packaging acceptance remains required. These implementation
+checkpoints added or ran no new tests or benchmarks; library compilation and
+formatting checks are not release acceptance.
