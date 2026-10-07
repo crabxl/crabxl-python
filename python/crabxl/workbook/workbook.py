@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from pathlib import Path
-from weakref import WeakSet
+from weakref import WeakSet, WeakValueDictionary
 
 from .._native import (
     NativeBook,
@@ -33,6 +33,7 @@ class Workbook:
         "_stream_writer",
         "_streams",
         "_saved",
+        "_stream_links",
     )
 
     def __init__(
@@ -59,6 +60,7 @@ class Workbook:
         self.write_only = bool(write_only)
         self._streams = WeakSet()
         self._saved = False
+        self._stream_links = WeakValueDictionary()
         self._stream_writer = (
             NativeWriteBook(
                 self._max_bytes,
@@ -368,11 +370,16 @@ class Workbook:
             if not self._sheets:
                 self.create_sheet()
             try:
-                self._active = self._stream_writer.save(
+                self._active, identities = self._stream_writer.save(
                     Path(filename),
                     self._active if self._active is not None else 0,
                     compression_level,
+                    list(self._stream_links),
                 )
+                for group, identity in identities:
+                    link = self._stream_links.get(group)
+                    if link is not None:
+                        object.__setattr__(link, "id", identity)
             finally:
                 # Packaging consumes spools even if output fails; never imply retry.
                 self._saved = True

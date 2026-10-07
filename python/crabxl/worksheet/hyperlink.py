@@ -17,6 +17,7 @@ class Hyperlink:
         self, ref=None, location=None, tooltip=None, display=None, id=None, target=None
     ):
         self._bindings = WeakKeyDictionary()
+        self._stream_bindings = WeakKeyDictionary()
         self.ref = ref
         self.location = location
         self.tooltip = tooltip
@@ -66,10 +67,34 @@ class Hyperlink:
                     native.update_hyperlink(
                         row - 1, column - 1, self._fields(f"{_letters(column)}{row}")
                     )
-                    committed.append((native, row, column, previous))
+                    committed.append(
+                        (native.update_hyperlink, (row - 1, column - 1), previous)
+                    )
+            for workbook, group in list(self._stream_bindings.items()):
+                if workbook._saved or workbook._closed:
+                    del self._stream_bindings[workbook]
+                    continue
+                native = workbook._stream_writer
+                previous = native.hyperlink(group)
+                native.update_hyperlink(group, self._fields())
+                committed.append((native.update_hyperlink, (group,), previous))
         except BaseException:
-            for native, row, column, previous in reversed(committed):
-                native.update_hyperlink(row - 1, column - 1, previous)
+            for update, arguments, previous in reversed(committed):
+                update(*arguments, previous)
+            raise
+
+    def _bind_stream(self, workbook, coordinate):
+        previous = self.ref
+        self.ref = coordinate
+        try:
+            group = self._stream_bindings.get(workbook)
+            if group is None:
+                group = workbook._stream_writer.register_hyperlink(self._fields())
+                self._stream_bindings[workbook] = group
+            workbook._stream_links[group] = self
+            return group
+        except BaseException:
+            self.ref = previous
             raise
 
     def _bind(self, sheet, row, column):

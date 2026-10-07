@@ -145,9 +145,10 @@ alias/structural acceptance remain open; this is not an A11 release checkpoint.
 
 Live hyperlink ref updates and shared point aliases are integrated in ADR 0032.
 Compact range declarations and per-cell views are integrated in ADR 0035.
-Write-only links and alias scaling remain tracked A11/performance gates.
-Imported display initialization is integrated in ADR 0039; original-order empty
-value binding for overlapping declarations remains open. Ordinary saved public IDs
+Write-only live groups and saved public identities are integrated in ADR 0041;
+alias scaling and consolidated acceptance remain tracked gates.
+Imported display initialization and original-order overlap binding are integrated
+in ADR 0039. Ordinary saved public IDs
 are now synchronized through the borrowed native output planner (ADR 0038).
 ReadOnlyCell has no hyperlink surface in the pinned public reference.
 
@@ -155,7 +156,8 @@ A11 implementation also integrates retained/copied rich bindings (ADR 0033),
 native rich XML utilities (ADR 0034), editable detached hyperlinks (ADR 0036)
 and shared rectangle utilities (ADR 0037). These checkpoints have compilation
 and formatting checks only; they do not establish completed A11 acceptance.
-Standalone multi-range sets and live merged-declaration changes remain open.
+Standalone mutable multi-range sets are integrated in ADR 0040. Live merged-
+declaration changes and consolidated compatibility acceptance remain open.
 
 ## Implementation and acceptance cadence
 

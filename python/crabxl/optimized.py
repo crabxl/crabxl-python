@@ -269,6 +269,7 @@ class WriteOnlyCell:
         "_number_format",
         "_components",
         "_named_style",
+        "_hyperlink",
     )
 
     def __init__(self, ws=None, value=None):
@@ -276,6 +277,26 @@ class WriteOnlyCell:
         self._number_format = None
         self._components = {}
         self._named_style = None
+        self._hyperlink = None
+
+    @property
+    def hyperlink(self):
+        return self._hyperlink
+
+    @hyperlink.setter
+    def hyperlink(self, value):
+        from ._native import initial_hyperlink_value
+        from .worksheet.hyperlink import Hyperlink
+
+        if value is not None:
+            if isinstance(value, str):
+                value = Hyperlink(ref=self.coordinate, target=value)
+            if not isinstance(value, Hyperlink):
+                raise TypeError("Hyperlink must be a target string, Hyperlink, or None")
+            value.ref = self.coordinate
+            if self.value is None:
+                self.value = _decode(initial_hyperlink_value(value._fields()))
+        self._hyperlink = value
 
     @property
     def style(self):
@@ -348,7 +369,7 @@ class WriteOnlyCell:
                 raise TypeError(f"Invalid {name} component")
             self._components[name] = value
             return
-        if name in ("hyperlink", "comment"):
+        if name == "comment":
             raise NotImplementedError(f"Write-only {name} is not implemented")
         object.__setattr__(self, name, value)
 
@@ -411,12 +432,19 @@ class WriteOnlyWorksheet(Worksheet):
             raise TypeError("Write-only append requires a row iterable")
         tagged = []
         formats = None
+        hyperlinks = None
         retained = 0
         allowance = min(self.parent._max_bytes, 1024 * 1024)
         for column, value in enumerate(iterable):
             if column >= 16384:
                 raise ValueError("Row exceeds Excel column limits")
             if isinstance(value, WriteOnlyCell):
+                value.row, value.column = self._row + 1, column + 1
+                if value.hyperlink is not None:
+                    if hyperlinks is None:
+                        hyperlinks = []
+                    hyperlinks.append((column, value.hyperlink))
+                    retained += 256
                 if (
                     value._number_format is not None
                     or value._components
@@ -444,7 +472,30 @@ class WriteOnlyWorksheet(Worksheet):
             if retained > allowance:
                 raise MemoryError("Write-only row exceeds its byte allowance")
             tagged.append(encoded)
-        self.parent._stream_writer.append(self._id, self._row, tagged, formats)
+        if hyperlinks is None:
+            self.parent._stream_writer.append(self._id, self._row, tagged, formats)
+            self._row += 1
+            return
+        previous_refs = []
+        groups = []
+        try:
+            for column, link in hyperlinks:
+                previous_refs.append((link, link.ref))
+                groups.append(
+                    (
+                        column,
+                        link._bind_stream(
+                            self.parent, f"{_letters(column + 1)}{self._row + 1}"
+                        ),
+                    )
+                )
+            self.parent._stream_writer.append(
+                self._id, self._row, tagged, formats, groups
+            )
+        except BaseException:
+            for link, previous in reversed(previous_refs):
+                link.ref = previous
+            raise
         self._row += 1
 
     def close(self):

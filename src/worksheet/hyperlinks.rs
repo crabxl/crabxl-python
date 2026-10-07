@@ -1,7 +1,7 @@
 //! Point metadata conversion over canonical owned and source-backed sheets.
 use super::*;
 
-pub(super) type LinkFields = (
+pub(crate) type LinkFields = (
     Option<String>,
     Option<String>,
     Option<String>,
@@ -19,7 +19,7 @@ fn fields(links: &crabxl::Hyperlinks, address: CellAddress) -> Option<LinkFields
     Some(fields)
 }
 
-pub(super) fn owned_fields(link: &crabxl::Hyperlink) -> LinkFields {
+pub(crate) fn owned_fields(link: &crabxl::Hyperlink) -> LinkFields {
     (
         link.target.as_deref().map(str::to_owned),
         link.location.as_deref().map(str::to_owned),
@@ -30,7 +30,7 @@ pub(super) fn owned_fields(link: &crabxl::Hyperlink) -> LinkFields {
     )
 }
 
-fn decode(fields: LinkFields) -> crabxl::Hyperlink {
+pub(crate) fn decode(fields: LinkFields) -> crabxl::Hyperlink {
     let (target, location, tooltip, display, relationship_id, reference) = fields;
     crabxl::Hyperlink {
         reference: reference.map(String::into_boxed_str),
