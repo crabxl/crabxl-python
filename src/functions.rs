@@ -75,6 +75,46 @@ pub(crate) fn finite_range(reference: &str) -> PyResult<(u32, u32, u32, u32)> {
     ))
 }
 #[pyfunction]
+pub(crate) fn adjust_range(
+    reference: &str,
+    left: i64,
+    top: i64,
+    right: i64,
+    bottom: i64,
+) -> PyResult<String> {
+    let range: CellRange = reference.parse().map_err(failure)?;
+    Ok(range
+        .adjusted(left, top, right, bottom)
+        .map_err(failure)?
+        .to_string())
+}
+
+#[pyfunction]
+pub(crate) fn combine_ranges(first: &str, second: &str, intersection: bool) -> PyResult<String> {
+    let first: CellRange = first.parse().map_err(failure)?;
+    let second: CellRange = second.parse().map_err(failure)?;
+    let range = if intersection {
+        first
+            .intersection(second)
+            .ok_or_else(|| PyValueError::new_err("Ranges do not intersect"))?
+    } else {
+        first.union(second)
+    };
+    Ok(range.to_string())
+}
+
+#[pyfunction]
+pub(crate) fn compare_ranges(first: &str, second: &str) -> PyResult<(bool, bool, bool)> {
+    let first: CellRange = first.parse().map_err(failure)?;
+    let second: CellRange = second.parse().map_err(failure)?;
+    Ok((
+        first.contains_range(second),
+        second.contains_range(first),
+        first.intersects(second),
+    ))
+}
+
+#[pyfunction]
 #[pyo3(signature = (max_bytes, resources=None))]
 pub(crate) fn resolve_model_budget(
     max_bytes: Option<usize>,
