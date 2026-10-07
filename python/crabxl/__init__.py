@@ -151,6 +151,38 @@ class Cell:
         self._formula = None
 
     @property
+    def style(self):
+        if self._detached is not None:
+            return self.parent.parent._style_owner().style_name(self.style_id)
+        return self.parent._model().named_style(self.row - 1, self.column - 1)
+
+    @style.setter
+    def style(self, value):
+        from .styles import NamedStyle
+
+        workbook = self.parent.parent
+        if isinstance(value, NamedStyle):
+            if value.name not in workbook.named_styles:
+                workbook.add_named_style(value)
+            value = value.name
+        if not isinstance(value, str):
+            raise TypeError("Style must be a name or NamedStyle")
+        if self._detached is not None:
+            from .styles._base import component
+
+            style, number, components = workbook._style_owner().named_style_snapshot(
+                value
+            )
+            self._detached = (
+                *self._detached[:2],
+                style,
+                number,
+                {name: component(name, item) for name, item in components.items()},
+            )
+            return
+        self.parent._model().set_named_style(self.row - 1, self.column - 1, value)
+
+    @property
     def coordinate(self):
         return f"{_letters(self.column)}{self.row}"
 
@@ -282,7 +314,16 @@ class Worksheet:
     SHEETSTATE_HIDDEN = "hidden"
     SHEETSTATE_VERYHIDDEN = "veryHidden"
 
-    __slots__ = ("parent", "_title", "_existing", "_native", "_cells", "__weakref__")
+    __slots__ = (
+        "parent",
+        "_title",
+        "_existing",
+        "_native",
+        "_cells",
+        "_row_dimensions",
+        "_column_dimensions",
+        "__weakref__",
+    )
 
     def __init__(self, parent, title=None, *, _existing=False, _native=None):
         self.parent = parent
@@ -298,7 +339,24 @@ class Worksheet:
             else NativeSheet(self._title, parent._max_bytes)
         )
         self._cells = WeakValueDictionary()
+        self._row_dimensions = self._column_dimensions = None
         self._validate_title(self._title)
+
+    @property
+    def row_dimensions(self):
+        from .worksheet.dimensions import DimensionHolder
+
+        if self._row_dimensions is None:
+            self._row_dimensions = DimensionHolder(self, rows=True)
+        return self._row_dimensions
+
+    @property
+    def column_dimensions(self):
+        from .worksheet.dimensions import DimensionHolder
+
+        if self._column_dimensions is None:
+            self._column_dimensions = DimensionHolder(self)
+        return self._column_dimensions
 
     @staticmethod
     def _validate_title(title):
@@ -599,6 +657,7 @@ class Workbook:
     """Workbook-compatible entry point; models and package editing remain Rust-owned."""
 
     __slots__ = (
+        "__weakref__",
         "_max_bytes",
         "_closed",
         "_reader",
@@ -654,6 +713,32 @@ class Workbook:
         self._book = NativeBook(self._max_bytes)
         if not write_only:
             self.create_sheet("Sheet")
+
+    def _style_owner(self):
+        self._check_open()
+        return self._reader or self._stream_writer or self._book
+
+    @property
+    def loaded_theme(self):
+        return self._style_owner().theme()
+
+    @loaded_theme.setter
+    def loaded_theme(self, value):
+        if value is not None and not isinstance(value, bytes):
+            raise TypeError("Theme must be bytes or None")
+        self._style_owner().set_theme(value)
+
+    @property
+    def named_styles(self):
+        return self._style_owner().named_styles()
+
+    def add_named_style(self, style):
+        from .styles import NamedStyle
+
+        if not isinstance(style, NamedStyle):
+            raise TypeError("Only NamedStyle instances can be registered")
+        self._style_owner().add_named_style(style._native())
+        style._bind(self)
 
     @property
     def model_memory_budget_bytes(self):

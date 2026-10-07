@@ -5,6 +5,7 @@ from .borders import Border, Side
 from .colors import Color
 from .fills import GradientFill, PatternFill
 from .fonts import Font
+from .named_styles import NamedStyle
 from .protection import Protection
 
 __all__ = [
@@ -13,6 +14,7 @@ __all__ = [
     "Color",
     "Font",
     "GradientFill",
+    "NamedStyle",
     "PatternFill",
     "Protection",
     "Side",

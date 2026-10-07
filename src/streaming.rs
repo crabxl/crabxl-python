@@ -285,6 +285,275 @@ pub(crate) struct NativeWriteBook {
 }
 #[pymethods]
 impl NativeWriteBook {
+    fn remove_dimension(&self, id: usize, rows: bool, index: u32) -> PyResult<bool> {
+        let mut state = lock(&self.state)?;
+        let writer = state.writer.as_mut().ok_or_else(closed)?;
+        if rows {
+            writer
+                .remove_interleaved_row_dimension(id, RowIndex::new(index).map_err(failure)?)
+                .map_err(failure)
+        } else {
+            writer
+                .remove_interleaved_column_dimension(id, ColumnIndex::new(index).map_err(failure)?)
+                .map_err(failure)
+        }
+    }
+    #[allow(clippy::too_many_arguments)]
+    fn group_dimensions(
+        &self,
+        id: usize,
+        rows: bool,
+        start: u32,
+        end: u32,
+        level: u32,
+        hidden: bool,
+    ) -> PyResult<()> {
+        let mut state = lock(&self.state)?;
+        let writer = state.writer.as_mut().ok_or_else(closed)?;
+        if rows {
+            writer
+                .group_interleaved_rows(
+                    id,
+                    RowIndex::new(start).map_err(failure)?,
+                    RowIndex::new(end).map_err(failure)?,
+                    level,
+                    hidden,
+                )
+                .map_err(failure)
+        } else {
+            writer
+                .group_interleaved_columns(
+                    id,
+                    ColumnIndex::new(start).map_err(failure)?,
+                    ColumnIndex::new(end).map_err(failure)?,
+                    level,
+                    hidden,
+                )
+                .map_err(failure)
+        }
+    }
+    fn dimension_component<'py>(
+        &self,
+        py: Python<'py>,
+        id: usize,
+        rows: bool,
+        index: u32,
+        name: &str,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let state = lock(&self.state)?;
+        let writer = state.writer.as_ref().ok_or_else(closed)?;
+        let dimension = dimensions::Dimension::snapshot(
+            writer.interleaved_dimensions(id).map_err(failure)?,
+            rows,
+            index,
+        )?;
+        styles::encode(
+            py,
+            name,
+            writer
+                .style_catalog()
+                .ok_or_else(closed)?
+                .cell_style(dimension.style())
+                .map_err(failure)?,
+        )
+    }
+    fn dimension_number_format(&self, id: usize, rows: bool, index: u32) -> PyResult<String> {
+        let state = lock(&self.state)?;
+        let writer = state.writer.as_ref().ok_or_else(closed)?;
+        let dimension = dimensions::Dimension::snapshot(
+            writer.interleaved_dimensions(id).map_err(failure)?,
+            rows,
+            index,
+        )?;
+        let catalog = writer.style_catalog().ok_or_else(closed)?;
+        Ok(catalog
+            .cell_format(dimension.style())
+            .and_then(|format| catalog.number_format(format.number_format_id))
+            .unwrap_or("General")
+            .into())
+    }
+    fn set_dimension_component(
+        &self,
+        id: usize,
+        rows: bool,
+        index: u32,
+        value: PyRef<'_, styles::NativeStyleComponent>,
+    ) -> PyResult<()> {
+        let mut state = lock(&self.state)?;
+        let writer = state.writer.as_mut().ok_or_else(closed)?;
+        let mut dimension = dimensions::Dimension::snapshot(
+            writer.interleaved_dimensions(id).map_err(failure)?,
+            rows,
+            index,
+        )?;
+        let style = writer
+            .derive_style_component(dimension.style(), value.component.clone())
+            .map_err(failure)?;
+        dimension.set_style(style);
+        dimension.apply_writer(writer, id).map_err(failure)
+    }
+    fn set_dimension_number_format(
+        &self,
+        id: usize,
+        rows: bool,
+        index: u32,
+        code: String,
+    ) -> PyResult<()> {
+        let mut state = lock(&self.state)?;
+        let writer = state.writer.as_mut().ok_or_else(closed)?;
+        let mut dimension = dimensions::Dimension::snapshot(
+            writer.interleaved_dimensions(id).map_err(failure)?,
+            rows,
+            index,
+        )?;
+        let style = style_owners::StyleOwner::number(writer, dimension.style(), code.into())
+            .map_err(failure)?;
+        dimension.set_style(style);
+        dimension.apply_writer(writer, id).map_err(failure)
+    }
+    fn dimension<'py>(
+        &self,
+        py: Python<'py>,
+        id: usize,
+        rows: bool,
+        index: u32,
+    ) -> PyResult<Option<Bound<'py, PyDict>>> {
+        let state = lock(&self.state)?;
+        dimensions::encode(
+            py,
+            state
+                .writer
+                .as_ref()
+                .ok_or_else(closed)?
+                .interleaved_dimensions(id)
+                .map_err(failure)?,
+            rows,
+            index,
+        )
+    }
+    fn dimension_keys(&self, id: usize, rows: bool) -> PyResult<Vec<u32>> {
+        let state = lock(&self.state)?;
+        Ok(dimensions::keys(
+            state
+                .writer
+                .as_ref()
+                .ok_or_else(closed)?
+                .interleaved_dimensions(id)
+                .map_err(failure)?,
+            rows,
+        ))
+    }
+    fn set_dimension(
+        &self,
+        id: usize,
+        rows: bool,
+        index: u32,
+        value: &Bound<'_, PyDict>,
+    ) -> PyResult<()> {
+        let mut state = lock(&self.state)?;
+        let writer = state.writer.as_mut().ok_or_else(closed)?;
+        if rows {
+            writer
+                .set_interleaved_row_dimension(id, dimensions::row(value, index)?)
+                .map_err(failure)
+        } else {
+            writer
+                .set_interleaved_column_dimension(id, dimensions::column(value, index)?)
+                .map_err(failure)
+        }
+    }
+    fn theme<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyBytes>>> {
+        Ok(lock(&self.state)?
+            .writer
+            .as_ref()
+            .ok_or_else(closed)?
+            .theme()
+            .map(|theme| PyBytes::new(py, theme.bytes())))
+    }
+    fn set_theme(&self, value: Option<Vec<u8>>) -> PyResult<()> {
+        let theme = value.map_or_else(crabxl::ThemeWritePolicy::default, |bytes| {
+            crabxl::ThemeWritePolicy::Custom(crabxl::Theme::from_bytes(bytes.into_boxed_slice()))
+        });
+        lock(&self.state)?
+            .writer
+            .as_mut()
+            .ok_or_else(closed)?
+            .set_theme(theme)
+            .map_err(failure)
+    }
+    #[pyo3(signature = (name, new_name, builtin_id=None, hidden=false))]
+    fn update_named_style_metadata(
+        &self,
+        name: &str,
+        new_name: String,
+        builtin_id: Option<u32>,
+        hidden: bool,
+    ) -> PyResult<()> {
+        style_owners::metadata(
+            lock(&self.state)?.writer.as_mut().ok_or_else(closed)?,
+            name,
+            new_name,
+            builtin_id,
+            hidden,
+        )
+    }
+    fn named_styles(&self) -> PyResult<Vec<String>> {
+        Ok(style_owners::names(
+            lock(&self.state)?
+                .writer
+                .as_ref()
+                .ok_or_else(closed)?
+                .style_catalog(),
+        ))
+    }
+    #[pyo3(signature = (value, update=false))]
+    fn add_named_style(&self, value: &Bound<'_, PyDict>, update: bool) -> PyResult<u32> {
+        style_owners::register(
+            lock(&self.state)?.writer.as_mut().ok_or_else(closed)?,
+            value,
+            update,
+        )
+    }
+    fn named_style_format(&self, name: &str) -> PyResult<u32> {
+        lock(&self.state)?
+            .writer
+            .as_mut()
+            .ok_or_else(closed)?
+            .named_style_format(name)
+            .map(|id| id.get())
+            .map_err(failure)
+    }
+    fn style_component<'py>(
+        &self,
+        py: Python<'py>,
+        style: u32,
+        name: &str,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let state = lock(&self.state)?;
+        let writer = state.writer.as_ref().ok_or_else(closed)?;
+        let catalog = writer.style_catalog().ok_or_else(closed)?;
+        styles::encode(
+            py,
+            name,
+            catalog.cell_style(StyleId::new(style)).map_err(failure)?,
+        )
+    }
+    fn number_format(&self, style: u32) -> PyResult<String> {
+        let state = lock(&self.state)?;
+        let catalog = state
+            .writer
+            .as_ref()
+            .ok_or_else(closed)?
+            .style_catalog()
+            .ok_or_else(closed)?;
+        let format = catalog
+            .cell_format(StyleId::new(style))
+            .ok_or_else(|| PyValueError::new_err("Unknown style identity"))?;
+        Ok(catalog
+            .number_format(format.number_format_id)
+            .unwrap_or("General")
+            .into())
+    }
     #[new]
     #[pyo3(signature = (maximum, iso_dates=false, date_1904=false, temp_directory=None))]
     fn new(
@@ -294,7 +563,7 @@ impl NativeWriteBook {
         temp_directory: Option<PathBuf>,
     ) -> PyResult<Self> {
         let options = WriteOptions {
-            max_metadata_bytes: maximum.min(16 * 1024 * 1024),
+            max_metadata_bytes: maximum,
             max_row_bytes: maximum.min(1024 * 1024),
             iso_dates,
             date_1904,
@@ -369,6 +638,11 @@ impl NativeWriteBook {
         let mut format_bytes = 0usize;
         for (column, value) in formats {
             let value = value.bind(py);
+            let base = value
+                .get_item("style_id")?
+                .filter(|v| !v.is_none())
+                .map(|v| v.extract::<u32>())
+                .transpose()?;
             let number = value
                 .get_item("number_format")?
                 .filter(|v| !v.is_none())
@@ -388,7 +662,7 @@ impl NativeWriteBook {
                     components.push(native.component.clone());
                 }
             }
-            decoded_formats.push((column, number, components));
+            decoded_formats.push((column, base, number, components));
         }
         let formats = decoded_formats;
         let mut row = Row::new(index);
@@ -424,18 +698,13 @@ impl NativeWriteBook {
                     .peek()
                     .is_some_and(|(column, ..)| *column == cell.address.column.get())
                 {
-                    let (_, code, components) = formats.next().ok_or_else(closed)?;
-                    let code_was_explicit = code.is_some();
-                    let mut style = if let Some(code) = code {
-                        writer
-                            .register_style(crabxl::CellStyle {
-                                number_format: code.into(),
-                                ..Default::default()
-                            })
-                            .map_err(failure)?
-                    } else {
-                        StyleId::new(0)
-                    };
+                    let (_, base, code, components) = formats.next().ok_or_else(closed)?;
+                    let code_was_explicit = code.is_some() || base.is_some();
+                    let mut style = StyleId::new(base.unwrap_or(0));
+                    if let Some(code) = code {
+                        style = style_owners::StyleOwner::number(writer, style, code.into())
+                            .map_err(failure)?;
+                    }
                     for component in components {
                         style = writer
                             .derive_style_component(style, component)

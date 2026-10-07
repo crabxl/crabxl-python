@@ -3,7 +3,7 @@ use crate::failure;
 use crabxl::*;
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyDict};
 
-fn field<'py, T: for<'a> FromPyObject<'a, 'py>>(
+pub(crate) fn field<'py, T: for<'a> FromPyObject<'a, 'py>>(
     value: &Bound<'py, PyDict>,
     name: &str,
 ) -> PyResult<Option<T>>

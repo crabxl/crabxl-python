@@ -259,16 +259,49 @@ class ReadOnlyWorksheet(Worksheet):
 
 
 class WriteOnlyCell:
-    __slots__ = ("parent", "value", "row", "column", "_number_format", "_components")
+    __slots__ = (
+        "parent",
+        "value",
+        "row",
+        "column",
+        "_number_format",
+        "_components",
+        "_named_style",
+    )
 
     def __init__(self, ws=None, value=None):
         self.parent, self.value, self.row, self.column = ws, value, 1, 1
         self._number_format = None
         self._components = {}
+        self._named_style = None
+
+    @property
+    def style(self):
+        return self._named_style[0] if self._named_style is not None else "Normal"
+
+    @style.setter
+    def style(self, value):
+        from .styles import NamedStyle
+
+        workbook = self.parent.parent
+        if isinstance(value, NamedStyle):
+            if value.name not in workbook.named_styles:
+                workbook.add_named_style(value)
+            value = value.name
+        if not isinstance(value, str):
+            raise TypeError("Style must be a name or NamedStyle")
+        identity = workbook._stream_writer.named_style_format(value)
+        self._named_style = (value, identity)
+        self._number_format = None
+        self._components.clear()
 
     @property
     def number_format(self):
-        return self._number_format or "General"
+        if self._number_format is not None:
+            return self._number_format
+        if self._named_style is not None:
+            return self.parent.parent._stream_writer.number_format(self._named_style[1])
+        return "General"
 
     @number_format.setter
     def number_format(self, code):
@@ -293,7 +326,14 @@ class WriteOnlyCell:
 
             value = self._components.get(name)
             if value is None:
-                value = component(name, default_style_component(name))
+                native = (
+                    self.parent.parent._stream_writer.style_component(
+                        self._named_style[1], name
+                    )
+                    if self._named_style is not None
+                    else default_style_component(name)
+                )
+                value = component(name, native)
             return StyleProxy(value)
         raise AttributeError(name)
 
@@ -318,6 +358,7 @@ class WriteOnlyWorksheet(Worksheet):
         self.parent, self._title, self._id = workbook, title, identifier
         self._existing, self._native = False, None
         self._cells = WeakValueDictionary()
+        self._row_dimensions = self._column_dimensions = None
         self._row, self._finished = 0, False
         self._sheet_state = "visible"
 
@@ -374,12 +415,18 @@ class WriteOnlyWorksheet(Worksheet):
             if column >= 16384:
                 raise ValueError("Row exceeds Excel column limits")
             if isinstance(value, WriteOnlyCell):
-                if value._number_format is not None or value._components:
+                if (
+                    value._number_format is not None
+                    or value._components
+                    or value._named_style is not None
+                ):
                     if formats is None:
                         formats = []
                     directives = {
                         name: item._native() for name, item in value._components.items()
                     }
+                    if value._named_style is not None:
+                        directives["style_id"] = value._named_style[1]
                     if value._number_format is not None:
                         directives["number_format"] = value._number_format
                     formats.append((column, directives))
