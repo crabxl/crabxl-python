@@ -42,7 +42,7 @@ dependencies = [
 [[package]]
 name = "crabxl"
 version = "0.1.0-alpha.10"
-source = "git+https://github.com/crabxl/crabxl.git?rev=8107b4df12951c1acfe243147f21a54a2b7fb872#8107b4df12951c1acfe243147f21a54a2b7fb872"
+source = "git+https://github.com/crabxl/crabxl.git?rev=73d772dd5b057bc13a1f441084b54b024cb15689#73d772dd5b057bc13a1f441084b54b024cb15689"
 dependencies = [
  "crabxl-core",
  "crabxl-xlsx",
@@ -51,7 +51,7 @@ dependencies = [
 [[package]]
 name = "crabxl-core"
 version = "0.1.0-alpha.10"
-source = "git+https://github.com/crabxl/crabxl.git?rev=8107b4df12951c1acfe243147f21a54a2b7fb872#8107b4df12951c1acfe243147f21a54a2b7fb872"
+source = "git+https://github.com/crabxl/crabxl.git?rev=73d772dd5b057bc13a1f441084b54b024cb15689#73d772dd5b057bc13a1f441084b54b024cb15689"
 dependencies = [
  "chrono",
 ]
@@ -68,7 +68,7 @@ dependencies = [
 [[package]]
 name = "crabxl-xlsx"
 version = "0.1.0-alpha.10"
-source = "git+https://github.com/crabxl/crabxl.git?rev=8107b4df12951c1acfe243147f21a54a2b7fb872#8107b4df12951c1acfe243147f21a54a2b7fb872"
+source = "git+https://github.com/crabxl/crabxl.git?rev=73d772dd5b057bc13a1f441084b54b024cb15689#73d772dd5b057bc13a1f441084b54b024cb15689"
 dependencies = [
  "crabxl-core",
  "fast-float2",

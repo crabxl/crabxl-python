@@ -685,10 +685,12 @@ impl NativeSheet {
         let removed = py.detach(move || {
             let mut storage = lock(&storage)?;
             let removed = match &mut *storage {
-                SheetStorage::Standalone(sheet) => sheet.edit().remove(address),
-                SheetStorage::Bank { book, id } => {
-                    lock(book)?.sheet_mut(*id).map_err(failure)?.remove(address)
-                }
+                SheetStorage::Standalone(sheet) => sheet.edit().remove(address).map_err(failure)?,
+                SheetStorage::Bank { book, id } => lock(book)?
+                    .sheet_mut(*id)
+                    .map_err(failure)?
+                    .remove(address)
+                    .map_err(failure)?,
                 SheetStorage::Loaded { book, id } => lock(book)?
                     .as_mut()
                     .ok_or_else(closed)?
