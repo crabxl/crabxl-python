@@ -247,56 +247,7 @@ pub(crate) fn encode<'py>(
 ) -> PyResult<Bound<'py, PyDict>> {
     let result = PyDict::new(py);
     match name {
-        "font" => {
-            let value = view.font;
-            result.set_item("name", value.name.as_deref())?;
-            result.set_item("sz", value.size)?;
-            result.set_item("b", value.bold)?;
-            result.set_item("i", value.italic)?;
-            result.set_item("strike", value.strike)?;
-            result.set_item("outline", value.outline)?;
-            result.set_item("shadow", value.shadow)?;
-            result.set_item("condense", value.condense)?;
-            result.set_item("extend", value.extend)?;
-            result.set_item("family", value.family)?;
-            result.set_item(
-                "charset",
-                value
-                    .charset
-                    .as_ref()
-                    .map(ToString::to_string)
-                    .map(|v| v.parse::<i64>())
-                    .transpose()
-                    .map_err(|_| PyValueError::new_err("Charset exceeds adapter integer range"))?,
-            )?;
-            result.set_item(
-                "u",
-                value.underline.map(|v| match v {
-                    Underline::None => "none",
-                    Underline::Single => "single",
-                    Underline::Double => "double",
-                    Underline::SingleAccounting => "singleAccounting",
-                    Underline::DoubleAccounting => "doubleAccounting",
-                }),
-            )?;
-            result.set_item(
-                "vertAlign",
-                value.vertical.map(|v| match v {
-                    TextVerticalAlignment::Baseline => "baseline",
-                    TextVerticalAlignment::Superscript => "superscript",
-                    TextVerticalAlignment::Subscript => "subscript",
-                }),
-            )?;
-            result.set_item(
-                "scheme",
-                value.scheme.map(|v| match v {
-                    FontScheme::None => "none",
-                    FontScheme::Major => "major",
-                    FontScheme::Minor => "minor",
-                }),
-            )?;
-            put_color(py, &result, "color", value.color.as_ref())?;
-        }
+        "font" => return encode_font(py, view.font),
         "alignment" => {
             let default = Alignment::default();
             let value = view.alignment.unwrap_or(&default);
@@ -430,4 +381,56 @@ pub(crate) fn make_style_component(
         _ => {}
     }
     Ok(NativeStyleComponent { component })
+}
+
+pub(crate) fn encode_font<'py>(py: Python<'py>, value: &Font) -> PyResult<Bound<'py, PyDict>> {
+    let result = PyDict::new(py);
+    result.set_item("name", value.name.as_deref())?;
+    result.set_item("sz", value.size)?;
+    result.set_item("b", value.bold)?;
+    result.set_item("i", value.italic)?;
+    result.set_item("strike", value.strike)?;
+    result.set_item("outline", value.outline)?;
+    result.set_item("shadow", value.shadow)?;
+    result.set_item("condense", value.condense)?;
+    result.set_item("extend", value.extend)?;
+    result.set_item("family", value.family)?;
+    result.set_item(
+        "charset",
+        value
+            .charset
+            .as_ref()
+            .map(ToString::to_string)
+            .map(|v| v.parse::<i64>())
+            .transpose()
+            .map_err(|_| PyValueError::new_err("Charset exceeds adapter integer range"))?,
+    )?;
+    result.set_item(
+        "u",
+        value.underline.map(|v| match v {
+            Underline::None => "none",
+            Underline::Single => "single",
+            Underline::Double => "double",
+            Underline::SingleAccounting => "singleAccounting",
+            Underline::DoubleAccounting => "doubleAccounting",
+        }),
+    )?;
+    result.set_item(
+        "vertAlign",
+        value.vertical.map(|v| match v {
+            TextVerticalAlignment::Baseline => "baseline",
+            TextVerticalAlignment::Superscript => "superscript",
+            TextVerticalAlignment::Subscript => "subscript",
+        }),
+    )?;
+    result.set_item(
+        "scheme",
+        value.scheme.map(|v| match v {
+            FontScheme::None => "none",
+            FontScheme::Major => "major",
+            FontScheme::Minor => "minor",
+        }),
+    )?;
+    put_color(py, &result, "color", value.color.as_ref())?;
+    Ok(result)
 }

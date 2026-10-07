@@ -1,5 +1,6 @@
 //! Owned worksheet handles and cell/model operations.
 use crate::*;
+mod rows;
 
 // A handle owns either a detached worksheet or a stable identity in the shared
 // core bank. No Python object or payload clone lives in the canonical model.
@@ -608,58 +609,7 @@ impl NativeSheet {
         last: u32,
         create_missing: bool,
     ) -> PyResult<Vec<EncodedValue>> {
-        let row_index = CellAddress::new(row, first).map_err(failure)?.row;
-        CellAddress::new(row, last).map_err(failure)?;
-        if first > last {
-            return Ok(Vec::new());
-        }
-        if !create_missing {
-            return self.with(|sheet| {
-                let mut cells = sheet
-                    .row_cells(row_index)
-                    .skip_while(|cell| cell.address.column.get() < first)
-                    .take_while(|cell| cell.address.column.get() <= last)
-                    .peekable();
-                let mut values = Vec::with_capacity((last - first + 1) as usize);
-                for column in first..=last {
-                    let value = if cells
-                        .peek()
-                        .is_some_and(|cell| cell.address.column.get() == column)
-                    {
-                        cells.next().map_or(&CellValue::Empty, |cell| &cell.value)
-                    } else {
-                        &CellValue::Empty
-                    };
-                    values.push(encode(py, value)?);
-                }
-                Ok(values)
-            });
-        }
-        self.with_mut(|sheet| {
-            let mut values = Vec::with_capacity((last - first + 1) as usize);
-            for column in first..=last {
-                let address = CellAddress::new(row, column).map_err(failure)?;
-                if create_missing
-                    && sheet.get(address).is_none()
-                    && sheet.merged_ranges().virtual_style(address).is_none()
-                {
-                    sheet
-                        .set(Cell {
-                            address,
-                            value: CellValue::Empty,
-                            style: StyleId::new(0),
-                        })
-                        .map_err(failure)?;
-                }
-                values.push(encode(
-                    py,
-                    sheet
-                        .get(address)
-                        .map_or(&CellValue::Empty, |cell| &cell.value),
-                )?);
-            }
-            Ok(values)
-        })
+        rows::tagged(self, py, row, first, last, create_missing, false)
     }
     pub(crate) fn row_values_only(
         &self,
@@ -671,7 +621,7 @@ impl NativeSheet {
     ) -> PyResult<DecodedValues> {
         decode_values(
             py,
-            self.row_values(py, row, first, last, create_missing)?,
+            rows::tagged(self, py, row, first, last, create_missing, true)?,
             true,
         )
     }

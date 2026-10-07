@@ -9,6 +9,7 @@ pub(crate) struct NativeReader {
     pub(crate) alive: Arc<std::sync::atomic::AtomicBool>,
     pub(crate) max_bytes: usize,
     pub(crate) config: resources::ResourceConfig,
+    rich_text: bool,
 }
 #[pymethods]
 impl NativeReader {
@@ -110,7 +111,7 @@ impl NativeReader {
         style_owners::register(lock(loaded)?.as_mut().ok_or_else(closed)?, value, update)
     }
     #[new]
-    #[pyo3(signature = (path, max_bytes, resources=None, *, editable=false, data_only=false))]
+    #[pyo3(signature = (path, max_bytes, resources=None, *, editable=false, data_only=false, rich_text=false))]
     pub(crate) fn new(
         py: Python<'_>,
         path: PathBuf,
@@ -118,6 +119,7 @@ impl NativeReader {
         resources: Option<PyRef<'_, resources::NativeResources>>,
         editable: bool,
         data_only: bool,
+        rich_text: bool,
     ) -> PyResult<Self> {
         let config = resources.map_or_else(resources::ResourceConfig::default, |value| {
             value.config.clone()
@@ -156,6 +158,7 @@ impl NativeReader {
                         },
                         read: ReadOptions {
                             data_only,
+                            rich_text,
                             ..Default::default()
                         },
                         editor: worker_config.editor_options(Some(operation)),
@@ -175,6 +178,7 @@ impl NativeReader {
             alive: Arc::new(std::sync::atomic::AtomicBool::new(true)),
             max_bytes,
             config,
+            rich_text,
         })
     }
     pub(crate) fn names(&self) -> PyResult<Vec<String>> {
@@ -277,6 +281,7 @@ impl NativeReader {
             .min(self.max_bytes)
             .min(self.config.materialized_limit.unwrap_or(usize::MAX));
         let reader = Arc::clone(&self.reader);
+        let rich_text = self.rich_text;
         let sheet = py.detach(move || {
             let mut handle = lock(&reader)?;
             let book = handle.as_mut().ok_or_else(closed)?;
@@ -293,6 +298,7 @@ impl NativeReader {
                     &name,
                     ReadOptions {
                         data_only,
+                        rich_text,
                         ..ReadOptions::default()
                     },
                 )
@@ -416,6 +422,7 @@ impl NativeReader {
             self.config.clone(),
             name,
             data_only,
+            self.rich_text,
             first_row,
             last_row,
             first_column,

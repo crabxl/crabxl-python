@@ -131,6 +131,7 @@ impl NativeReadStream {
         config: resources::ResourceConfig,
         name: String,
         data_only: bool,
+        rich_text: bool,
         first_row: u32,
         last_row: Option<u32>,
         first_column: u32,
@@ -166,6 +167,10 @@ impl NativeReadStream {
                         ),
                         stop_after_last_row: last_row.is_some(),
                         data_only,
+                        rich_text,
+                        // openpyxl read-only mode projects inline runs, while its
+                        // shared-string catalog honors the rich_text flag.
+                        inline_rich_text: Some(false),
                         ..Default::default()
                     };
                     let mut rows = book.rows_with_options(&name, options)?;

@@ -5,6 +5,7 @@ mod functions;
 mod imports;
 mod reader;
 mod resources;
+mod rich_text;
 mod streaming;
 mod style_owners;
 mod styles;

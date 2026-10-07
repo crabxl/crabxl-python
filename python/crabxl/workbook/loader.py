@@ -24,10 +24,8 @@ def load_workbook(
     resource_options=None,
 ):
     """Use openpyxl call names; unsupported modes fail rather than change semantics."""
-    if not keep_links or rich_text:
-        raise NotImplementedError(
-            "External-link removal and rich-text binding are not implemented"
-        )
+    if not keep_links:
+        raise NotImplementedError("External-link removal is not implemented")
     if not isinstance(filename, (str, Path)):
         raise NotImplementedError("File-like binding input is not implemented")
     # VBA removal is staged; require explicit preservation for macro inputs.
@@ -50,6 +48,7 @@ def load_workbook(
         native_resources,
         editable=not read_only,
         data_only=bool(data_only),
+        rich_text=bool(rich_text),
     )
     try:
         workbook.read_only = bool(read_only)

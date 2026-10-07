@@ -94,6 +94,7 @@ pub(crate) fn decode(py: Python<'_>, value: TaggedValue) -> PyResult<CellValue> 
             CellValue::Number(number)
         }
         "text" => CellValue::text(value.extract::<String>()?),
+        "rich" => CellValue::RichText(Box::new(crate::rich_text::decode(value.cast::<PyDict>()?)?)),
         "error" => CellValue::error(value.extract::<String>()?),
         "formula" => CellValue::Formula(Box::new(
             Formula::from_source(value.extract::<String>()?, None, None).map_err(failure)?,
@@ -236,6 +237,10 @@ pub(crate) fn encode(py: Python<'_>, value: &CellValue) -> PyResult<EncodedValue
                 )
             }
         },
+        CellValue::RichText(value) => (
+            "rich",
+            crate::rich_text::encode(py, value)?.into_any().unbind(),
+        ),
         _ => return Err(PyNotImplementedError::new_err("Unsupported native value")),
     };
     Ok((kind, object))
@@ -253,12 +258,12 @@ pub(crate) fn decode_values(
     let mut formulas = None;
     let mut decoder = None;
     for (column, (kind, value)) in tagged.into_iter().enumerate() {
-        if bound_formulas && matches!(kind, "array" | "table") {
+        if bound_formulas && matches!(kind, "array" | "table" | "rich") {
             formulas.get_or_insert_with(Vec::new).push(column as u32);
             values.push(py.None());
         } else if matches!(
             kind,
-            "bigint" | "date" | "datetime" | "time" | "duration" | "array" | "table"
+            "bigint" | "date" | "datetime" | "time" | "duration" | "array" | "table" | "rich"
         ) {
             if decoder.is_none() {
                 decoder = Some(py.import("crabxl")?.getattr("_decode")?);
