@@ -1,6 +1,6 @@
 //! Owned worksheet handles and cell/model operations.
 use crate::*;
-mod hyperlinks;
+pub(crate) mod hyperlinks;
 mod rows;
 
 // A handle owns either a detached worksheet or a stable identity in the shared
@@ -679,27 +679,33 @@ impl NativeSheet {
         row: u32,
         column: u32,
         retain: bool,
-    ) -> PyResult<Option<EncodedValue>> {
+    ) -> PyResult<(Option<EncodedValue>, Option<hyperlinks::LinkFields>)> {
         let address = CellAddress::new(row, column).map_err(failure)?;
         let storage = Arc::clone(&self.storage);
         let removed = py.detach(move || {
             let mut storage = lock(&storage)?;
             let removed = match &mut *storage {
-                SheetStorage::Standalone(sheet) => sheet.edit().remove(address).map_err(failure)?,
+                SheetStorage::Standalone(sheet) => sheet
+                    .edit()
+                    .remove_with_hyperlink(address)
+                    .map_err(failure)?,
                 SheetStorage::Bank { book, id } => lock(book)?
                     .sheet_mut(*id)
                     .map_err(failure)?
-                    .remove(address)
+                    .remove_with_hyperlink(address)
                     .map_err(failure)?,
                 SheetStorage::Loaded { book, id } => lock(book)?
                     .as_mut()
                     .ok_or_else(closed)?
-                    .remove_cell(*id, address)
+                    .remove_cell_with_hyperlink(*id, address)
                     .map_err(failure)?,
             };
-            Ok::<_, PyErr>(if retain { removed } else { None })
+            Ok::<_, PyErr>(if retain { removed } else { (None, None) })
         })?;
-        removed.map(|cell| encode(py, &cell.value)).transpose()
+        Ok((
+            removed.0.map(|cell| encode(py, &cell.value)).transpose()?,
+            removed.1.as_ref().map(hyperlinks::owned_fields),
+        ))
     }
     pub(crate) fn append(&self, py: Python<'_>, values: Vec<TaggedValue>) -> PyResult<u32> {
         let values = values
