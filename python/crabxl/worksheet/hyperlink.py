@@ -63,13 +63,13 @@ class Hyperlink:
                         continue
                     native = sheet._model()
                     previous = native.hyperlink(row - 1, column - 1)
-                    native.set_hyperlink(
+                    native.update_hyperlink(
                         row - 1, column - 1, self._fields(f"{_letters(column)}{row}")
                     )
                     committed.append((native, row, column, previous))
         except BaseException:
             for native, row, column, previous in reversed(committed):
-                native.set_hyperlink(row - 1, column - 1, previous)
+                native.update_hyperlink(row - 1, column - 1, previous)
             raise
 
     def _bind(self, sheet, row, column):
