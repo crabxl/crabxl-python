@@ -7,7 +7,7 @@ from .._native import (
     NativeSheet,
 )
 from .._values import _ADDRESS, _address, _column, _encode, _letters, _range
-from ..cell.cell import Cell
+from ..cell.cell import Cell, MergedCell
 
 
 class Worksheet:
@@ -25,6 +25,7 @@ class Worksheet:
         "_cells",
         "_row_dimensions",
         "_column_dimensions",
+        "_merged_cells",
         "__weakref__",
     )
 
@@ -43,6 +44,7 @@ class Worksheet:
         )
         self._cells = WeakValueDictionary()
         self._row_dimensions = self._column_dimensions = None
+        self._merged_cells = None
         self._validate_title(self._title)
 
     @property
@@ -60,6 +62,65 @@ class Worksheet:
         if self._column_dimensions is None:
             self._column_dimensions = DimensionHolder(self)
         return self._column_dimensions
+
+    @property
+    def merged_cells(self):
+        from .merge import MultiCellRange
+
+        if self._merged_cells is None:
+            self._merged_cells = MultiCellRange(self)
+        return self._merged_cells
+
+    def merge_cells(
+        self,
+        range_string=None,
+        start_row=None,
+        start_column=None,
+        end_row=None,
+        end_column=None,
+    ):
+        self._merge_cells(
+            range_string, start_row, start_column, end_row, end_column, True
+        )
+
+    def unmerge_cells(
+        self,
+        range_string=None,
+        start_row=None,
+        start_column=None,
+        end_row=None,
+        end_column=None,
+    ):
+        self._merge_cells(
+            range_string, start_row, start_column, end_row, end_column, False
+        )
+
+    def _merge_cells(
+        self, range_string, start_row, start_column, end_row, end_column, merge
+    ):
+        if range_string is not None:
+            bounds = _range(str(range_string))
+        elif all(
+            value is not None
+            for value in (start_row, start_column, end_row, end_column)
+        ):
+            bounds = _range(
+                f"{_letters(start_column)}{start_row}:{_letters(end_column)}{end_row}"
+            )
+        else:
+            raise ValueError("A range or all four row/column bounds are required")
+        first_row, first_col, last_row, last_col = bounds
+        aliases = [
+            (key, cell, cell._snapshot())
+            for key, cell in list(self._cells.items())
+            if key != (first_row, first_col)
+            and first_row <= key[0] <= last_row
+            and first_col <= key[1] <= last_col
+        ]
+        self._model().merge_cells(*(value - 1 for value in bounds), merge)
+        for key, cell, snapshot in aliases:
+            cell._detached = snapshot
+            self._cells.pop(key, None)
 
     @staticmethod
     def _validate_title(title):
@@ -138,10 +199,20 @@ class Worksheet:
         key = row, column
         cell = self._cells.get(key)
         if cell is None:
-            cell = Cell(self, row, column)
+            pending = (
+                self.parent._editor.pending(self.title, row - 1, column - 1)
+                if self._existing and self._native is None
+                else None
+            )
+            present, merged = (
+                (True, False)
+                if pending is not None
+                else self._model().cell_state(row - 1, column - 1)
+            )
+            cell = (MergedCell if merged else Cell)(self, row, column)
             self._cells[key] = cell
-        if not self._existing and not self._native.contains(row - 1, column - 1):
-            self._native.set(row - 1, column - 1, ("empty", None))
+            if not self._existing and not present and not merged:
+                self._native.set(row - 1, column - 1, ("empty", None))
         if value is not None:
             cell.value = value
         return cell
@@ -168,7 +239,12 @@ class Worksheet:
 
     def __setitem__(self, key, value):
         row, column = _address(key)
-        self.cell(row, column).value = value
+        if self._existing and self._native is None:
+            # Preserve bounded source overlays without forcing full-sheet loading.
+            # The preserving core validates deferred affected graphs on save.
+            self._set(row, column, value)
+        else:
+            self.cell(row, column).value = value
 
     def __delitem__(self, key):
         self.parent._check_open()

@@ -307,7 +307,7 @@ impl NativeReader {
             Ok::<_, PyErr>(sheet)
         })?;
         Ok(NativeSheet {
-            storage: Arc::new(Mutex::new(SheetStorage::Standalone(sheet))),
+            storage: Arc::new(Mutex::new(SheetStorage::Standalone(Box::new(sheet)))),
         })
     }
     pub(crate) fn close(&self) -> PyResult<()> {

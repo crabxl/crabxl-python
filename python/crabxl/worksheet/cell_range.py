@@ -33,3 +33,16 @@ class CellRange:
 
     def __str__(self):
         return self.coord
+
+    def __eq__(self, other):
+        return isinstance(other, CellRange) and self.bounds == other.bounds
+
+    def __hash__(self):
+        return hash(self.bounds)
+
+    def __contains__(self, value):
+        value = CellRange(str(value)) if not isinstance(value, CellRange) else value
+        return (
+            self.min_row <= value.min_row <= value.max_row <= self.max_row
+            and self.min_col <= value.min_col <= value.max_col <= self.max_col
+        )

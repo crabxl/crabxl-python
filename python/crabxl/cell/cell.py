@@ -169,7 +169,21 @@ class Cell:
         )
 
 
-__all__ = ["Cell", "WriteOnlyCell"]
+class MergedCell(Cell):
+    """A lazy view of a covered coordinate with shared Rust-owned appearance."""
+
+    __slots__ = ()
+
+    @property
+    def value(self):
+        return None
+
+    @property
+    def data_type(self):
+        return "n"
+
+
+__all__ = ["Cell", "MergedCell", "WriteOnlyCell"]
 
 
 def __getattr__(name):

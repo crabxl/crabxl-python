@@ -4,7 +4,7 @@ use crate::*;
 // A handle owns either a detached worksheet or a stable identity in the shared
 // core bank. No Python object or payload clone lives in the canonical model.
 pub(crate) enum SheetStorage {
-    Standalone(Worksheet),
+    Standalone(Box<Worksheet>),
     Bank {
         book: Arc<Mutex<Workbook>>,
         id: SheetId,
@@ -121,7 +121,7 @@ impl NativeSheet {
     #[new]
     pub(crate) fn new(name: String, max_bytes: usize) -> PyResult<Self> {
         Ok(Self {
-            storage: Arc::new(Mutex::new(SheetStorage::Standalone(
+            storage: Arc::new(Mutex::new(SheetStorage::Standalone(Box::new(
                 Worksheet::new(
                     name,
                     EditLimits {
@@ -130,7 +130,7 @@ impl NativeSheet {
                     },
                 )
                 .map_err(failure)?,
-            ))),
+            )))),
         })
     }
     pub(crate) fn remove_dimension(&self, rows: bool, index: u32) -> PyResult<bool> {
@@ -310,11 +310,7 @@ impl NativeSheet {
         let address = CellAddress::new(row, column).map_err(failure)?;
         let storage = lock(&self.storage)?;
         let resolve = |book: &Workbook, id| {
-            let style = book
-                .sheet(id)
-                .map_err(failure)?
-                .get(address)
-                .map_or(StyleId::new(0), |cell| cell.style);
+            let style = book.sheet(id).map_err(failure)?.style_at(address);
             Ok(style_owners::style_name(book.style_catalog(), style))
         };
         match &*storage {
@@ -361,17 +357,13 @@ impl NativeSheet {
     }
     pub(crate) fn style_id(&self, row: u32, column: u32) -> PyResult<u32> {
         let address = CellAddress::new(row, column).map_err(failure)?;
-        self.with(|sheet| Ok(sheet.get(address).map_or(0, |cell| cell.style.get())))
+        self.with(|sheet| Ok(sheet.style_at(address).get()))
     }
     pub(crate) fn has_style(&self, row: u32, column: u32) -> PyResult<bool> {
         let address = CellAddress::new(row, column).map_err(failure)?;
         let storage = lock(&self.storage)?;
         let resolve = |book: &Workbook, id| -> PyResult<bool> {
-            let style = book
-                .sheet(id)
-                .map_err(failure)?
-                .get(address)
-                .map_or(StyleId::new(0), |cell| cell.style);
+            let style = book.sheet(id).map_err(failure)?.style_at(address);
             Ok(book
                 .style_catalog()
                 .and_then(|catalog| catalog.cell_format(style))
@@ -393,9 +385,7 @@ impl NativeSheet {
                 }))
         };
         match &*storage {
-            SheetStorage::Standalone(sheet) => {
-                Ok(sheet.get(address).is_some_and(|cell| cell.style.get() != 0))
-            }
+            SheetStorage::Standalone(sheet) => Ok(sheet.style_at(address).get() != 0),
             SheetStorage::Bank { book, id } => resolve(&*lock(book)?, *id),
             SheetStorage::Loaded { book, id } => {
                 resolve(lock(book)?.as_ref().ok_or_else(closed)?.model(), *id)
@@ -409,11 +399,7 @@ impl NativeSheet {
         let address = CellAddress::new(row, column).map_err(failure)?;
         let storage = lock(&self.storage)?;
         let resolve = |book: &Workbook, id| -> PyResult<String> {
-            let style = book
-                .sheet(id)
-                .map_err(failure)?
-                .get(address)
-                .map_or(StyleId::new(0), |cell| cell.style);
+            let style = book.sheet(id).map_err(failure)?.style_at(address);
             Ok(book
                 .style_catalog()
                 .and_then(|catalog| {
@@ -441,11 +427,7 @@ impl NativeSheet {
             )),
             SheetStorage::Bank { book, id } => {
                 let mut book = lock(book)?;
-                let previous = book
-                    .sheet(*id)
-                    .map_err(failure)?
-                    .get(address)
-                    .map_or(StyleId::new(0), |cell| cell.style);
+                let previous = book.sheet(*id).map_err(failure)?.style_at(address);
                 let style = book
                     .derive_number_format(previous, code.into())
                     .map_err(failure)?;
@@ -471,11 +453,7 @@ impl NativeSheet {
         let address = CellAddress::new(row, column).map_err(failure)?;
         let storage = lock(&self.storage)?;
         let resolve = |book: &Workbook, id| {
-            let style = book
-                .sheet(id)
-                .map_err(failure)?
-                .get(address)
-                .map_or(StyleId::new(0), |cell| cell.style);
+            let style = book.sheet(id).map_err(failure)?.style_at(address);
             if let Some(catalog) = book.style_catalog() {
                 styles::encode(py, name, catalog.cell_style(style).map_err(failure)?)
             } else {
@@ -508,11 +486,7 @@ impl NativeSheet {
             )),
             SheetStorage::Bank { book, id } => {
                 let mut book = lock(book)?;
-                let previous = book
-                    .sheet(*id)
-                    .map_err(failure)?
-                    .get(address)
-                    .map_or(StyleId::new(0), |cell| cell.style);
+                let previous = book.sheet(*id).map_err(failure)?.style_at(address);
                 let style = book
                     .derive_style_component(previous, component)
                     .map_err(failure)?;
@@ -527,6 +501,100 @@ impl NativeSheet {
                 .set_style_component(*id, address, component)
                 .map_err(failure),
         }
+    }
+    pub(crate) fn cell_state(&self, row: u32, column: u32) -> PyResult<(bool, bool)> {
+        let address = CellAddress::new(row, column).map_err(failure)?;
+        self.with(|sheet| {
+            Ok((
+                sheet.get(address).is_some(),
+                sheet.merged_ranges().virtual_style(address).is_some(),
+            ))
+        })
+    }
+    pub(crate) fn merge_count(&self) -> PyResult<usize> {
+        self.with(|sheet| Ok(sheet.merged_ranges().ranges().len()))
+    }
+    pub(crate) fn merged_range(&self, index: usize) -> PyResult<Option<(u32, u32, u32, u32)>> {
+        self.with(|sheet| {
+            Ok(sheet.merged_ranges().ranges().get(index).map(|merge| {
+                let range = merge.range();
+                (
+                    range.start.row.get() + 1,
+                    range.start.column.get() + 1,
+                    range.end.row.get() + 1,
+                    range.end.column.get() + 1,
+                )
+            }))
+        })
+    }
+    pub(crate) fn contains_merge(
+        &self,
+        first_row: u32,
+        first_column: u32,
+        last_row: u32,
+        last_column: u32,
+        exact: bool,
+    ) -> PyResult<bool> {
+        let range = CellRange::new(
+            CellAddress::new(first_row, first_column).map_err(failure)?,
+            CellAddress::new(last_row, last_column).map_err(failure)?,
+        )
+        .map_err(failure)?;
+        self.with(|sheet| {
+            Ok(if exact {
+                sheet
+                    .merged_ranges()
+                    .ranges()
+                    .iter()
+                    .any(|merge| merge.range() == range)
+            } else {
+                sheet.merged_ranges().contains(range)
+            })
+        })
+    }
+    pub(crate) fn merge_cells(
+        &self,
+        py: Python<'_>,
+        first_row: u32,
+        first_column: u32,
+        last_row: u32,
+        last_column: u32,
+        merge: bool,
+    ) -> PyResult<()> {
+        let range = CellRange::new(
+            CellAddress::new(first_row, first_column).map_err(failure)?,
+            CellAddress::new(last_row, last_column).map_err(failure)?,
+        )
+        .map_err(failure)?;
+        let storage = Arc::clone(&self.storage);
+        py.detach(move || {
+            let storage = lock(&storage)?;
+            match &*storage {
+                SheetStorage::Bank { book, id } => {
+                    let mut book = lock(book)?;
+                    if merge {
+                        book.merge_cells(*id, range)
+                    } else {
+                        book.sheet_mut(*id)
+                            .and_then(|mut sheet| sheet.unmerge_cells(range))
+                    }
+                    .map_err(failure)
+                }
+                SheetStorage::Loaded { book, id } => {
+                    let mut book = lock(book)?;
+                    let book = book.as_mut().ok_or_else(closed)?;
+                    if merge {
+                        book.merge_cells(*id, range)
+                    } else {
+                        book.unmerge_cells(*id, range)
+                    }
+                    .map_err(failure)
+                }
+                SheetStorage::Standalone(_) => Err(PyNotImplementedError::new_err(
+                    "Detached merge style registration is not implemented",
+                )),
+            }
+        })
     }
     pub(crate) fn contains(&self, row: u32, column: u32) -> PyResult<bool> {
         let address = CellAddress::new(row, column).map_err(failure)?;
@@ -571,7 +639,10 @@ impl NativeSheet {
             let mut values = Vec::with_capacity((last - first + 1) as usize);
             for column in first..=last {
                 let address = CellAddress::new(row, column).map_err(failure)?;
-                if create_missing && sheet.get(address).is_none() {
+                if create_missing
+                    && sheet.get(address).is_none()
+                    && sheet.merged_ranges().virtual_style(address).is_none()
+                {
                     sheet
                         .set(Cell {
                             address,
@@ -685,11 +756,14 @@ impl NativeSheet {
                 bounds.2 = bounds.2.max(row);
                 bounds.3 = bounds.3.max(col);
             }
-            Ok(if sheet.is_empty() {
-                (1, 1, 1, 1)
-            } else {
-                bounds
-            })
+            for merge in sheet.merged_ranges().ranges() {
+                let range = merge.range();
+                bounds.0 = bounds.0.min(range.start.row.get() + 1);
+                bounds.1 = bounds.1.min(range.start.column.get() + 1);
+                bounds.2 = bounds.2.max(range.end.row.get() + 1);
+                bounds.3 = bounds.3.max(range.end.column.get() + 1);
+            }
+            Ok(if bounds.2 == 0 { (1, 1, 1, 1) } else { bounds })
         })
     }
     pub(crate) fn row_extent(&self) -> PyResult<u32> {
