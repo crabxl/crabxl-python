@@ -173,3 +173,7 @@ class CellRange:
 
     __or__ = union
     __and__ = intersection
+
+
+# Public compatibility import; the container only depends on the range view.
+from .multi_cell_range import MultiCellRange as MultiCellRange  # noqa: E402
