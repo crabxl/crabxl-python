@@ -1310,6 +1310,15 @@ def test_replacing_temporal_value_retains_format_across_repeated_save(engine, tm
         alias.number_format = "0.00"
         assert alias.number_format == "0.00"
         assert styled.active["B1"].number_format == "General"
+        styled.add_named_style(
+            engine.styles.NamedStyle(
+                name="Detached appearance", font=engine.styles.Font(italic=True)
+            )
+        )
+        alias.style = "Detached appearance"
+        assert alias.style == "Detached appearance" and alias.font.italic
+        assert styled.active["B1"].value is None
+        assert styled.active["B1"].number_format == "General"
         styled.close()
     initial_values = [
         (date(2024, 1, 2), "yyyy-mm-dd"),

@@ -1,6 +1,8 @@
 //! Foreign objects and naming remain outside the canonical Rust core.
+mod dimensions;
 mod resources;
 mod streaming;
+mod style_owners;
 mod styles;
 
 use crabxl::{
@@ -18,7 +20,7 @@ use pyo3::{
         PyValueError,
     },
     prelude::*,
-    types::{PyDict, PyList},
+    types::{PyBytes, PyDict, PyList},
 };
 use std::{
     fs::File,
@@ -331,6 +333,62 @@ impl NativeSheet {
             ),
         }
     }
+    fn with_style_catalog<T>(
+        &self,
+        action: impl FnOnce(&Worksheet, Option<&crabxl::StyleCatalog>) -> PyResult<T>,
+    ) -> PyResult<T> {
+        let storage = lock(&self.storage)?;
+        match &*storage {
+            SheetStorage::Standalone(sheet) => action(sheet, None),
+            SheetStorage::Bank { book, id } => {
+                let book = lock(book)?;
+                action(book.sheet(*id).map_err(failure)?, book.style_catalog())
+            }
+            SheetStorage::Loaded { book, id } => {
+                let book = lock(book)?;
+                let book = book.as_ref().ok_or_else(closed)?.model();
+                action(book.sheet(*id).map_err(failure)?, book.style_catalog())
+            }
+        }
+    }
+    fn edit_dimension_style(
+        &self,
+        rows: bool,
+        index: u32,
+        change: impl FnOnce(&mut dyn style_owners::StyleOwner, StyleId) -> crabxl::Result<StyleId>,
+    ) -> PyResult<()> {
+        let storage = lock(&self.storage)?;
+        match &*storage {
+            SheetStorage::Bank { book, id } => {
+                let mut book = lock(book)?;
+                let mut dimension = dimensions::Dimension::snapshot(
+                    book.sheet(*id).map_err(failure)?.dimensions(),
+                    rows,
+                    index,
+                )?;
+                let style = change(&mut *book, dimension.style()).map_err(failure)?;
+                dimension.set_style(style);
+                dimension
+                    .apply(&mut book.sheet_mut(*id).map_err(failure)?)
+                    .map_err(failure)
+            }
+            SheetStorage::Loaded { book, id } => {
+                let mut book = lock(book)?;
+                let book = book.as_mut().ok_or_else(closed)?;
+                let mut dimension = dimensions::Dimension::snapshot(
+                    book.model().sheet(*id).map_err(failure)?.dimensions(),
+                    rows,
+                    index,
+                )?;
+                let style = change(book, dimension.style()).map_err(failure)?;
+                dimension.set_style(style);
+                dimension.apply_loaded(book, *id).map_err(failure)
+            }
+            SheetStorage::Standalone(_) => Err(PyNotImplementedError::new_err(
+                "Detached dimension style registration is not implemented",
+            )),
+        }
+    }
     fn with_mut<T>(
         &self,
         action: impl FnOnce(&mut WorksheetEditor<'_>) -> PyResult<T>,
@@ -373,6 +431,211 @@ impl NativeSheet {
                 .map_err(failure)?,
             ))),
         })
+    }
+    fn remove_dimension(&self, rows: bool, index: u32) -> PyResult<bool> {
+        let storage = lock(&self.storage)?;
+        if let SheetStorage::Loaded { book, id } = &*storage {
+            let mut book = lock(book)?;
+            let book = book.as_mut().ok_or_else(closed)?;
+            return if rows {
+                book.remove_row_dimension(*id, RowIndex::new(index).map_err(failure)?)
+                    .map_err(failure)
+            } else {
+                book.remove_column_dimension(*id, ColumnIndex::new(index).map_err(failure)?)
+                    .map_err(failure)
+            };
+        }
+        drop(storage);
+        self.with_mut(|sheet| {
+            if rows {
+                Ok(sheet
+                    .remove_row_dimension(RowIndex::new(index).map_err(failure)?)
+                    .is_some())
+            } else {
+                Ok(sheet
+                    .remove_column_dimension(ColumnIndex::new(index).map_err(failure)?)
+                    .is_some())
+            }
+        })
+    }
+    fn group_dimensions(
+        &self,
+        rows: bool,
+        start: u32,
+        end: u32,
+        level: u32,
+        hidden: bool,
+    ) -> PyResult<()> {
+        let storage = lock(&self.storage)?;
+        if let SheetStorage::Loaded { book, id } = &*storage {
+            let mut book = lock(book)?;
+            let book = book.as_mut().ok_or_else(closed)?;
+            return if rows {
+                book.group_rows(
+                    *id,
+                    RowIndex::new(start).map_err(failure)?,
+                    RowIndex::new(end).map_err(failure)?,
+                    level,
+                    hidden,
+                )
+                .map_err(failure)
+            } else {
+                book.group_columns(
+                    *id,
+                    ColumnIndex::new(start).map_err(failure)?,
+                    ColumnIndex::new(end).map_err(failure)?,
+                    level,
+                    hidden,
+                )
+                .map_err(failure)
+            };
+        }
+        drop(storage);
+        self.with_mut(|sheet| {
+            if rows {
+                sheet
+                    .group_rows(
+                        RowIndex::new(start).map_err(failure)?,
+                        RowIndex::new(end).map_err(failure)?,
+                        level,
+                        hidden,
+                    )
+                    .map_err(failure)
+            } else {
+                sheet
+                    .group_columns(
+                        ColumnIndex::new(start).map_err(failure)?,
+                        ColumnIndex::new(end).map_err(failure)?,
+                        level,
+                        hidden,
+                    )
+                    .map_err(failure)
+            }
+        })
+    }
+    fn dimension_component<'py>(
+        &self,
+        py: Python<'py>,
+        rows: bool,
+        index: u32,
+        name: &str,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        self.with_style_catalog(|sheet, catalog| {
+            let dimension = dimensions::Dimension::snapshot(sheet.dimensions(), rows, index)?;
+            if let Some(catalog) = catalog {
+                styles::encode(
+                    py,
+                    name,
+                    catalog.cell_style(dimension.style()).map_err(failure)?,
+                )
+            } else {
+                styles::default_component(py, name)
+            }
+        })
+    }
+    fn dimension_number_format(&self, rows: bool, index: u32) -> PyResult<String> {
+        self.with_style_catalog(|sheet, catalog| {
+            let dimension = dimensions::Dimension::snapshot(sheet.dimensions(), rows, index)?;
+            Ok(catalog
+                .and_then(|catalog| {
+                    catalog
+                        .cell_format(dimension.style())
+                        .and_then(|format| catalog.number_format(format.number_format_id))
+                })
+                .unwrap_or("General")
+                .into())
+        })
+    }
+    fn set_dimension_component(
+        &self,
+        rows: bool,
+        index: u32,
+        value: PyRef<'_, styles::NativeStyleComponent>,
+    ) -> PyResult<()> {
+        let component = value.component.clone();
+        self.edit_dimension_style(rows, index, |book, style| book.component(style, component))
+    }
+    fn set_dimension_number_format(&self, rows: bool, index: u32, code: String) -> PyResult<()> {
+        self.edit_dimension_style(rows, index, |book, style| book.number(style, code.into()))
+    }
+    fn dimension<'py>(
+        &self,
+        py: Python<'py>,
+        rows: bool,
+        index: u32,
+    ) -> PyResult<Option<Bound<'py, PyDict>>> {
+        self.with(|sheet| dimensions::encode(py, sheet.dimensions(), rows, index))
+    }
+    fn dimension_keys(&self, rows: bool) -> PyResult<Vec<u32>> {
+        self.with(|sheet| Ok(dimensions::keys(sheet.dimensions(), rows)))
+    }
+    fn set_dimension(&self, rows: bool, index: u32, value: &Bound<'_, PyDict>) -> PyResult<()> {
+        let storage = lock(&self.storage)?;
+        if let SheetStorage::Loaded { book, id } = &*storage {
+            let mut book = lock(book)?;
+            let book = book.as_mut().ok_or_else(closed)?;
+            return if rows {
+                book.set_row_dimension(*id, dimensions::row(value, index)?)
+                    .map_err(failure)
+            } else {
+                book.set_column_dimension(*id, dimensions::column(value, index)?)
+                    .map_err(failure)
+            };
+        }
+        drop(storage);
+        self.with_mut(|sheet| {
+            if rows {
+                sheet
+                    .set_row_dimension(dimensions::row(value, index)?)
+                    .map_err(failure)
+            } else {
+                sheet
+                    .set_column_dimension(dimensions::column(value, index)?)
+                    .map_err(failure)
+            }
+        })
+    }
+    fn named_style(&self, row: u32, column: u32) -> PyResult<String> {
+        let address = CellAddress::new(row, column).map_err(failure)?;
+        let storage = lock(&self.storage)?;
+        let resolve = |book: &Workbook, id| {
+            let style = book
+                .sheet(id)
+                .map_err(failure)?
+                .get(address)
+                .map_or(StyleId::new(0), |cell| cell.style);
+            Ok(style_owners::style_name(book.style_catalog(), style))
+        };
+        match &*storage {
+            SheetStorage::Bank { book, id } => resolve(&*lock(book)?, *id),
+            SheetStorage::Loaded { book, id } => {
+                resolve(lock(book)?.as_ref().ok_or_else(closed)?.model(), *id)
+            }
+            SheetStorage::Standalone(_) => Ok("Normal".into()),
+        }
+    }
+    fn set_named_style(&self, row: u32, column: u32, name: &str) -> PyResult<()> {
+        let address = CellAddress::new(row, column).map_err(failure)?;
+        let storage = lock(&self.storage)?;
+        match &*storage {
+            SheetStorage::Bank { book, id } => {
+                let mut book = lock(book)?;
+                let style = book.named_style_format(name).map_err(failure)?;
+                book.sheet_mut(*id)
+                    .map_err(failure)?
+                    .set_style(address, style)
+                    .map_err(failure)
+            }
+            SheetStorage::Loaded { book, id } => {
+                let mut book = lock(book)?;
+                let book = book.as_mut().ok_or_else(closed)?;
+                let style = book.named_style_format(name).map_err(failure)?;
+                book.set_style(*id, address, style).map_err(failure)
+            }
+            SheetStorage::Standalone(_) => Err(PyNotImplementedError::new_err(
+                "Detached named styles are not implemented",
+            )),
+        }
     }
     fn get(&self, py: Python<'_>, row: u32, column: u32) -> PyResult<EncodedValue> {
         let address = CellAddress::new(row, column).map_err(failure)?;
@@ -848,6 +1111,48 @@ struct NativeBook {
 }
 #[pymethods]
 impl NativeBook {
+    fn theme<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyBytes>>> {
+        Ok(lock(&self.book)?
+            .theme()
+            .map(|theme| PyBytes::new(py, theme.bytes())))
+    }
+    fn set_theme(&self, value: Option<Vec<u8>>) -> PyResult<()> {
+        lock(&self.book)?
+            .set_theme(value.map(|bytes| crabxl::Theme::from_bytes(bytes.into_boxed_slice())))
+            .map_err(failure)
+    }
+    #[pyo3(signature = (name, new_name, builtin_id=None, hidden=false))]
+    fn update_named_style_metadata(
+        &self,
+        name: &str,
+        new_name: String,
+        builtin_id: Option<u32>,
+        hidden: bool,
+    ) -> PyResult<()> {
+        style_owners::metadata(&mut *lock(&self.book)?, name, new_name, builtin_id, hidden)
+    }
+    fn named_styles(&self) -> PyResult<Vec<String>> {
+        Ok(style_owners::names(lock(&self.book)?.style_catalog()))
+    }
+    fn style_name(&self, style: u32) -> PyResult<String> {
+        Ok(style_owners::style_name(
+            lock(&self.book)?.style_catalog(),
+            StyleId::new(style),
+        ))
+    }
+    fn named_style_snapshot<'py>(
+        &self,
+        py: Python<'py>,
+        name: &str,
+    ) -> PyResult<(u32, String, Bound<'py, PyDict>)> {
+        let mut book = lock(&self.book)?;
+        let style = book.named_style_format(name).map_err(failure)?;
+        style_owners::snapshot(py, book.style_catalog(), style)
+    }
+    #[pyo3(signature = (value, update=false))]
+    fn add_named_style(&self, value: &Bound<'_, PyDict>, update: bool) -> PyResult<u32> {
+        style_owners::register(&mut *lock(&self.book)?, value, update)
+    }
     fn set_active_view_index(&self, index: i64) -> PyResult<()> {
         lock(&self.book)?.set_active_view_index(index);
         Ok(())
@@ -950,6 +1255,103 @@ struct NativeReader {
 }
 #[pymethods]
 impl NativeReader {
+    fn theme<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyBytes>>> {
+        if let Some(loaded) = &self.loaded {
+            return Ok(lock(loaded)?
+                .as_mut()
+                .ok_or_else(closed)?
+                .theme()
+                .map_err(failure)?
+                .map(|theme| PyBytes::new(py, theme.bytes())));
+        }
+        Ok(lock(&self.reader)?
+            .as_mut()
+            .ok_or_else(closed)?
+            .theme()
+            .map_err(failure)?
+            .map(|theme| PyBytes::new(py, theme.bytes())))
+    }
+    fn set_theme(&self, value: Option<Vec<u8>>) -> PyResult<()> {
+        let loaded = self.loaded.as_ref().ok_or_else(|| {
+            PyNotImplementedError::new_err("Read-only theme mutation is unavailable")
+        })?;
+        lock(loaded)?
+            .as_mut()
+            .ok_or_else(closed)?
+            .set_theme(value.map(|bytes| crabxl::Theme::from_bytes(bytes.into_boxed_slice())))
+            .map_err(failure)
+    }
+    #[pyo3(signature = (name, new_name, builtin_id=None, hidden=false))]
+    fn update_named_style_metadata(
+        &self,
+        name: &str,
+        new_name: String,
+        builtin_id: Option<u32>,
+        hidden: bool,
+    ) -> PyResult<()> {
+        let loaded = self.loaded.as_ref().ok_or_else(|| {
+            PyNotImplementedError::new_err("Read-only style mutation is unavailable")
+        })?;
+        style_owners::metadata(
+            lock(loaded)?.as_mut().ok_or_else(closed)?,
+            name,
+            new_name,
+            builtin_id,
+            hidden,
+        )
+    }
+    fn named_styles(&self) -> PyResult<Vec<String>> {
+        if let Some(loaded) = &self.loaded {
+            return Ok(style_owners::names(
+                lock(loaded)?
+                    .as_ref()
+                    .ok_or_else(closed)?
+                    .model()
+                    .style_catalog(),
+            ));
+        }
+        let mut reader = lock(&self.reader)?;
+        Ok(style_owners::names(
+            reader
+                .as_mut()
+                .ok_or_else(closed)?
+                .style_catalog()
+                .map_err(failure)?,
+        ))
+    }
+    fn style_name(&self, style: u32) -> PyResult<String> {
+        let loaded = self.loaded.as_ref().ok_or_else(|| {
+            PyNotImplementedError::new_err("Detached read-only cells are unavailable")
+        })?;
+        Ok(style_owners::style_name(
+            lock(loaded)?
+                .as_ref()
+                .ok_or_else(closed)?
+                .model()
+                .style_catalog(),
+            StyleId::new(style),
+        ))
+    }
+    fn named_style_snapshot<'py>(
+        &self,
+        py: Python<'py>,
+        name: &str,
+    ) -> PyResult<(u32, String, Bound<'py, PyDict>)> {
+        let loaded = self.loaded.as_ref().ok_or_else(|| {
+            PyNotImplementedError::new_err("Read-only named style mutation is unavailable")
+        })?;
+        let mut loaded = lock(loaded)?;
+        let book = loaded.as_mut().ok_or_else(closed)?;
+        let style = book.named_style_format(name).map_err(failure)?;
+        style_owners::snapshot(py, book.model().style_catalog(), style)
+    }
+    #[pyo3(signature = (value, update=false))]
+    fn add_named_style(&self, value: &Bound<'_, PyDict>, update: bool) -> PyResult<u32> {
+        let loaded = self.loaded.as_ref().ok_or_else(|| {
+            PyNotImplementedError::new_err("Read-only named style mutation is unavailable")
+        })?;
+        style_owners::register(lock(loaded)?.as_mut().ok_or_else(closed)?, value, update)
+    }
     #[new]
     #[pyo3(signature = (path, max_bytes, resources=None, *, editable=false, data_only=false))]
     fn new(
@@ -1752,7 +2154,7 @@ fn save_models(
         let mut writer = if let Some(book) = &book {
             let book = lock(book)?;
             let mut writer = if let Some(catalog) = book.style_catalog() {
-                WorkbookWriter::from_style_catalog(options, catalog.clone())
+                WorkbookWriter::from_canonical_style_catalog(options, catalog.clone())
             } else {
                 WorkbookWriter::new(options)
             }
