@@ -25,8 +25,10 @@ from ._native import (
 from .resources import AutoMemory, ResourceOptions
 from .resources import ResourceLimits as ResourceLimits
 from .resources import SharedStringOptions as SharedStringOptions
+from .styles import Alignment, Border, Font, GradientFill, PatternFill, Protection
+from .styles._base import cell_component
 
-__version__ = "0.1.0a9"
+__version__ = "0.1.0a10"
 _ERRORS = {
     "#NULL!",
     "#DIV/0!",
@@ -137,6 +139,12 @@ class Cell:
 
     __slots__ = ("parent", "row", "column", "_detached", "_formula", "__weakref__")
 
+    font = cell_component("font", Font)
+    fill = cell_component("fill", (PatternFill, GradientFill))
+    border = cell_component("border", Border)
+    alignment = cell_component("alignment", Alignment)
+    protection = cell_component("protection", Protection)
+
     def __init__(self, worksheet, row, column):
         self.parent, self.row, self.column = worksheet, row, column
         self._detached = None
@@ -200,7 +208,15 @@ class Cell:
         return self.value
 
     def _snapshot(self):
-        return (*self._tagged(), self.style_id, self.number_format)
+        return (
+            *self._tagged(),
+            self.style_id,
+            self.number_format,
+            {
+                name: __import__("copy").copy(getattr(self, name))
+                for name in ("font", "fill", "border", "alignment", "protection")
+            },
+        )
 
     @property
     def style_id(self):
@@ -225,7 +241,12 @@ class Cell:
         if not isinstance(code, str):
             raise TypeError("Number format must be a string")
         if self._detached is not None:
-            self._detached = (*self._detached[:2], self.style_id, code)
+            self._detached = (
+                *self._detached[:2],
+                self.style_id,
+                code,
+                *self._detached[4:],
+            )
         else:
             self.parent._model().set_number_format(self.row - 1, self.column - 1, code)
 
@@ -394,7 +415,7 @@ class Worksheet:
         cell = self._cells.get((row, column))
         if self._native is None and self._existing:
             self._native = self.parent._editor.sheet_handle(self.title)
-        style = (cell.style_id, cell.number_format) if cell is not None else None
+        style = cell._snapshot()[2:] if cell is not None else None
         old = self._model().remove(row - 1, column - 1, cell is not None)
         if cell is not None:
             self._cells.pop((row, column), None)

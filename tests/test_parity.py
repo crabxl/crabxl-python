@@ -488,7 +488,7 @@ def test_adapter_limits_exact_integers_closed_sources_and_unsupported_operations
     with pytest.raises(MemoryError):
         sheet["A1"] = "x" * 2000
     assert sheet["A1"].value == 10**100
-    with pytest.raises(AttributeError):
+    with pytest.raises(TypeError):
         sheet["A1"].font = object()
     with pytest.raises(AttributeError):
         sheet.freeze_panes = "A1"
@@ -1169,11 +1169,14 @@ def test_saved_temporal_default_formats_match_public_assignments(
     book = engine.Workbook()
     book.active["A1"] = value
     assert book.active["A1"].value == value
+    book.active["A1"].font = engine.styles.Font(name="Temporal appearance", bold=True)
     path = tmp_path / "temporal-format.xlsx"
     book.save(path)
     book.close()
     loaded = openpyxl.load_workbook(path)
     assert loaded.active["A1"].number_format == format_code
+    assert loaded.active["A1"].font.name == "Temporal appearance"
+    assert loaded.active["A1"].font.bold
     loaded.close()
 
 
@@ -1189,7 +1192,22 @@ def test_replacing_temporal_value_retains_format_across_repeated_save(engine, tm
     stream_date.number_format = "General"
     stream_empty = WriteOnlyCell(stream_sheet)
     stream_empty.number_format = "0.0000"
-    stream_sheet.append([stream_date, 9, stream_empty])
+    automatic_date = WriteOnlyCell(stream_sheet, date(2024, 1, 2))
+    automatic_date.font = engine.styles.Font(
+        name="Stream date",
+        bold=True,
+        underline="singleAccounting",
+        vertAlign="superscript",
+    )
+    automatic_date.fill = engine.styles.GradientFill(stop=("FF010203", "FF102030"))
+    automatic_date.border = engine.styles.Border(
+        diagonal=engine.styles.Side(style="double", color="FF123456"), diagonalUp=True
+    )
+    automatic_date.alignment = engine.styles.Alignment(
+        horizontal="right", shrink_to_fit=True
+    )
+    automatic_date.protection = engine.styles.Protection(locked=False, hidden=True)
+    stream_sheet.append([stream_date, 9, stream_empty, automatic_date])
     stream_path = tmp_path / "explicit-stream-format.xlsx"
     streamed.save(stream_path)
     checked = openpyxl.load_workbook(stream_path)
@@ -1197,6 +1215,24 @@ def test_replacing_temporal_value_retains_format_across_repeated_save(engine, tm
     assert checked.active["A1"].number_format == "General"
     assert checked.active["C1"].value is None
     assert checked.active["C1"].number_format == "0.0000"
+    assert checked.active["D1"].value == datetime(2024, 1, 2)
+    assert checked.active["D1"].number_format == "yyyy-mm-dd"
+    assert checked.active["D1"].font.name == "Stream date"
+    assert checked.active["D1"].font.underline == "singleAccounting"
+    assert checked.active["D1"].font.vertAlign == "superscript"
+    assert checked.active["D1"].fill.stop[1].color.rgb == "FF102030"
+    assert checked.active["D1"].border.diagonal.style == "double"
+    assert checked.active["D1"].border.diagonalUp
+    assert checked.active["D1"].alignment.shrinkToFit
+    assert checked.active["D1"].protection.hidden
+    readonly = engine.load_workbook(stream_path, read_only=True)
+    streamed_cell = next(readonly.active.iter_rows())[3]
+    assert streamed_cell.font.name == "Stream date"
+    assert streamed_cell.fill.stop[1].color.rgb == "FF102030"
+    assert streamed_cell.border.diagonal.style == "double"
+    assert streamed_cell.alignment.shrinkToFit
+    assert streamed_cell.protection.hidden
+    readonly.close()
     checked.close()
     streamed.close()
     # Explicit format edits preserve temporal Python values until save/reload.
@@ -1217,6 +1253,33 @@ def test_replacing_temporal_value_retains_format_across_repeated_save(engine, tm
         assert not styled.active["A1"].has_style
         assert styled.active["B1"].number_format == "0.0000"
         assert styled.active["B1"].has_style
+        from copy import copy
+
+        style_api = engine.styles
+        target = styled.active["B1"]
+        target.font = style_api.Font(
+            name="Appearance",
+            size=13,
+            bold=True,
+            color=style_api.Color(theme=2, tint=0.2),
+        )
+        target.fill = style_api.PatternFill(fill_type="solid", fgColor="12abEF")
+        target.border = style_api.Border(
+            left=style_api.Side(style="thin", color="FF010203")
+        )
+        target.alignment = style_api.Alignment(horizontal="center", wrap_text=True)
+        target.protection = style_api.Protection(locked=False, hidden=True)
+        assert target.font.name == "Appearance" and target.font.b
+        assert target.number_format == "0.0000"
+        with pytest.raises(AttributeError):
+            target.font.bold = False
+        replacement = copy(target.font)
+        replacement.italic = True
+        target.font = replacement
+        assert target.font.bold and target.font.italic
+        replacement.color.tint = 0.3
+        target.font = replacement
+        assert target.font.color.tint == 0.3
         for index in range(2):
             path = tmp_path / f"restyled-{loaded_mode}-{index}.xlsx"
             styled.save(path)
@@ -1226,12 +1289,24 @@ def test_replacing_temporal_value_retains_format_across_repeated_save(engine, tm
             assert verified.active["A1"].number_format == "General"
             assert verified.active["B1"].value == 12.5
             assert verified.active["B1"].number_format == "0.0000"
+            appearance = verified.active["B1"]
+            assert appearance.font.name == "Appearance"
+            assert appearance.font.bold and appearance.font.italic
+            assert appearance.font.color.type == "theme"
+            assert appearance.font.color.theme == 2
+            assert appearance.font.color.tint == 0.3
+            assert appearance.fill.fgColor.rgb == "0012abEF"
+            assert appearance.border.left.style == "thin"
+            assert appearance.alignment.horizontal == "center"
+            assert appearance.alignment.wrapText
+            assert not appearance.protection.locked and appearance.protection.hidden
             assert verified.active["C5"].value is None
             assert verified.active["C5"].number_format == "0.0000"
             verified.close()
         alias = styled.active["B1"]
         del styled.active["B1"]
         assert alias.value == 12.5 and alias.number_format == "0.0000"
+        assert alias.font.name == "Appearance"
         alias.number_format = "0.00"
         assert alias.number_format == "0.00"
         assert styled.active["B1"].number_format == "General"
