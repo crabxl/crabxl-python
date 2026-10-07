@@ -162,6 +162,7 @@ impl NativeReader {
                             ..Default::default()
                         },
                         editor: worker_config.editor_options(Some(operation)),
+                        bind_hyperlink_values: true,
                     },
                 )
                 .map_err(failure)?;
