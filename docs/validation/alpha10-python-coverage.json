@@ -1,0 +1,29 @@
+{
+  "tool": "coverage.py 7.16.2",
+  "revision": "59eef52c7f16f6fb630705e2116503bb7817346b",
+  "package_version": "0.1.0a10",
+  "native_sha256": "380b42037fe80024c735a0534e6b1eddffb5c616e510be9420f0058be5eaffad",
+  "command": "coverage run --branch --source=crabxl -m pytest -q",
+  "scope": "Installed Alpha 10 Python package. Python source only; Rust native extension is not instrumented by coverage.py.",
+  "passed_cases": 547,
+  "test_functions": 127,
+  "test_files": 10,
+  "test_physical_lines": 3345,
+  "line_count_scope": "tests/**/*.py including fixture helpers, comments and blank lines; parametrization produces 547 cases.",
+  "totals": {
+    "covered_lines": 1313,
+    "num_statements": 1466,
+    "percent_covered": 87.70408163265306,
+    "percent_covered_display": "88",
+    "missing_lines": 153,
+    "excluded_lines": 0,
+    "percent_statements_covered": 89.56343792633015,
+    "percent_statements_covered_display": "90",
+    "num_branches": 494,
+    "num_partial_branches": 72,
+    "covered_branches": 406,
+    "missing_branches": 88,
+    "percent_branches_covered": 82.18623481781377,
+    "percent_branches_covered_display": "82"
+  }
+}
