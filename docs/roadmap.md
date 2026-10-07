@@ -132,3 +132,8 @@ W12 exposes canonical sparse merge geometry, lazy read-only covered cells and
 source-backed merge/unmerge operations. See [the merge-view checkpoint](
 decisions/0029-sparse-merged-cell-views.md). W13 and consolidated A11 acceptance
 remain open; this checkpoint does not close M4/M5.
+
+W13 now exposes canonical editable rich-value views and ordinary rich loading,
+with explicit reference read-only mode behavior. See [the rich-view checkpoint](
+decisions/0030-canonical-rich-value-views.md). Hyperlinks, complete rich utility
+APIs and consolidated A11 structural acceptance remain open.

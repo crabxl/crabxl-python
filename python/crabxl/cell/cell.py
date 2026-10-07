@@ -69,8 +69,16 @@ class Cell:
     @property
     def value(self):
         from ..worksheet.formula import ArrayFormula, DataTableFormula, bind
+        from .rich_text import CellRichText
 
-        value = _decode(self._tagged())
+        tagged = self._tagged()
+        if tagged[0] == "rich" and self._detached is None:
+            retained = self.parent._rich_views.get((self.row, self.column))
+            if retained is not None:
+                return retained
+        value = _decode(tagged)
+        if isinstance(value, CellRichText) and self._detached is None:
+            return value._bind(self.parent, self.row, self.column)
         if isinstance(value, (ArrayFormula, DataTableFormula)):
             if (
                 self._formula is not None
@@ -108,6 +116,8 @@ class Cell:
             if kind in ("date", "datetime", "duration", "time")
             else "n"
             if kind == "bigint"
+            else "s"
+            if kind == "rich"
             else kind
         )
 

@@ -140,7 +140,9 @@ remain available, including `WriteOnlyCell` in both cell modules.
 The native `src/lib.rs` registers Python classes and functions. `workbook.rs`,
 `worksheet.rs`, `reader.rs` and `editor.rs` implement the respective handle
 contracts. `values.rs` shares conversion, synchronization and error mapping;
-`functions.rs` adapts formula/address/resource/save entry points. Existing
+`functions.rs` adapts formula/address/resource/save entry points. `rich_text.rs`
+adapts canonical runs and pronunciation records; `worksheet/rows.rs` owns borrowed
+row projection and deferred live-value conversion. Existing
 `streaming.rs`, `resources.rs`, `dimensions.rs`, `styles.rs` and `style_owners.rs`
 remain dedicated adapters. `imports.rs` contains adapter imports only. No module
 implements a second spreadsheet engine.

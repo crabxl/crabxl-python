@@ -67,7 +67,11 @@ def _encode(value):
         if value.startswith("=") and len(value) > 1:
             return "formula", value[1:]
         return ("error" if value in _ERRORS else "text"), value
+    from .cell.rich_text import CellRichText
     from .worksheet.formula import ArrayFormula, DataTableFormula
+
+    if isinstance(value, CellRichText):
+        return "rich", value._native()
 
     if isinstance(value, ArrayFormula):
         return "array", {"ref": value.ref, "text": value.text}
@@ -98,6 +102,10 @@ def _encode(value):
 
 def _decode(tagged):
     kind, value = tagged
+    if kind == "rich":
+        from .cell.rich_text import CellRichText
+
+        return CellRichText._from_native(value)
     if kind in ("array", "table"):
         from .worksheet.formula import ArrayFormula, DataTableFormula
 
@@ -126,4 +134,5 @@ def _data_type(tag):
         "formula": "f",
         "array": "f",
         "table": "f",
+        "rich": "s",
     }.get(tag[0], "d")

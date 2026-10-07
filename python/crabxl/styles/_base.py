@@ -14,8 +14,18 @@ class StyleValue:
         name = self._aliases.get(name, name)
         if name not in self._fields:
             raise AttributeError(name)
+        old = getattr(self, name, None)
         object.__setattr__(self, name, value)
         object.__setattr__(self, "_revision", getattr(self, "_revision", 0) + 1)
+        if getattr(self, "_listeners", None):
+            from ..cell.rich_text import _notify
+
+            try:
+                _notify(self)
+            except BaseException:
+                object.__setattr__(self, name, old)
+                object.__setattr__(self, "_revision", self._revision + 1)
+                raise
 
     def __getattr__(self, name):
         if name in self._aliases:
@@ -94,13 +104,36 @@ class StyleProxy:
     __hash__ = None
 
 
+def color_from_native(values):
+    """Materialize a validated native color without repeating input validation."""
+    from .colors import Color
+
+    if values is None:
+        return None
+    result = Color.__new__(Color)
+    result.__dict__.update(values)
+    return result
+
+
+def font_from_native(values, font_type=None):
+    """Share trusted component/run conversion while preserving public defaults."""
+    if font_type is None:
+        from .fonts import Font
+
+        font_type = Font
+    result = font_type.__new__(font_type)
+    result.__dict__.update(values)
+    object.__setattr__(result, "b", bool(values["b"]))
+    object.__setattr__(result, "i", bool(values["i"]))
+    object.__setattr__(result, "color", color_from_native(values["color"]))
+    return result
+
+
 def component(name, values):
     """Decode a borrowed native component into a small public value."""
     from . import (
         Alignment,
         Border,
-        Color,
-        Font,
         GradientFill,
         PatternFill,
         Protection,
@@ -109,20 +142,11 @@ def component(name, values):
     from .fills import Stop
 
     def decode_color(item):
-        if item is None:
-            return None
-        kind = item["type"]
-        if kind == "unspecified":
-            result = Color()
-            result.type, result.value = kind, None
-            result.tint = item["tint"]
-            return result
-        return Color(**{kind: item["value"]}, tint=item["tint"])
+        return color_from_native(item)
 
     values = dict(values)
     if name == "font":
-        values["color"] = decode_color(values["color"])
-        return Font(**values)
+        return font_from_native(values)
     if name == "border":
         for edge in Border._fields[:9]:
             item = values[edge]

@@ -58,6 +58,8 @@ class ReadOnlyCell:
             if self.is_date
             else "n"
             if self._kind == "bigint"
+            else "s"
+            if self._kind == "rich"
             else self._kind
         )
 
@@ -438,11 +440,7 @@ class WriteOnlyWorksheet(Worksheet):
             if isinstance(payload, str):
                 retained += len(payload.encode("utf-8"))
             elif isinstance(payload, dict):
-                retained += sum(
-                    len(item.encode("utf-8"))
-                    for item in payload.values()
-                    if isinstance(item, str)
-                )
+                retained += _style_payload_bytes(payload)
             if retained > allowance:
                 raise MemoryError("Write-only row exceeds its byte allowance")
             tagged.append(encoded)

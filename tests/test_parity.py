@@ -976,8 +976,11 @@ def test_preserving_rich_runs_is_separate_from_default_text_projection(tmp_path)
         assert checked.active["B1"].value == 2
         checked.close()
     book.close()
-    with pytest.raises(NotImplementedError):
-        crabxl.load_workbook(source, rich_text=True)
+    typed = crabxl.load_workbook(source, rich_text=True)
+    value = typed.active["A1"].value
+    assert str(value) == "formatted tail"
+    assert value[0].font.b and value[0].font.color.rgb == "80445566"
+    typed.close()
 
 
 @pytest.mark.parametrize("mac", [False, True], ids=["windows", "mac"])

@@ -26,6 +26,7 @@ class Worksheet:
         "_row_dimensions",
         "_column_dimensions",
         "_merged_cells",
+        "_rich_views",
         "__weakref__",
     )
 
@@ -43,6 +44,7 @@ class Worksheet:
             else NativeSheet(self._title, parent._max_bytes)
         )
         self._cells = WeakValueDictionary()
+        self._rich_views = WeakValueDictionary()
         self._row_dimensions = self._column_dimensions = None
         self._merged_cells = None
         self._validate_title(self._title)
@@ -118,6 +120,15 @@ class Worksheet:
             and first_col <= key[1] <= last_col
         ]
         self._model().merge_cells(*(value - 1 for value in bounds), merge)
+        self._relocate_rich_views(
+            lambda row, column: (
+                None
+                if (row, column) != (first_row, first_col)
+                and first_row <= row <= last_row
+                and first_col <= column <= last_col
+                else (row, column)
+            )
+        )
         for key, cell, snapshot in aliases:
             cell._detached = snapshot
             self._cells.pop(key, None)
@@ -181,12 +192,28 @@ class Worksheet:
         return self._model().get(row - 1, column - 1)
 
     def _set(self, row, column, value):
-        self.parent._check_open()
         tagged = _encode(value)
+        self._set_tagged(row, column, tagged)
+        if tagged[0] == "rich":
+            value._bind(self, row, column)
+
+    def _set_tagged(self, row, column, tagged):
+        self.parent._check_open()
         if self._existing:
             self.parent._editor.set(self.title, row - 1, column - 1, tagged)
         else:
             self._native.set(row - 1, column - 1, tagged)
+        self._rich_views.pop((row, column), None)
+
+    def _relocate_rich_views(self, transform):
+        retained = list(self._rich_views.items())
+        self._rich_views.clear()
+        for (row, column), value in retained:
+            value._bindings.get(self, set()).discard((row, column))
+        for (row, column), value in retained:
+            target = transform(row, column)
+            if target is not None:
+                value._bind(self, *target)
 
     def cell(self, row, column, value=None):
         if (
@@ -254,6 +281,7 @@ class Worksheet:
             self._native = self.parent._editor.sheet_handle(self.title)
         style = cell._snapshot()[2:] if cell is not None else None
         old = self._model().remove(row - 1, column - 1, cell is not None)
+        self._rich_views.pop((row, column), None)
         if cell is not None:
             self._cells.pop((row, column), None)
             cell._detached = (*(old if old is not None else ("n", None)), *style)
@@ -362,7 +390,11 @@ class Worksheet:
                 if len(values) == 16384:
                     raise ValueError("Appended row exceeds Excel column bounds")
                 values.append(value)
-        self._model().append([_encode(value) for value in values])
+        tagged = [_encode(value) for value in values]
+        row = self._model().append(tagged) + 1
+        for column, (value, encoded) in enumerate(zip(values, tagged), 1):
+            if encoded[0] == "rich":
+                value._bind(self, row, column)
 
     def _shift(self, idx, amount, rows, insert):
         if idx < 1 or amount < 1:
@@ -374,6 +406,17 @@ class Worksheet:
             if not insert and idx <= (row if rows else col) < idx + amount
         }
         self._model().shift(idx - 1, amount, rows, insert)
+
+        def relocate(row, column):
+            coordinate = row if rows else column
+            if not insert and idx <= coordinate < idx + amount:
+                return None
+            if coordinate >= idx + (0 if insert else amount):
+                coordinate += amount if insert else -amount
+                return (coordinate, column) if rows else (row, coordinate)
+            return row, column
+
+        self._relocate_rich_views(relocate)
         self._cells.clear()
         for (row, col), cell in cached:
             coordinate = row if rows else col
@@ -419,6 +462,18 @@ class Worksheet:
             cols,
             translate,
         )
+
+        def relocate(row, column):
+            if first_row <= row <= last_row and first_col <= column <= last_col:
+                return row + rows, column + cols
+            if (
+                first_row + rows <= row <= last_row + rows
+                and first_col + cols <= column <= last_col + cols
+            ):
+                return None
+            return row, column
+
+        self._relocate_rich_views(relocate)
         if range_object is not None:
             range_object.shift(row_shift=rows, col_shift=cols)
         self._cells.clear()
