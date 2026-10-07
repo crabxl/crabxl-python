@@ -125,8 +125,9 @@ formats without replacing unrelated appearance components. New model saves now
 export their canonical catalog; loaded edits use guarded source models and
 relationship-resolved stylesheet rewrites. Retained deleted/overwritten cell
 views keep their value/format snapshot. Complete component APIs remain A10 work.
-Signed/unknown style sections, sources without a stylesheet and affected
-unmodeled source graphs retain explicit errors. A9 publication is pending.
+Signed/unknown style sections and affected unmodeled source graphs retain
+explicit errors. A9 was published; later A11 implementation creates missing
+source stylesheet/theme graphs through the canonical native owner (core ADR 0094).
 
 W12 exposes canonical sparse merge geometry, lazy read-only covered cells and
 source-backed merge/unmerge operations. See [the merge-view checkpoint](
@@ -136,16 +137,23 @@ remain open; this checkpoint does not close M4/M5.
 W13 now exposes canonical editable rich-value views and ordinary rich loading,
 with explicit reference read-only mode behavior. See [the rich-view checkpoint](
 decisions/0030-canonical-rich-value-views.md). Hyperlinks, complete rich utility
-APIs and consolidated A11 structural acceptance remain open.
+edge-case parity and consolidated A11 structural acceptance remain open.
 
 A11 point hyperlink reading/editing is usable in owned and ordinary loaded modes
 (ADR 0031). Shared live references, ranges, optimized-mode exposure and complete
 alias/structural acceptance remain open; this is not an A11 release checkpoint.
 
 Live hyperlink ref updates and shared point aliases are integrated in ADR 0032.
-Compact range declarations, write-only links, imported empty-anchor values,
+Compact range declarations and per-cell views are integrated in ADR 0035.
+Write-only links, imported empty-anchor values,
 post-save id visibility and alias scaling remain tracked A11/performance gates.
 ReadOnlyCell has no hyperlink surface in the pinned public reference.
+
+A11 implementation also integrates retained/copied rich bindings (ADR 0033),
+native rich XML utilities (ADR 0034), editable detached hyperlinks (ADR 0036)
+and shared rectangle utilities (ADR 0037). These checkpoints have compilation
+and formatting checks only; they do not establish completed A11 acceptance.
+Standalone multi-range sets and live merged-declaration changes remain open.
 
 ## Implementation and acceptance cadence
 
