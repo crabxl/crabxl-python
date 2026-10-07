@@ -114,7 +114,7 @@ class Cell:
                 return retained
         value = _decode(tagged)
         if isinstance(value, CellRichText) and self._detached is None:
-            return value._bind(self.parent, self.row, self.column)
+            return value._bind(self.parent, self.row, self.column, retain=False)
         if isinstance(value, (ArrayFormula, DataTableFormula)):
             if (
                 self._formula is not None

@@ -293,12 +293,21 @@ class Workbook:
         if self._editor is not None:
             native = self._editor.copy_sheet(from_worksheet.title, title)
             copied = Worksheet(self, title, _existing=True, _native=native)
+            self._copy_rich_views(from_worksheet, copied)
             self._sheets.append(copied)
             return copied
         native = self._book.copy_sheet(from_worksheet._native, title)
         copied = Worksheet(self, title, _native=native)
+        self._copy_rich_views(from_worksheet, copied)
         self._sheets.append(copied)
         return copied
+
+    @staticmethod
+    def _copy_rich_views(source, destination):
+        for (row, column), value in list(source._rich_views.items()):
+            # Copied cells share caller-visible value objects. Native values stay
+            # independently owned and receive subsequent mutations through bindings.
+            value._bind(destination, row, column)
 
     def remove(self, worksheet):
         if self.read_only or self.write_only:
