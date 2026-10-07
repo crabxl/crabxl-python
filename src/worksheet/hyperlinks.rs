@@ -10,15 +10,20 @@ pub(super) type LinkFields = (
     Option<String>,
 );
 
-fn fields(link: &crabxl::Hyperlink) -> LinkFields {
-    (
+fn fields(links: &crabxl::Hyperlinks, address: CellAddress) -> Option<LinkFields> {
+    let link = links.get(address)?;
+    Some((
         link.target.as_deref().map(str::to_owned),
         link.location.as_deref().map(str::to_owned),
         link.tooltip.as_deref().map(str::to_owned),
         link.display.as_deref().map(str::to_owned),
         link.relationship_id.as_deref().map(str::to_owned),
-        link.reference.as_deref().map(str::to_owned),
-    )
+        if links.covering_range(address).is_some() {
+            None
+        } else {
+            link.reference.as_deref().map(str::to_owned)
+        },
+    ))
 }
 
 impl NativeSheet {
@@ -26,20 +31,19 @@ impl NativeSheet {
         let address = CellAddress::new(row, column).map_err(failure)?;
         let storage = lock(&self.storage)?;
         match &*storage {
-            SheetStorage::Standalone(sheet) => Ok(sheet.hyperlinks().get(address).map(fields)),
-            SheetStorage::Bank { book, id } => Ok(lock(book)?
-                .sheet(*id)
-                .map_err(failure)?
-                .hyperlinks()
-                .get(address)
-                .map(fields)),
-            SheetStorage::Loaded { book, id } => Ok(lock(book)?
-                .as_mut()
-                .ok_or_else(closed)?
-                .hyperlinks(*id)
-                .map_err(failure)?
-                .get(address)
-                .map(fields)),
+            SheetStorage::Standalone(sheet) => Ok(fields(sheet.hyperlinks(), address)),
+            SheetStorage::Bank { book, id } => Ok(fields(
+                lock(book)?.sheet(*id).map_err(failure)?.hyperlinks(),
+                address,
+            )),
+            SheetStorage::Loaded { book, id } => Ok(fields(
+                lock(book)?
+                    .as_mut()
+                    .ok_or_else(closed)?
+                    .hyperlinks(*id)
+                    .map_err(failure)?,
+                address,
+            )),
         }
     }
 
