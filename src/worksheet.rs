@@ -1,5 +1,6 @@
 //! Owned worksheet handles and cell/model operations.
 use crate::*;
+mod hyperlinks;
 mod rows;
 
 // A handle owns either a detached worksheet or a stable identity in the shared
@@ -119,6 +120,23 @@ impl NativeSheet {
 }
 #[pymethods]
 impl NativeSheet {
+    pub(crate) fn hyperlink(
+        &self,
+        row: u32,
+        column: u32,
+    ) -> PyResult<Option<hyperlinks::LinkFields>> {
+        self.hyperlink_fields(row, column)
+    }
+
+    pub(crate) fn set_hyperlink(
+        &self,
+        row: u32,
+        column: u32,
+        value: Option<hyperlinks::LinkFields>,
+    ) -> PyResult<()> {
+        self.replace_hyperlink(row, column, value)
+    }
+
     #[new]
     pub(crate) fn new(name: String, max_bytes: usize) -> PyResult<Self> {
         Ok(Self {

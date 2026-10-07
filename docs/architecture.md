@@ -155,3 +155,8 @@ import neither workbook nor worksheet objects, avoiding initialization cycles.
 Use 300–600 lines as a practical review target and inspect files exceeding
 800–1,000 lines for mixed responsibilities. These are guidelines, not hard
 limits or a reason to introduce numbered fragments or extra runtime wrappers.
+
+Point hyperlink views adapt canonical native metadata and preserving source edits.
+Sparse public object retention preserves live identity; XML/relationship edits
+stay in core. See [ADR 0031](decisions/0031-canonical-point-hyperlink-views.md) for
+resource costs and unresolved full compatibility gates.

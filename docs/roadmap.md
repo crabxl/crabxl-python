@@ -137,3 +137,7 @@ W13 now exposes canonical editable rich-value views and ordinary rich loading,
 with explicit reference read-only mode behavior. See [the rich-view checkpoint](
 decisions/0030-canonical-rich-value-views.md). Hyperlinks, complete rich utility
 APIs and consolidated A11 structural acceptance remain open.
+
+A11 point hyperlink reading/editing is usable in owned and ordinary loaded modes
+(ADR 0031). Shared live references, ranges, optimized-mode exposure and complete
+alias/structural acceptance remain open; this is not an A11 release checkpoint.
