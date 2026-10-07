@@ -18,7 +18,7 @@ releases. Its M4 stage can be accepted without claiming full graph support or fu
 M4 closure. Core implementation alone does not complete a Python capability.
 Each package release pins the verified published core revision and passes the
 applicable public-reference, resource/cleanup, Ruff, and platform wheel checks.
-Alpha.6–Alpha.8 are published. A9 is in progress; later targets remain planned.
+Alpha.6–Alpha.8 are published. A9 usable functionality is verified locally and publication is requested; later targets remain planned.
 The finer [Alpha 9–28 integration plan](https://github.com/crabxl/crabxl/blob/main/docs/alpha-9-28-plan.md) supersedes the previous single-release M5 target.
 
 Loaded scalar/formula row append now uses canonical atomic model/package
