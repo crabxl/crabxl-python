@@ -1,0 +1,17 @@
+{
+  "status": "Interrupted preliminary run; single observed sample, not a median or completed acceptance run",
+  "core_revision": "261b5da07958fbbc960180ec2aff84fb5b8b084b",
+  "native_sha256": "43312f5b62990878ee4f37da5730f029a624cfaefce87112b91b8f7bbd7c9ce0",
+  "loaded_sample": {
+    "rows": 10000,
+    "cells": 100000,
+    "seconds": 17.206140223017428,
+    "cpu_seconds": 17.248503338,
+    "peak_rss_kib": 39888,
+    "sampled_peak_temp_bytes": 0,
+    "remaining_temp_bytes": 0,
+    "output_bytes": 329075,
+    "checksum": 4952930000
+  },
+  "finding": "Repeated whole-model validation and source guards on each individual loaded style assignment; fix and rerun the same workload before acceptance."
+}

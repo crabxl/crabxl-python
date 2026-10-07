@@ -1178,6 +1178,64 @@ def test_saved_temporal_default_formats_match_public_assignments(
 
 
 def test_replacing_temporal_value_retains_format_across_repeated_save(engine, tmp_path):
+    # Explicit write-only dates keep the same assigned format after finalization.
+    streamed = engine.Workbook(write_only=True)
+    stream_sheet = streamed.create_sheet()
+    if engine is crabxl:
+        from crabxl.cell.cell import WriteOnlyCell
+    else:
+        from openpyxl.cell.cell import WriteOnlyCell
+    stream_date = WriteOnlyCell(stream_sheet, date(2024, 1, 2))
+    stream_date.number_format = "General"
+    stream_empty = WriteOnlyCell(stream_sheet)
+    stream_empty.number_format = "0.0000"
+    stream_sheet.append([stream_date, 9, stream_empty])
+    stream_path = tmp_path / "explicit-stream-format.xlsx"
+    streamed.save(stream_path)
+    checked = openpyxl.load_workbook(stream_path)
+    assert checked.active["A1"].value == 45293
+    assert checked.active["A1"].number_format == "General"
+    assert checked.active["C1"].value is None
+    assert checked.active["C1"].number_format == "0.0000"
+    checked.close()
+    streamed.close()
+    # Explicit format edits preserve temporal Python values until save/reload.
+    for loaded_mode in (False, True):
+        styled = engine.Workbook()
+        styled.active["A1"] = date(2024, 1, 2)
+        styled.active["B1"] = 12.5
+        if loaded_mode:
+            source = tmp_path / "styled-source.xlsx"
+            styled.save(source)
+            styled.close()
+            styled = engine.load_workbook(source)
+        before = styled.active["A1"].value
+        styled.active["A1"].number_format = "General"
+        styled.active["B1"].number_format = "0.0000"
+        styled.active["C5"].number_format = "0.0000"
+        assert styled.active["A1"].value == before
+        assert not styled.active["A1"].has_style
+        assert styled.active["B1"].number_format == "0.0000"
+        assert styled.active["B1"].has_style
+        for index in range(2):
+            path = tmp_path / f"restyled-{loaded_mode}-{index}.xlsx"
+            styled.save(path)
+            verified = openpyxl.load_workbook(path)
+            assert verified.active["A1"].value == 45293
+            assert type(verified.active["A1"].value) is int
+            assert verified.active["A1"].number_format == "General"
+            assert verified.active["B1"].value == 12.5
+            assert verified.active["B1"].number_format == "0.0000"
+            assert verified.active["C5"].value is None
+            assert verified.active["C5"].number_format == "0.0000"
+            verified.close()
+        alias = styled.active["B1"]
+        del styled.active["B1"]
+        assert alias.value == 12.5 and alias.number_format == "0.0000"
+        alias.number_format = "0.00"
+        assert alias.number_format == "0.00"
+        assert styled.active["B1"].number_format == "General"
+        styled.close()
     initial_values = [
         (date(2024, 1, 2), "yyyy-mm-dd"),
         (datetime(2024, 1, 2, 3, 4, 5), "yyyy-mm-dd h:mm:ss"),

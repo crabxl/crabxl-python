@@ -8,11 +8,9 @@ Follow the canonical [Alpha.6 and later release plan](https://github.com/crabxl/
 - **A7:** M4 loaded bank/resource integration, existing-file sheet mutations,
   append and row/column structural operations for supported content.
 - **A8:** measured read/write/edit and Python binding performance backlog.
-- **A9:** complete M5 common features and their compatible Python APIs.
-- **M6 alphas:** usable groups of images, charts, pivots, external links, and
-  complex metadata graphs with corresponding Python support.
-- **M7:** full compatibility, supported-platform, performance, and release-quality
-  acceptance.
+- **A9–A19:** staged M5 releases, starting with A9 style assignment and explicit temporal formats.
+- **A20–A26:** images, charts, pivots, external links and complex metadata graphs, including deferred M4 integration.
+- **A27–A28:** complete measured performance and full M7 compatibility/release-quality acceptance.
 
 The user selected staged M4 acceptance. A7 must reject affected unimplemented
 M5/M6 graphs before mutation and retain their dependency cases for later feature
@@ -20,7 +18,8 @@ releases. Its M4 stage can be accepted without claiming full graph support or fu
 M4 closure. Core implementation alone does not complete a Python capability.
 Each package release pins the verified published core revision and passes the
 applicable public-reference, resource/cleanup, Ruff, and platform wheel checks.
-Alpha.6 is published; A7 and later stages remain planned.
+Alpha.6–Alpha.8 are published. A9 is in progress; later targets remain planned.
+The finer [Alpha 9–28 integration plan](https://github.com/crabxl/crabxl/blob/main/docs/alpha-9-28-plan.md) supersedes the previous single-release M5 target.
 
 Loaded scalar/formula row append now uses canonical atomic model/package
 updates and is covered by the shared public-reference edit/save workflow.
@@ -107,3 +106,13 @@ objects and live translator token mutation. Existing shared assertions cover
 selected lexical factories/rendering and malformed cases; complete tokenizer edge
 auditing and all other assigned M5 features remain open. See
 [the measured token-tool decision](decisions/0025-borrowed-formula-tokens.md).
+
+
+A9 adds live `Cell.number_format`, `style_id`, `has_style` and format-aware
+`is_date`, plus explicit `WriteOnlyCell.number_format`. Rust derives shared
+formats without replacing unrelated appearance components. New model saves now
+export their canonical catalog; loaded edits use guarded source models and
+relationship-resolved stylesheet rewrites. Retained deleted/overwritten cell
+views keep their value/format snapshot. Complete component APIs remain A10 work.
+Signed/unknown style sections, sources without a stylesheet and affected
+unmodeled source graphs retain explicit errors. A9 publication is pending.
