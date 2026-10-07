@@ -146,3 +146,11 @@ Live hyperlink ref updates and shared point aliases are integrated in ADR 0032.
 Compact range declarations, write-only links, imported empty-anchor values,
 post-save id visibility and alias scaling remain tracked A11/performance gates.
 ReadOnlyCell has no hyperlink surface in the pinned public reference.
+
+## Implementation and acceptance cadence
+
+Complete each entire alpha release scope in Rust and Python before writing
+additional tests. Use only necessary compilation and formatting checks during
+implementation. Add missing high-value tests once at pre-release acceptance, fix
+failures together, then run the relevant regression and publication checks.
+Intermediate feature checkpoints are not occasions for adding tests or full suites.
