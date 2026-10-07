@@ -1,7 +1,12 @@
 """Finite public range views over canonical Rust rectangle operations."""
 
+from typing import TYPE_CHECKING
+
 from .. import _letters, _range
 from .._native import adjust_range, combine_ranges, compare_ranges
+
+if TYPE_CHECKING:
+    from .multi_cell_range import MultiCellRange
 
 
 class CellRange:
