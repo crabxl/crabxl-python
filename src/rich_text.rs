@@ -4,8 +4,28 @@ use crabxl::{PhoneticProperties, PhoneticRun, RichText, RichTextRun, StyleCompon
 use pyo3::{
     exceptions::PyValueError,
     prelude::*,
-    types::{PyDict, PyList},
+    types::{PyBytes, PyDict, PyList},
 };
+
+#[pyfunction]
+pub(crate) fn rich_text_from_xml<'py>(py: Python<'py>, xml: &[u8]) -> PyResult<Bound<'py, PyDict>> {
+    let value =
+        crabxl::read_rich_text(std::io::Cursor::new(xml), crabxl::ResourceLimits::default())
+            .map_err(failure)?;
+    encode(py, &value)
+}
+
+#[pyfunction]
+pub(crate) fn rich_text_to_xml<'py>(
+    py: Python<'py>,
+    fields: &Bound<'_, PyDict>,
+) -> PyResult<Bound<'py, PyBytes>> {
+    let value = decode(fields)?;
+    let mut output = Vec::new();
+    crabxl::write_rich_text(&mut output, &value, crabxl::ResourceLimits::default())
+        .map_err(failure)?;
+    Ok(PyBytes::new(py, &output))
+}
 
 pub(crate) fn decode(value: &Bound<'_, PyDict>) -> PyResult<RichText> {
     let runs = value

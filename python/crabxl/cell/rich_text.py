@@ -2,8 +2,21 @@
 
 from copy import copy
 from weakref import WeakKeyDictionary, WeakValueDictionary
+from xml.etree.ElementTree import Element, fromstring, tostring
 
 from .text import InlineFont
+
+_MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+
+
+def _tree(fields):
+    from .._native import rich_text_to_xml
+
+    node = fromstring(rich_text_to_xml(fields))
+    for child in node.iter():
+        if child.tag.startswith(f"{{{_MAIN}}}"):
+            child.tag = child.tag[len(_MAIN) + 2 :]
+    return node
 
 
 def _notify(value):
@@ -75,6 +88,9 @@ class TextBlock:
     def __copy__(self):
         return type(self)(copy(self.font), self.text)
 
+    def to_tree(self):
+        return _tree({"runs": [(self.text, self.font._native())]})[0]
+
 
 class CellRichText(list):
     def __init__(self, *args):
@@ -115,6 +131,27 @@ class CellRichText(list):
             "phonetic_runs": self._phonetic_runs,
             "phonetic_properties": self._phonetic_properties,
         }
+
+    def to_tree(self):
+        return _tree(self._native())
+
+    @classmethod
+    def from_tree(cls, node):
+        from .._native import rich_text_from_xml
+
+        if node.tag not in ("is", "si", f"{{{_MAIN}}}is", f"{{{_MAIN}}}si"):
+            raise ValueError("Expected an inline or shared-string element")
+        if node.tag in ("is", "si"):
+            root = Element(node.tag, {**node.attrib, "xmlns": _MAIN})
+            root.text, root.tail = node.text, None
+            root.extend(node)
+        else:
+            # Do not pass the source element's tail as fragment content.
+            root = Element(node.tag, node.attrib)
+            root.text = node.text
+            root.extend(node)
+        fields = rich_text_from_xml(tostring(root, encoding="utf-8"))
+        return cls._from_native(fields)
 
     @classmethod
     def _from_native(cls, fields):
