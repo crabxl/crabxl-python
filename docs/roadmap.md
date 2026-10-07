@@ -141,3 +141,8 @@ APIs and consolidated A11 structural acceptance remain open.
 A11 point hyperlink reading/editing is usable in owned and ordinary loaded modes
 (ADR 0031). Shared live references, ranges, optimized-mode exposure and complete
 alias/structural acceptance remain open; this is not an A11 release checkpoint.
+
+Live hyperlink ref updates and shared point aliases are integrated in ADR 0032.
+Compact range declarations, write-only links, imported empty-anchor values,
+post-save id visibility and alias scaling remain tracked A11/performance gates.
+ReadOnlyCell has no hyperlink surface in the pinned public reference.

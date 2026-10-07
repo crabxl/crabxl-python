@@ -59,12 +59,31 @@ def test_live_point_hyperlinks_preserve_values_and_source_copy_graphs(tmp_path):
         )
         assert other.worksheets[0]["A1"].value == "https://example.org/old?a=1&b=2#part"
         other.close()
+    current.ref = "D4"
+    assert current.ref == "D4"
+    assert original["A1"].hyperlink is current
+    original["E5"].hyperlink = current
+    assert current.ref == "E5"
+    assert original["E5"].hyperlink is original["A1"].hyperlink
+    assert original["E5"].value == "https://example.org/changed"
+    current.target = "https://example.org/shared"
+    assert original["A1"].hyperlink.target == "https://example.org/shared"
+    assert original["E5"].value == "https://example.org/changed"
     with pytest.raises(NotImplementedError):
-        current.ref = "D4"
-    assert current.ref == "A1"
-    with pytest.raises(NotImplementedError):
-        original["D4"].hyperlink = current
-    assert original["D4"].hyperlink is None
+        current.ref = "A1:C3"
+    assert current.ref == "E5"
+    aliased = tmp_path / "aliased.xlsx"
+    loaded.save(aliased)
+    other = openpyxl.load_workbook(aliased)
+    assert other.worksheets[0]["A1"].hyperlink is None
+    assert other.worksheets[0]["E5"].hyperlink.target == "https://example.org/shared"
+    assert other.worksheets[0]["E5"].value == "https://example.org/changed"
+    assert other.worksheets[1]["A1"].hyperlink.target == "https://example.org/copied"
+    other.close()
+    reread = load_workbook(aliased)
+    assert reread.active["A1"].hyperlink is None
+    assert reread.active["E5"].hyperlink.target == "https://example.org/shared"
+    reread.close()
     loaded.close()
 
 
