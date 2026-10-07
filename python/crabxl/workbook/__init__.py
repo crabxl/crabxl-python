@@ -1,3 +1,3 @@
-"""Public compatibility import."""
+"""Public workbook compatibility import."""
 
-from .. import Workbook as Workbook
+from .workbook import Workbook as Workbook

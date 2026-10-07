@@ -1,5 +1,7 @@
 # Python compatibility roadmap
 
+Source modules follow the [adapter architecture](architecture.md#source-module-boundaries); modularization retains the planned functionality and release numbering.
+
 ## Planned release stages
 
 Follow the canonical [Alpha.6 and later release plan](https://github.com/crabxl/crabxl/blob/main/docs/alpha-6-and-later-plan.md):

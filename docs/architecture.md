@@ -128,3 +128,28 @@ Two existing resource fixtures retain their atomic failure, retry, alias and sou
 checks with capacities appropriate to the new ledger. Complete numeric/unique-text
 Python measurements, exact preview-wheel identities and remaining limits are in
 [the A8 verification report](../benchmarks/alpha8-python-acceptance.md).
+
+## Source module boundaries
+
+The public `python/crabxl/__init__.py` only composes exports. Compatible objects
+live in `cell/cell.py`, `worksheet/worksheet.py` and `workbook/workbook.py`;
+`workbook/loader.py` selects loading modes and owns loading cleanup. `_values.py`
+shares scalar conversion and coordinate adapters. Existing public import paths
+remain available, including `WriteOnlyCell` in both cell modules.
+
+The native `src/lib.rs` registers Python classes and functions. `workbook.rs`,
+`worksheet.rs`, `reader.rs` and `editor.rs` implement the respective handle
+contracts. `values.rs` shares conversion, synchronization and error mapping;
+`functions.rs` adapts formula/address/resource/save entry points. Existing
+`streaming.rs`, `resources.rs`, `dimensions.rs`, `styles.rs` and `style_owners.rs`
+remain dedicated adapters. `imports.rs` contains adapter imports only. No module
+implements a second spreadsheet engine.
+
+Dependencies flow from Python views to native handles and then to the pinned
+Rust core. Module registration is composition; workbook ownership, model data,
+resource accounting and codecs remain canonical in Rust. Shared Python helpers
+import neither workbook nor worksheet objects, avoiding initialization cycles.
+
+Use 300–600 lines as a practical review target and inspect files exceeding
+800–1,000 lines for mixed responsibilities. These are guidelines, not hard
+limits or a reason to introduce numbered fragments or extra runtime wrappers.
