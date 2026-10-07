@@ -7,6 +7,13 @@ pub(crate) struct NativeBook {
 }
 #[pymethods]
 impl NativeBook {
+    pub(crate) fn hyperlink_output_ids(
+        &self,
+        py: Python<'_>,
+        requests: hyperlink_views::Requests,
+    ) -> PyResult<hyperlink_views::Output> {
+        hyperlink_views::owned(py, &self.book, requests)
+    }
     pub(crate) fn theme<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyBytes>>> {
         Ok(lock(&self.book)?
             .theme()

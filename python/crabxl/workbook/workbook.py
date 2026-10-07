@@ -341,6 +341,25 @@ class Workbook:
             raise NotImplementedError("File-like binding output is not implemented")
         if self.read_only:
             raise TypeError("Workbook is read-only")
+        hyperlink_sheets = []
+        hyperlink_ids = []
+        if not self.write_only:
+            hyperlink_sheets = [
+                sheet for sheet in self._sheets if sheet._hyperlink_views
+            ]
+            if hyperlink_sheets:
+                requests = [
+                    (
+                        sheet._model(),
+                        [
+                            (row - 1, column - 1)
+                            for row, column in sheet._hyperlink_views
+                        ],
+                    )
+                    for sheet in hyperlink_sheets
+                ]
+                owner = self._editor if self._editor is not None else self._book
+                hyperlink_ids = owner.hyperlink_output_ids(requests)
         if self.write_only:
             from ..utils.exceptions import WorkbookAlreadySaved
 
@@ -376,6 +395,10 @@ class Workbook:
                 self._book,
             )
             self._book.set_active_view_index(self._active)
+        for sheet, row, column, identity in hyperlink_ids:
+            view = hyperlink_sheets[sheet]._hyperlink_views.get((row, column))
+            if view is not None:
+                object.__setattr__(view, "id", identity)
 
     def close(self):
         for stream in list(self._streams):

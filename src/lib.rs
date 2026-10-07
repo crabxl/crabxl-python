@@ -2,6 +2,7 @@
 mod dimensions;
 mod editor;
 mod functions;
+mod hyperlink_views;
 mod imports;
 mod reader;
 mod resources;

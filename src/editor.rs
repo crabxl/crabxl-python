@@ -8,6 +8,18 @@ pub(crate) struct NativeEditor {
 }
 #[pymethods]
 impl NativeEditor {
+    pub(crate) fn hyperlink_output_ids(
+        &self,
+        py: Python<'_>,
+        requests: hyperlink_views::Requests,
+    ) -> PyResult<hyperlink_views::Output> {
+        let loaded = self.loaded.as_ref().ok_or_else(|| {
+            PyNotImplementedError::new_err(
+                "Hyperlink output identities require a canonical loaded workbook",
+            )
+        })?;
+        hyperlink_views::loaded(py, loaded, requests)
+    }
     #[new]
     #[pyo3(signature = (path, max_bytes=None, resources=None, *, reader=None))]
     pub(crate) fn new(
