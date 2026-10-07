@@ -70,8 +70,10 @@ class Cell:
             return None
         from ..worksheet.hyperlink import Hyperlink
 
-        target, location, tooltip, display, identity = fields
-        value = Hyperlink(self.coordinate, location, tooltip, display, identity, target)
+        target, location, tooltip, display, identity, reference = fields
+        value = Hyperlink(
+            reference or self.coordinate, location, tooltip, display, identity, target
+        )
         value._bindings.setdefault(self.parent, set()).add((self.row, self.column))
         self.parent._hyperlink_views[self.row, self.column] = value
         return value

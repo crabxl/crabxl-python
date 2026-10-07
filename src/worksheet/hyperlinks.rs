@@ -7,6 +7,7 @@ pub(super) type LinkFields = (
     Option<String>,
     Option<String>,
     Option<String>,
+    Option<String>,
 );
 
 fn fields(link: &crabxl::Hyperlink) -> LinkFields {
@@ -16,6 +17,7 @@ fn fields(link: &crabxl::Hyperlink) -> LinkFields {
         link.tooltip.as_deref().map(str::to_owned),
         link.display.as_deref().map(str::to_owned),
         link.relationship_id.as_deref().map(str::to_owned),
+        link.reference.as_deref().map(str::to_owned),
     )
 }
 
@@ -48,17 +50,17 @@ impl NativeSheet {
         value: Option<LinkFields>,
     ) -> PyResult<()> {
         let address = CellAddress::new(row, column).map_err(failure)?;
-        let link =
-            value.map(
-                |(target, location, tooltip, display, relationship_id)| crabxl::Hyperlink {
-                    target: target.map(String::into_boxed_str),
-                    location: location.map(String::into_boxed_str),
-                    tooltip: tooltip.map(String::into_boxed_str),
-                    display: display.map(String::into_boxed_str),
-                    relationship_id: relationship_id.map(String::into_boxed_str),
-                    external: true,
-                },
-            );
+        let link = value.map(
+            |(target, location, tooltip, display, relationship_id, reference)| crabxl::Hyperlink {
+                reference: reference.map(String::into_boxed_str),
+                target: target.map(String::into_boxed_str),
+                location: location.map(String::into_boxed_str),
+                tooltip: tooltip.map(String::into_boxed_str),
+                display: display.map(String::into_boxed_str),
+                relationship_id: relationship_id.map(String::into_boxed_str),
+                external: true,
+            },
+        );
         let mut storage = lock(&self.storage)?;
         match &mut *storage {
             SheetStorage::Standalone(sheet) => sheet.set_hyperlink(address, link).map_err(failure),

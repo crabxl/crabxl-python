@@ -3,6 +3,8 @@
 from weakref import WeakKeyDictionary
 from xml.etree.ElementTree import Element
 
+from .._values import _letters
+
 _REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 _MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 
@@ -33,10 +35,6 @@ class Hyperlink:
             object.__setattr__(self, name, value)
             return
         previous = getattr(self, name, None)
-        if name == "ref" and self._bindings and value != previous:
-            raise NotImplementedError(
-                "Live hyperlink reference relocation is not implemented"
-            )
         object.__setattr__(self, name, value)
         try:
             self._sync()
@@ -44,8 +42,16 @@ class Hyperlink:
             object.__setattr__(self, name, previous)
             raise
 
-    def _fields(self):
-        return self.target, self.location, self.tooltip, self.display, self.id
+    def _fields(self, owner=None):
+        reference = None if owner == self.ref else self.ref
+        return (
+            self.target,
+            self.location,
+            self.tooltip,
+            self.display,
+            self.id,
+            reference,
+        )
 
     def _sync(self):
         committed = []
@@ -57,7 +63,9 @@ class Hyperlink:
                         continue
                     native = sheet._model()
                     previous = native.hyperlink(row - 1, column - 1)
-                    native.set_hyperlink(row - 1, column - 1, self._fields())
+                    native.set_hyperlink(
+                        row - 1, column - 1, self._fields(f"{_letters(column)}{row}")
+                    )
                     committed.append((native, row, column, previous))
         except BaseException:
             for native, row, column, previous in reversed(committed):
@@ -66,13 +74,16 @@ class Hyperlink:
 
     def _bind(self, sheet, row, column):
         coordinate = f"{sheet.cell(row, column).column_letter}{row}"
-        if self._bindings and self.ref != coordinate:
-            raise NotImplementedError(
-                "Shared hyperlink reference aliases are not implemented"
-            )
+        previous = self.ref
         native = sheet._model()
-        native.set_hyperlink(row - 1, column - 1, self._fields())
         object.__setattr__(self, "ref", coordinate)
+        try:
+            self._sync()
+            native.set_hyperlink(row - 1, column - 1, self._fields(coordinate))
+        except BaseException:
+            object.__setattr__(self, "ref", previous)
+            self._sync()
+            raise
         self._bindings.setdefault(sheet, set()).add((row, column))
         sheet._hyperlink_views[row, column] = self
         return self

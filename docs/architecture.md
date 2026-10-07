@@ -160,3 +160,8 @@ Point hyperlink views adapt canonical native metadata and preserving source edit
 Sparse public object retention preserves live identity; XML/relationship edits
 stay in core. See [ADR 0031](decisions/0031-canonical-point-hyperlink-views.md) for
 resource costs and unresolved full compatibility gates.
+
+Live hyperlink references and shared public aliases now synchronize canonical
+declarations while retaining physical owner coordinates. Matching ordinary
+references avoid duplicate native text. [ADR 0032](decisions/0032-shared-hyperlink-reference-views.md)
+records transactions, alias scaling and remaining compatibility dependencies.
