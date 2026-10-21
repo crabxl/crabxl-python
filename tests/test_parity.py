@@ -481,12 +481,12 @@ def test_loaded_style_image_comment_and_unknown_parts_are_preserved(tmp_path):
 def test_adapter_limits_exact_integers_closed_sources_and_unsupported_operations(
     tmp_path,
 ):
-    workbook = crabxl.Workbook(max_memory_bytes=1000)
+    workbook = crabxl.Workbook(max_memory_bytes=4096)
     sheet = workbook.active
     sheet["A1"] = 10**100
     assert sheet["A1"].value == 10**100
     with pytest.raises(MemoryError):
-        sheet["A1"] = "x" * 2000
+        sheet["A1"] = "x" * 8192
     assert sheet["A1"].value == 10**100
     with pytest.raises(TypeError):
         sheet["A1"].font = object()
@@ -704,33 +704,35 @@ def test_move_sheet_offsets_match_list_insertion(engine, offset):
 
 
 def test_python_bank_aggregate_limit_atomic_copy_and_freed_space():
-    workbook = crabxl.Workbook(max_memory_bytes=2000)
+    budget = 16 * 1024
+    workbook = crabxl.Workbook(max_memory_bytes=budget)
     first = workbook.active
-    first["A1"] = 1
+    original = "x" * 4096
+    first["A1"] = original
     second = workbook.create_sheet("B")
     second["A1"] = 2
-    assert workbook._book.charged_bytes() <= 2000
+    for row in range(2, 1000):
+        try:
+            second.cell(row, 1, row)
+        except MemoryError:
+            break
+    else:
+        pytest.fail("Aggregate workbook limit was not enforced")
+    assert workbook._book.charged_bytes() <= budget
+    assert not second._native.contains(row - 1, 0)
+    before = workbook._book.charged_bytes()
     with pytest.raises(MemoryError):
         workbook.copy_worksheet(first)
     assert workbook.sheetnames == ["Sheet", "B"]
-    first["A2"] = 3
-    second["A2"] = 4
-    second["A3"] = 5
-    second["A4"] = 6
-    before = workbook._book.charged_bytes()
+    assert workbook._book.charged_bytes() == before
     with pytest.raises(MemoryError):
-        second["A5"] = 7
-    assert workbook._book.charged_bytes() == before and not second._native.contains(
-        4, 0
-    )
-    with pytest.raises(MemoryError):
-        first.insert_rows(1)
-    assert first["A1"].value == 1
+        second.insert_rows(1)
+    assert first["A1"].value == original
     workbook.remove(first)
-    assert first["A1"].value == 1
+    assert first["A1"].value == original
     # Detached models remain caller-owned, outside the bank's allowance.
-    second["A5"] = 7
-    assert second["A5"].value == 7
+    second.cell(row, 1, 7)
+    assert second.cell(row, 1).value == 7
     first["A1"] = 9
     assert first["A1"].value == 9
 

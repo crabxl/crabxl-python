@@ -369,6 +369,9 @@ class Workbook:
                 raise WorkbookAlreadySaved("Workbook has already been saved")
             if not self._sheets:
                 self.create_sheet()
+            for sheet in self._sheets:
+                if not sheet.closed:
+                    sheet.close()
             try:
                 self._active, identities = self._stream_writer.save(
                     Path(filename),
@@ -376,7 +379,16 @@ class Workbook:
                     compression_level,
                     list(self._stream_links),
                 )
-                for group, identity in identities:
+                owners = {}
+                observed = {}
+                for link in self._stream_links.values():
+                    observed[id(link)] = link
+                for link in observed.values():
+                    for sheet, group in link._stream_bindings.items():
+                        owners[group] = sheet._id
+                for group, identity in sorted(
+                    identities, key=lambda item: owners.get(item[0], -1)
+                ):
                     link = self._stream_links.get(group)
                     if link is not None:
                         object.__setattr__(link, "id", identity)

@@ -10,13 +10,15 @@ pub(crate) type LinkFields = (
     Option<String>,
 );
 
-fn fields(links: &crabxl::Hyperlinks, address: CellAddress) -> Option<LinkFields> {
-    let link = links.get(address)?;
+fn fields(links: &crabxl::Hyperlinks, address: CellAddress) -> PyResult<Option<LinkFields>> {
+    let Some(link) = links.get(address) else {
+        return Ok(None);
+    };
     let mut fields = owned_fields(link);
     if links.covering_range(address).is_some() {
-        fields.5 = None;
+        fields.5 = links.covered_reference(address).map_err(failure)?;
     }
-    Some(fields)
+    Ok(Some(fields))
 }
 
 pub(crate) fn owned_fields(link: &crabxl::Hyperlink) -> LinkFields {
@@ -56,19 +58,19 @@ impl NativeSheet {
         let address = CellAddress::new(row, column).map_err(failure)?;
         let storage = lock(&self.storage)?;
         match &*storage {
-            SheetStorage::Standalone(sheet) => Ok(fields(sheet.hyperlinks(), address)),
-            SheetStorage::Bank { book, id } => Ok(fields(
+            SheetStorage::Standalone(sheet) => fields(sheet.hyperlinks(), address),
+            SheetStorage::Bank { book, id } => fields(
                 lock(book)?.sheet(*id).map_err(failure)?.hyperlinks(),
                 address,
-            )),
-            SheetStorage::Loaded { book, id } => Ok(fields(
+            ),
+            SheetStorage::Loaded { book, id } => fields(
                 lock(book)?
                     .as_mut()
                     .ok_or_else(closed)?
                     .hyperlinks(*id)
                     .map_err(failure)?,
                 address,
-            )),
+            ),
         }
     }
 
