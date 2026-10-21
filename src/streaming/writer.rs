@@ -1,10 +1,52 @@
 //! Sequential writer bindings, separate from read-only worker lifetimes.
 use super::*;
 use crabxl::WriteStats;
+type OutputIdentities = Vec<(u64, Option<String>)>;
 
 struct WriteState {
     writer: Option<WorkbookWriter>,
     stats: WriteStats,
+}
+
+struct IdentityWorkspace {
+    requested: Vec<u64>,
+    identities: OutputIdentities,
+    scratch: usize,
+}
+impl IdentityWorkspace {
+    fn new(hyperlink_groups: Option<Vec<u64>>, maximum_metadata: usize) -> PyResult<Self> {
+        let mut requested = hyperlink_groups.unwrap_or_default();
+        requested.sort_unstable();
+        requested.dedup();
+        let scratch = if requested.is_empty() {
+            0
+        } else {
+            requested
+                .capacity()
+                .saturating_mul(size_of::<u64>())
+                .saturating_add(
+                    requested
+                        .len()
+                        .saturating_mul(size_of::<(u64, Option<String>)>() + 64),
+                )
+                .saturating_add(64)
+        };
+        if scratch > maximum_metadata {
+            return Err(PyMemoryError::new_err(
+                "Public hyperlink identity requests exceed metadata allowance",
+            ));
+        }
+        let mut identities = Vec::new();
+        identities
+            .try_reserve_exact(requested.len())
+            .map_err(|cause| PyMemoryError::new_err(cause.to_string()))?;
+        identities.extend(requested.iter().map(|group| (*group, None)));
+        Ok(Self {
+            requested,
+            identities,
+            scratch,
+        })
+    }
 }
 #[pyclass]
 pub(crate) struct NativeWriteBook {
@@ -508,13 +550,33 @@ impl NativeWriteBook {
                 .map_err(failure)
         })
     }
-    fn close_sheet(&self, id: usize) -> PyResult<()> {
-        lock(&self.state)?
-            .writer
-            .as_mut()
-            .ok_or_else(closed)?
-            .close_interleaved_sheet(id)
-            .map_err(failure)
+    #[pyo3(signature = (id, hyperlink_groups=None))]
+    fn close_sheet(
+        &self,
+        py: Python<'_>,
+        id: usize,
+        hyperlink_groups: Option<Vec<u64>>,
+    ) -> PyResult<OutputIdentities> {
+        let IdentityWorkspace {
+            requested,
+            mut identities,
+            scratch,
+        } = IdentityWorkspace::new(hyperlink_groups, self.maximum_metadata)?;
+        let state = Arc::clone(&self.state);
+        py.detach(move || {
+            let mut state = lock(&state)?;
+            let writer = state.writer.as_mut().ok_or_else(closed)?;
+            writer.close_interleaved_sheet(id).map_err(failure)?;
+            writer
+                .visit_closed_sheet_hyperlink_ids(id, scratch, |group, identity| {
+                    if let Ok(index) = requested.binary_search(&group) {
+                        identities[index].1 = identity.map(str::to_owned);
+                    }
+                    Ok(())
+                })
+                .map_err(failure)?;
+            Ok(identities)
+        })
     }
     fn stats(&self) -> PyResult<(u64, u64, u64)> {
         let state = lock(&self.state)?;
@@ -532,33 +594,12 @@ impl NativeWriteBook {
         active: i64,
         compression_level: Option<u8>,
         hyperlink_groups: Option<Vec<u64>>,
-    ) -> PyResult<(i64, Vec<(u64, Option<String>)>)> {
-        let mut requested = hyperlink_groups.unwrap_or_default();
-        requested.sort_unstable();
-        requested.dedup();
-        let scratch = if requested.is_empty() {
-            0
-        } else {
-            requested
-                .capacity()
-                .saturating_mul(size_of::<u64>())
-                .saturating_add(
-                    requested
-                        .len()
-                        .saturating_mul(size_of::<(u64, Option<String>)>() + 64),
-                )
-                .saturating_add(64)
-        };
-        if scratch > self.maximum_metadata {
-            return Err(PyMemoryError::new_err(
-                "Public hyperlink identity requests exceed metadata allowance",
-            ));
-        }
-        let mut identities = Vec::new();
-        identities
-            .try_reserve_exact(requested.len())
-            .map_err(|cause| PyMemoryError::new_err(cause.to_string()))?;
-        identities.extend(requested.iter().map(|group| (*group, None)));
+    ) -> PyResult<(i64, OutputIdentities)> {
+        let IdentityWorkspace {
+            requested,
+            mut identities,
+            scratch,
+        } = IdentityWorkspace::new(hyperlink_groups, self.maximum_metadata)?;
         let state = Arc::clone(&self.state);
         py.detach(move || {
             let mut state = lock(&state)?;

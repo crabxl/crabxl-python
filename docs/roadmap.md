@@ -169,6 +169,15 @@ Intermediate feature checkpoints are not occasions for adding tests or full suit
 
 ## Development stop checkpoint
 
+Development resumed at the user's request on 2026-10-21. ADR 0042 integrates
+live merged sets/bulk replacement and canonical structural feature edits, rich
+copy isolation, dimension conversion and write-only hyperlink close boundaries.
+Consolidated acceptance is in progress; A11 publication is not yet claimed.
+The candidate pins published core `dbb911f131d24c7e72b7638e4e17099527828ef1`
+without local source patches. The final local Windows release-extension run has
+575 passing cases and two POSIX-only skips; cross-platform and publication gates
+remain required.
+
 On 2026-10-07 the user requested committing/pushing current progress and stopping
 development. A11 is unfinished and unpublished; A12–A16 have not started.
 The adapter pins core `b4d1e3ed64616f531eed36f5283575a5e138b6eb` for the integrated

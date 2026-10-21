@@ -485,7 +485,7 @@ class WriteOnlyWorksheet(Worksheet):
                     (
                         column,
                         link._bind_stream(
-                            self.parent, f"{_letters(column + 1)}{self._row + 1}"
+                            self, f"{_letters(column + 1)}{self._row + 1}"
                         ),
                     )
                 )
@@ -501,7 +501,19 @@ class WriteOnlyWorksheet(Worksheet):
     def close(self):
         if not self._finished:
             self.parent._check_open()
-            self.parent._stream_writer.close_sheet(self._id)
+            for index in self.parent._stream_writer.dimension_keys(self._id, True):
+                if index >= self._row:
+                    self.parent._stream_writer.remove_dimension(self._id, True, index)
+            groups = [
+                group
+                for group, link in self.parent._stream_links.items()
+                if link._stream_bindings.get(self) == group
+            ]
+            identities = self.parent._stream_writer.close_sheet(self._id, groups)
+            for group, identity in identities:
+                link = self.parent._stream_links.get(group)
+                if link is not None:
+                    object.__setattr__(link, "id", identity)
             self._finished = True
 
     def insert_rows(self, *args, **kwargs):

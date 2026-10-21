@@ -230,32 +230,38 @@ class CellRichText(list):
     def __iadd__(self, values):
         values = [values] if isinstance(values, (str, TextBlock)) else list(values)
 
-        def combine():
-            list.extend(self, values)
-            optimized = []
-            for item in self:
-                item = copy(item)
-                if not str(item):
-                    continue
-                if (
-                    optimized
-                    and isinstance(item, str)
-                    and isinstance(optimized[-1], str)
-                ):
-                    optimized[-1] += item
-                elif (
-                    optimized
-                    and isinstance(item, TextBlock)
-                    and isinstance(optimized[-1], TextBlock)
-                    and item.font == optimized[-1].font
-                ):
-                    optimized[-1].text += item.text
-                else:
-                    optimized.append(item)
-            list.__setitem__(self, slice(None), optimized)
-
-        self._change(combine)
+        self._change(lambda: self._optimize(values))
         return self
+
+    def _optimize(self, values=()):
+        list.extend(self, values)
+        optimized = []
+        for item in self:
+            item = copy(item)
+            if not str(item):
+                continue
+            if optimized and isinstance(item, str) and isinstance(optimized[-1], str):
+                optimized[-1] += item
+            elif (
+                optimized
+                and isinstance(item, TextBlock)
+                and isinstance(optimized[-1], TextBlock)
+                and item.font == optimized[-1].font
+            ):
+                optimized[-1].text += item.text
+            else:
+                optimized.append(item)
+        list.__setitem__(self, slice(None), optimized)
+
+    def _opt(self):
+        self._change(self._optimize)
+        return self
+
+    def __copy__(self):
+        result = type(self)(list(self))
+        result._phonetic_runs = list(self._phonetic_runs)
+        result._phonetic_properties = self._phonetic_properties
+        return result
 
     def __add__(self, values):
         result = CellRichText([copy(item) for item in self])
