@@ -279,13 +279,13 @@ class DimensionHolder(MutableMapping):
         self._views = WeakValueDictionary()
 
     def _index(self, key):
-        from .. import column_index
+        from .._values import _column
 
         if self.rows:
             if not isinstance(key, int) or not 1 <= key <= 1048576:
                 raise ValueError("Invalid row dimension index")
             return key - 1
-        return column_index(key) - 1
+        return _column(key) - 1
 
     def _call(self, method, *arguments):
         self.worksheet.parent._check_open()

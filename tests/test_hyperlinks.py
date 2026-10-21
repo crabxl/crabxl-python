@@ -69,9 +69,9 @@ def test_live_point_hyperlinks_preserve_values_and_source_copy_graphs(tmp_path):
     current.target = "https://example.org/shared"
     assert original["A1"].hyperlink.target == "https://example.org/shared"
     assert original["E5"].value == "https://example.org/changed"
-    with pytest.raises(NotImplementedError):
-        current.ref = "A1:C3"
-    assert current.ref == "E5"
+    current.ref = "A1:C3"
+    assert current.ref == "A1:C3"
+    current.ref = "E5"
     aliased = tmp_path / "aliased.xlsx"
     loaded.save(aliased)
     other = openpyxl.load_workbook(aliased)

@@ -77,6 +77,12 @@ class Worksheet:
             self._merged_cells = MultiCellRange(self)
         return self._merged_cells
 
+    @merged_cells.setter
+    def merged_cells(self, value):
+        if value is self._merged_cells:
+            return
+        self.merged_cells.ranges = value.ranges if hasattr(value, "ranges") else value
+
     def merge_cells(
         self,
         range_string=None,
@@ -117,24 +123,26 @@ class Worksheet:
             raise ValueError("A range or all four row/column bounds are required")
         first_row, first_col, last_row, last_col = bounds
         aliases = [
-            (key, cell, cell._snapshot())
+            (key, cell, cell._snapshot(), cell.hyperlink)
             for key, cell in list(self._cells.items())
             if key != (first_row, first_col)
             and first_row <= key[0] <= last_row
             and first_col <= key[1] <= last_col
         ]
         self._model().merge_cells(*(value - 1 for value in bounds), merge)
-        self._relocate_rich_views(
-            lambda row, column: (
-                None
-                if (row, column) != (first_row, first_col)
-                and first_row <= row <= last_row
-                and first_col <= column <= last_col
-                else (row, column)
-            )
-        )
-        for key, cell, snapshot in aliases:
+
+        def relocate(row, column):
+            if (row, column) != (first_row, first_col) and (
+                first_row <= row <= last_row and first_col <= column <= last_col
+            ):
+                return None
+            return row, column
+
+        self._relocate_rich_views(relocate)
+        self._relocate_hyperlink_views(relocate)
+        for key, cell, snapshot, hyperlink in aliases:
             cell._detached = snapshot
+            cell._detached_hyperlink = hyperlink
             self._cells.pop(key, None)
 
     @staticmethod
@@ -211,16 +219,38 @@ class Worksheet:
         self._assigned_rich_views.pop((row, column), None)
 
     def _relocate_rich_views(self, transform):
-        retained = list(self._rich_views.items())
-        assigned = set(self._assigned_rich_views)
-        self._rich_views.clear()
-        self._assigned_rich_views.clear()
-        for (row, column), value in retained:
-            value._bindings.get(self, set()).discard((row, column))
-        for (row, column), value in retained:
-            target = transform(row, column)
+        changed = []
+        for coordinate, value in self._rich_views.items():
+            target = transform(*coordinate)
+            if target != coordinate:
+                changed.append(
+                    (coordinate, value, target, coordinate in self._assigned_rich_views)
+                )
+        for coordinate, value, _, _ in changed:
+            self._rich_views.pop(coordinate, None)
+            self._assigned_rich_views.pop(coordinate, None)
+            value._bindings.get(self, set()).discard(coordinate)
+        for _, value, target, assigned in changed:
             if target is not None:
-                value._bind(self, *target, retain=(row, column) in assigned)
+                value._bind(self, *target, retain=assigned)
+
+    def _relocate_hyperlink_views(self, transform):
+        changed = []
+        for coordinate, value in self._hyperlink_views.items():
+            target = transform(*coordinate)
+            if target != coordinate:
+                changed.append((coordinate, value, target))
+        for coordinate, value, _ in changed:
+            self._hyperlink_views.pop(coordinate, None)
+            value._bindings.get(self, set()).discard(coordinate)
+        for coordinate, value, target in changed:
+            if target is None:
+                cell = self._cells.get(coordinate)
+                if cell is not None:
+                    cell._detached_hyperlink = value
+            else:
+                self._hyperlink_views[target] = value
+                value._bindings.setdefault(self, set()).add(target)
 
     def cell(self, row, column, value=None):
         if (
@@ -427,7 +457,7 @@ class Worksheet:
             raise ValueError("Index and amount must be positive")
         cached = list(self._cells.items())
         detached = {
-            (row, col): cell._snapshot()
+            (row, col): (cell._snapshot(), cell.hyperlink)
             for (row, col), cell in cached
             if not insert and idx <= (row if rows else col) < idx + amount
         }
@@ -443,11 +473,12 @@ class Worksheet:
             return row, column
 
         self._relocate_rich_views(relocate)
+        self._relocate_hyperlink_views(relocate)
         self._cells.clear()
         for (row, col), cell in cached:
             coordinate = row if rows else col
             if (row, col) in detached:
-                cell._detached = detached[row, col]
+                cell._detached, cell._detached_hyperlink = detached[row, col]
                 continue
             if coordinate >= idx + (0 if insert else amount):
                 coordinate += amount if insert else -amount
@@ -476,7 +507,7 @@ class Worksheet:
         )
         cached = list(self._cells.items())
         overwritten = {
-            (row, col): cell._snapshot()
+            (row, col): (cell._snapshot(), cell.hyperlink)
             for (row, col), cell in cached
             if first_row + rows <= row <= last_row + rows
             and first_col + cols <= col <= last_col + cols
@@ -500,6 +531,7 @@ class Worksheet:
             return row, column
 
         self._relocate_rich_views(relocate)
+        self._relocate_hyperlink_views(relocate)
         if range_object is not None:
             range_object.shift(row_shift=rows, col_shift=cols)
         self._cells.clear()
@@ -508,6 +540,6 @@ class Worksheet:
                 cell.row += rows
                 cell.column += cols
             elif (row, col) in overwritten:
-                cell._detached = overwritten[row, col]
+                cell._detached, cell._detached_hyperlink = overwritten[row, col]
                 continue
             self._cells[cell.row, cell.column] = cell
