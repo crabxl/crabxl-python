@@ -67,15 +67,6 @@ def test_merged_values_borders_aliases_and_preserving_repeat_saves(engine, tmp_p
         assert "B2" in sheet.merged_cells
         assert {str(value) for value in sheet.merged_cells.ranges} == {"A1:C3"}
         assert len(sheet.merged_cells.ranges) == 1
-        if engine is crabxl:
-            from crabxl.worksheet.cell_range import CellRange
-
-            with pytest.raises(NotImplementedError):
-                sheet.merged_cells.ranges.add(CellRange("J1:K2"))
-            with pytest.raises(NotImplementedError):
-                next(iter(sheet.merged_cells.ranges)).shift(row_shift=1)
-            assert {str(value) for value in sheet.merged_cells.ranges} == {"A1:C3"}
-
         assert sheet["A1"].border.right.style == "double"
         assert sheet["A1"].border.bottom.style == "thick"
         for coord, side, expected in [

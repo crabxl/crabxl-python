@@ -70,9 +70,12 @@ class Hyperlink:
                     committed.append(
                         (native.update_hyperlink, (row - 1, column - 1), previous)
                     )
-            for workbook, group in list(self._stream_bindings.items()):
+            for worksheet, group in list(self._stream_bindings.items()):
+                workbook = worksheet.parent
                 if workbook._saved or workbook._closed:
-                    del self._stream_bindings[workbook]
+                    del self._stream_bindings[worksheet]
+                    continue
+                if worksheet.closed:
                     continue
                 native = workbook._stream_writer
                 previous = native.hyperlink(group)
@@ -83,14 +86,15 @@ class Hyperlink:
                 update(*arguments, previous)
             raise
 
-    def _bind_stream(self, workbook, coordinate):
+    def _bind_stream(self, worksheet, coordinate):
+        workbook = worksheet.parent
         previous = self.ref
         self.ref = coordinate
         try:
-            group = self._stream_bindings.get(workbook)
+            group = self._stream_bindings.get(worksheet)
             if group is None:
                 group = workbook._stream_writer.register_hyperlink(self._fields())
-                self._stream_bindings[workbook] = group
+                self._stream_bindings[worksheet] = group
             workbook._stream_links[group] = self
             return group
         except BaseException:

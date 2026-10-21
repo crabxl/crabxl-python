@@ -542,6 +542,113 @@ impl NativeSheet {
     pub(crate) fn merge_count(&self) -> PyResult<usize> {
         self.with(|sheet| Ok(sheet.merged_ranges().ranges().len()))
     }
+    pub(crate) fn merge_identity(&self, index: usize) -> PyResult<Option<u64>> {
+        self.with(|sheet| {
+            Ok(sheet
+                .merged_ranges()
+                .ranges()
+                .get(index)
+                .map(|entry| entry.identity()))
+        })
+    }
+    pub(crate) fn merge_declaration(
+        &self,
+        identity: u64,
+    ) -> PyResult<Option<(u32, u32, u32, u32)>> {
+        self.with(|sheet| {
+            Ok(sheet.merged_ranges().declaration(identity).map(|entry| {
+                let range = entry.range();
+                (
+                    range.start.row.get() + 1,
+                    range.start.column.get() + 1,
+                    range.end.row.get() + 1,
+                    range.end.column.get() + 1,
+                )
+            }))
+        })
+    }
+    #[pyo3(signature = (coordinate, remove=false, identity=None, exact=false))]
+    pub(crate) fn edit_merge_declaration(
+        &self,
+        coordinate: &str,
+        remove: bool,
+        identity: Option<u64>,
+        exact: bool,
+    ) -> PyResult<bool> {
+        let range: CellRange = coordinate.parse().map_err(failure)?;
+        let mut storage = lock(&self.storage)?;
+        match &mut *storage {
+            SheetStorage::Loaded { book, id } => {
+                let mut book = lock(book)?;
+                let book = book.as_mut().ok_or_else(closed)?;
+                if let Some(identity) = identity {
+                    book.replace_merge_declaration(*id, identity, range)
+                        .map_err(failure)?;
+                    Ok(true)
+                } else if remove {
+                    book.remove_merge_declaration(*id, range).map_err(failure)
+                } else if exact {
+                    book.add_exact_merge_declaration(*id, range)
+                        .map_err(failure)
+                } else {
+                    book.add_merge_declaration(*id, range).map_err(failure)
+                }
+            }
+            SheetStorage::Bank { book, id } => {
+                let mut book = lock(book)?;
+                let mut sheet = book.sheet_mut(*id).map_err(failure)?;
+                if let Some(identity) = identity {
+                    sheet
+                        .replace_merge_declaration(identity, range)
+                        .map_err(failure)?;
+                    Ok(true)
+                } else if remove {
+                    sheet.remove_merge_declaration(range).map_err(failure)
+                } else if exact {
+                    sheet.add_exact_merge_declaration(range).map_err(failure)
+                } else {
+                    sheet.add_merge_declaration(range).map_err(failure)
+                }
+            }
+            SheetStorage::Standalone(sheet) => {
+                if let Some(identity) = identity {
+                    sheet
+                        .replace_merge_declaration(identity, range)
+                        .map_err(failure)?;
+                    Ok(true)
+                } else if remove {
+                    sheet.remove_merge_declaration(range).map_err(failure)
+                } else if exact {
+                    sheet.add_exact_merge_declaration(range).map_err(failure)
+                } else {
+                    sheet.add_merge_declaration(range).map_err(failure)
+                }
+            }
+        }
+    }
+    pub(crate) fn replace_merge_declarations(&self, coordinates: Vec<String>) -> PyResult<()> {
+        let ranges: Vec<CellRange> = coordinates
+            .iter()
+            .map(|value| value.parse())
+            .collect::<crabxl::Result<_>>()
+            .map_err(failure)?;
+        let mut storage = lock(&self.storage)?;
+        match &mut *storage {
+            SheetStorage::Loaded { book, id } => lock(book)?
+                .as_mut()
+                .ok_or_else(closed)?
+                .replace_merge_declarations(*id, &ranges)
+                .map_err(failure),
+            SheetStorage::Bank { book, id } => lock(book)?
+                .sheet_mut(*id)
+                .map_err(failure)?
+                .replace_merge_declarations(&ranges)
+                .map_err(failure),
+            SheetStorage::Standalone(sheet) => {
+                sheet.replace_merge_declarations(&ranges).map_err(failure)
+            }
+        }
+    }
     pub(crate) fn merged_range(&self, index: usize) -> PyResult<Option<(u32, u32, u32, u32)>> {
         self.with(|sheet| {
             Ok(sheet.merged_ranges().ranges().get(index).map(|merge| {
