@@ -2,8 +2,10 @@
 
 The file has the same shape as the sample in the calamine README: 1,000,000
 service requests with the 41 columns of the original export. The script takes
-100,000 requests from each year 2010 to 2019 from the NYC Open Data dataset
-"311 Service Requests from 2010 to 2019" (76ig-c548), ordered by unique key.
+the first 100,000 requests of January in each year 2010 to 2019 from the NYC
+Open Data dataset "311 Service Requests from 2010 to 2019" (76ig-c548), ordered
+by creation time and unique key. A query over a full year times out on the
+server, so the script reads only January.
 
 XlsxWriter writes the file in its default mode, so text is in a shared string
 table, as in files that Excel saves. This needs several GiB of memory.
@@ -51,8 +53,8 @@ def fetch(year: int, offset: int, limit: int) -> bytes:
     query = urllib.parse.urlencode(
         {
             "$select": ",".join(COLUMNS),
-            "$where": f"created_date between '{year}-01-01' and '{year}-12-31T23:59:59'",
-            "$order": "unique_key",
+            "$where": f"created_date between '{year}-01-01' and '{year}-01-31T23:59:59'",
+            "$order": "created_date,unique_key",
             "$limit": limit,
             "$offset": offset,
         }
@@ -68,7 +70,7 @@ def fetch(year: int, offset: int, limit: int) -> bytes:
 
 
 def download(cache: Path) -> list[Path]:
-    """Download each year in pages. The server closes large single requests."""
+    """Download each year in pages. The server closes large requests."""
     cache.mkdir(parents=True, exist_ok=True)
     paths = []
     for year in YEARS:
@@ -82,7 +84,11 @@ def download(cache: Path) -> list[Path]:
                 if not parts:
                     parts.append(header + "\n")
                 parts.append(body)
-            path.write_text("".join(parts), encoding="utf-8")
+            text = "".join(parts)
+            rows = sum(1 for _ in csv.reader(text.splitlines(keepends=True))) - 1
+            if rows != ROWS_PER_YEAR:
+                raise RuntimeError(f"{year} has {rows} rows, not {ROWS_PER_YEAR}")
+            path.write_text(text, encoding="utf-8")
         paths.append(path)
     return paths
 
