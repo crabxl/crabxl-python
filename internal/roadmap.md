@@ -18,12 +18,12 @@ Follow the canonical [Alpha.6 and later release plan](https://github.com/crabxl/
 - **A15:** complete M4/M6 feature integration and acceptance.
 - **A16:** full-feature performance/RAM work and M7 compatibility/platform/release quality.
 
-On 2026-10-07 the user approved approximately six remaining publications.
+On 2026-10-07 the remaining work was consolidated into approximately six releases.
 The complete scope of the former A11–A28 targets is retained as work packages.
 Implement coherent feature groups before concentrating missing tests and fixes;
 retain the relevant acceptance gates before each publication.
 
-The user selected staged M4 acceptance. A7 must reject affected unimplemented
+M4 acceptance is staged. A7 must reject affected unimplemented
 M5/M6 graphs before mutation and retain their dependency cases for later feature
 releases. Its M4 stage can be accepted without claiming full graph support or full
 M4 closure. Core implementation alone does not complete a Python capability.
@@ -169,7 +169,7 @@ Intermediate feature checkpoints are not occasions for adding tests or full suit
 
 ## Development stop checkpoint
 
-Development resumed at the user's request on 2026-10-21. ADR 0042 integrates
+Development resumed on 2026-10-21. ADR 0042 integrates
 live merged sets/bulk replacement and canonical structural feature edits, rich
 copy isolation, dimension conversion and write-only hyperlink close boundaries.
 Consolidated acceptance is in progress; A11 publication is not yet claimed.
@@ -178,8 +178,7 @@ without local source patches. The final local Windows release-extension run has
 575 passing cases and two POSIX-only skips; cross-platform and publication gates
 remain required.
 
-On 2026-10-07 the user requested committing/pushing current progress and stopping
-development. A11 is unfinished and unpublished; A12–A16 have not started.
+Development paused on 2026-10-07. A11 is unfinished and unpublished; A12–A16 have not started.
 The adapter pins core `b4d1e3ed64616f531eed36f5283575a5e138b6eb` for the integrated
 live write-only hyperlink functionality (ADR 0041). Later native commit
 `a43ab9831e5e40d07c384dcf827985c129cca4e8` adds independent raw merge declarations

@@ -2,7 +2,7 @@
 
 Measured on 2026-10-21: Windows 11 x86_64, CPython 3.12.14, Rust 1.99 release
 extension, openpyxl 3.1.5. Every process inherits **one logical CPU** and
-BelowNormal priority, as requested by the user. No builds or tests overlap the
+BelowNormal priority. No builds or tests overlap the
 samples. These are constrained-machine measurements, not general throughput
 claims or comparisons with calamine/rust_xlsxwriter.
 
