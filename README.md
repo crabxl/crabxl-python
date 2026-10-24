@@ -9,7 +9,7 @@
 [![CI](https://github.com/crabxl/crabxl-python/actions/workflows/python.yml/badge.svg)](https://github.com/crabxl/crabxl-python/actions/workflows/python.yml)
 [![License](https://img.shields.io/github/license/crabxl/crabxl-python)](LICENSE)
 
-[Rust engine](https://github.com/crabxl/crabxl) · [Roadmap](internal/roadmap.md) · [Report an issue](https://github.com/crabxl/crabxl-python/issues)
+[Rust engine](https://github.com/crabxl/crabxl) · [Status](internal/STATUS.md) · [Report an issue](https://github.com/crabxl/crabxl-python/issues)
 
 </div>
 
@@ -23,7 +23,7 @@ shared Rust engine; openpyxl is not a runtime dependency.
 **Currently alpha.** Full openpyxl compatibility remains in progress. Complete
 style and rich-text object APIs, advanced worksheet features, and some loaded
 structural edits are still unimplemented. Unsupported operations raise explicit
-errors. Formula calculation is not provided. See the [roadmap](internal/roadmap.md)
+errors. Formula calculation is not provided. See [project status](internal/STATUS.md)
 for remaining work.
 
 ## Installation
@@ -110,11 +110,17 @@ and [resource configuration](internal/decisions/0016-canonical-resource-configur
 
 ## Documentation
 
-- [Roadmap](internal/roadmap.md)
-- [Streaming modes](internal/decisions/0014-optimized-stream-ownership.md)
-- [Resource configuration](internal/decisions/0016-canonical-resource-configuration.md)
+- [Project status](internal/STATUS.md)
+- [Changelog](CHANGELOG.md)
 - [Benchmarks](benchmarks/reports/optimized-modes.md)
-- [Releases](internal/releases.md)
+
+A user guide is in progress in [docs](docs).
+
+## Contributing
+
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before you
+open a pull request. Report security problems as described in
+[SECURITY.md](SECURITY.md).
 
 ## License
 
