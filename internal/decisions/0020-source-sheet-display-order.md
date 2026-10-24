@@ -19,5 +19,5 @@ Local owner-index remapping stays tracked as a deferred M4/M5 dependency.
 All 547 tests, Ruff format/check and strict Clippy pass using a fresh release
 Python 3.12.14/Rust 1.99 wheel. Core release bounded metadata, save and full value
 readback measurements are in
-[ordering evidence](https://github.com/crabxl/crabxl/blob/main/benchmarks/alpha7-lazy-reordering.md).
+[ordering evidence](https://github.com/crabxl/crabxl/blob/main/benchmarks/reports/alpha7-lazy-reordering.md).
 This checkpoint does not complete A7 or publish a new package version.

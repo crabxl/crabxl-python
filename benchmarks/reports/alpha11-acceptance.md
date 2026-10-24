@@ -71,5 +71,5 @@ Reproduce with `benchmarks/alpha11_acceptance.py ENGINE MODE COUNT DIRECTORY
 [SOURCE]`; use mode `generate` to prepare a source in a separate process. Apply
 the same CPU/priority settings to both engines and keep other validation idle.
 
-- [Final raw samples](alpha11-acceptance.jsonl)
-- [Initial diagnostic samples](alpha11-before-alias-filter.jsonl)
+- [Final raw samples](../results/alpha11-acceptance.jsonl)
+- [Initial diagnostic samples](../results/alpha11-before-alias-filter.jsonl)

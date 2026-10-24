@@ -23,7 +23,7 @@ in the single PyO3 method table; conversion/dispatch is in worksheet/hyperlinks.
 
 Two focused tests cover a complete point lifecycle/source-copy/repeat-save path
 and public XML reference behavior. A rebuilt wheel passes 554 compatibility cases,
-Ruff and strict Clippy. [Measurements](../../benchmarks/alpha11-point-hyperlinks.md)
+Ruff and strict Clippy. [Measurements](../../benchmarks/reports/alpha11-point-hyperlinks.md)
 include Python object conversion and complete source edit/save.
 
 Live ref relocation and shared objects with different anchor references explicitly

@@ -21,6 +21,6 @@ canonical parser working reserve; maximum_bytes is an operation cap rather than
 an all-component or process RSS limit.
 
 Core M2 acceptance and public Rust 1.88 installation are verified in the canonical
-repository's `docs/validation/alpha5-m2-acceptance.md` and `alpha5-release.md`.
+repository's `internal/validation/alpha5-m2-acceptance.md` and `alpha5-release.md`.
 Complete Python style/rich/feature proxies and remaining M4–M7 capabilities stay
 planned. This is a verified usable release, not full openpyxl API compatibility.

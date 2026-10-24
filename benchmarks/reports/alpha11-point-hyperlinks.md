@@ -1,9 +1,9 @@
 # Python point hyperlink checkpoint
 
 CPython 3.12.14, rebuilt wheel pinned to core e74d865. Three fresh serial processes
-per size; no build/test overlaps. [Worker](point_hyperlinks.py) generates point
+per size; no build/test overlaps. [Worker](../point_hyperlinks.py) generates point
 metadata through Cell.hyperlink, saves, reloads, accesses every live point, changes
-the last target and preserves the source package. [Raw observations](alpha11-point-hyperlinks.txt).
+the last target and preserves the source package. [Raw observations](../results/alpha11-point-hyperlinks.txt).
 
 | Rows | Median preparation | Median initial save | Median load/scan/edit/save | Median process peak RSS |
 | --- | --- | --- | --- | --- |

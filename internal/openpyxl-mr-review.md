@@ -2,7 +2,7 @@
 
 Reviewed on 2026-10-04. The Heptapod API listed **20 open MRs**. All titles/descriptions were reviewed; 15 received selected diff/test/context review, while five were triaged from descriptions only. This was the user's explicit exception to the initial documentation-only architecture review, not a broad implementation audit.
 
-Titles, descriptions, branch names, HEADs, and reviewed diff refs are preserved in the [API snapshot](https://github.com/crabxl/crabxl/blob/main/docs/research/openpyxl-open-mrs-2026-10-04.json). Recheck status and pin source revisions before using a fix.
+Titles, descriptions, branch names, HEADs, and reviewed diff refs are preserved in the [API snapshot](https://github.com/crabxl/crabxl/blob/main/internal/research/openpyxl-open-mrs-2026-10-04.json). Recheck status and pin source revisions before using a fix.
 
 **No MR was merged locally.** Changes target 3.1, 3.2, default, and 2.6 branches; some drafts are incomplete and some introduce ownership, memory, or preservation risks. API mergeability is not proof of correctness. The notes API returned HTTP 401, so maintainer discussions were not reviewed. Full MR test suites were not rerun.
 
@@ -24,7 +24,7 @@ M2/M3 should use a shared text encoder for inline/shared/rich text. Preserve mea
 
 ### Missing formula cache: !473
 
-[MR !473](https://foss.heptapod.net/openpyxl/openpyxl/-/merge_requests/473) omits empty `<v/>` when no cached formula result exists, modifying both writer backends and normal/array/data-table tests.
+[MR !473](https://foss.heptapod.net/openpyxl/openpyxl/-/merge_requests/473) omits empty `<../docs/v/>` when no cached formula result exists, modifying both writer backends and normal/array/data-table tests.
 
 For M2/M3, store formula and typed cached result separately. Missing cache differs from numeric zero, false, or an empty string result; generic falsy checks must not discard valid caches. Define data-only behavior without a cache. The probe confirms an empty v element in 3.1.5, but the author's Excel-repair claim was not independently verified through Excel or schema validation. Check format rules and cached-string representation before adopting a universal omission rule. Author-reported suite results were not rerun.
 
@@ -38,7 +38,7 @@ Additional diff concern: an image without a format can skip both encoding branch
 
 [MR !454](https://foss.heptapod.net/openpyxl/openpyxl/-/merge_requests/454) proposes max_col parsing. Its description notes remaining XML traversal cost and a timing-dependent test unsuitable for direct merge.
 
-The diff filters on `self.col_counter <= max_col` before calling parse_cell, but necessary base-revision context shows parse_cell updates the counter and each row starts at zero. A/B/C with max_col=2 can still decode C; sparse A/XFD can decode XFD. This is not a filter on the current cell coordinate. Outer layers may filter the returned cells, so the finding is unnecessary decoding risk, not a claim that all public calls return incorrect values.
+The diff filters on `self.col_counter <../docs/= max_col` before calling parse_cell, but necessary base-revision context shows parse_cell updates the counter and each row starts at zero. A/B/C with max_col=2 can still decode C; sparse A/XFD can decode XFD. This is not a filter on the current cell coordinate. Outer layers may filter the returned cells, so the finding is unnecessary decoding risk, not a claim that all public calls return incorrect values.
 
 M1 should resolve the current coordinate before costly conversion/allocation. Unselected XML events and ZIP bytes may still require scanning. Test wide sparse sheets, first-column projection, missing coordinates, boundary cases, and selected shared-formula dependencies. Use deterministic decode counters/results for correctness and separate benchmarks for time.
 
@@ -96,6 +96,6 @@ Titles below are abbreviated. Selected-diff review does not mean full line-by-li
 
 The probe uses installed openpyxl **3.1.5 public APIs** to create/read small files and inspects generated ZIP/XML. It does not apply MRs or modify the reference checkout. Results are baseline observations, not post-fix test reports.
 
-With openpyxl==3.1.5 and Pillow installed, run `python tools/probe_openpyxl_mrs.py` in the core repository. This emits observations rather than a golden test requiring future versions to keep defects. Saved output is in [probe results](https://github.com/crabxl/crabxl/blob/main/docs/research/openpyxl-3.1.5-probe-results.json).
+With openpyxl==3.1.5 and Pillow installed, run `python tools/probe_openpyxl_mrs.py` in the core repository. This emits observations rather than a golden test requiring future versions to keep defects. Saved output is in [probe results](https://github.com/crabxl/crabxl/blob/main/internal/research/openpyxl-3.1.5-probe-results.json).
 
 Observed: empty formula v, unmarked whitespace run, empty text run, count=0 validation container, dropped unknown extension, and repeat image-save failure. No Excel GUI/schema validation or MR full-suite run was performed. Carry problems, format rules, and regression cases into Rust instead of copying incomplete patches and their defects.

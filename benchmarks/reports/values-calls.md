@@ -24,7 +24,7 @@ The released baseline is PyPI 0.1.0a1. Both adapter binaries use core revision
 `d39d5e8f413a0f239075464906f984e6c66c8350`. Candidate package metadata remains
 0.1.0a1 for local testing; the public release is unchanged. Installed Python
 source/native binary hashes identify the exact candidates in
-[raw results](results/values-calls.json).
+[raw results](../results/values-calls.json).
 
 One warmup and five rotating serial cold-process samples per implementation
 include imports, ordinary `load_workbook`, complete values iteration and

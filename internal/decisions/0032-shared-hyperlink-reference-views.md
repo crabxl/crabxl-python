@@ -21,7 +21,7 @@ and source repeat save. Independent openpyxl and CrabXL readbacks agree that the
 last duplicated declaration owns the saved target. All 554 compatibility cases,
 Ruff and strict Clippy pass after rebuilding the exact-pin wheel.
 
-[Ordinary point measurements](../../benchmarks/alpha11-hyperlink-references.md)
+[Ordinary point measurements](../../benchmarks/reports/alpha11-hyperlink-references.md)
 show no broad speedup claim. Synchronizing many shared owners currently takes time
 proportional to alias count, and constructing repeated aliases can be quadratic;
 canonical shared payload/group transactions remain a performance dependency.

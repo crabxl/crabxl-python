@@ -4,7 +4,7 @@ Source modules follow the [adapter architecture](architecture.md#source-module-b
 
 ## Planned release stages
 
-Follow the canonical [Alpha.6 and later release plan](https://github.com/crabxl/crabxl/blob/main/docs/alpha-6-and-later-plan.md):
+Follow the canonical [Alpha.6 and later release plan](https://github.com/crabxl/crabxl/blob/main/internal/archive/alpha-6-and-later-plan.md):
 
 - **A6:** urgent large/stream-generated archive compatibility; default archive byte caps removed, explicit finite caps retained.
 - **A7:** M4 loaded bank/resource integration, existing-file sheet mutations,
@@ -30,7 +30,7 @@ M4 closure. Core implementation alone does not complete a Python capability.
 Each package release pins the verified published core revision and passes the
 applicable public-reference, resource/cleanup, Ruff, and platform wheel checks.
 Alpha.6–Alpha.10 are published and verified from public registries. A11 named styles, themes and row/column appearance are in progress; later targets remain planned.
-The consolidated [Alpha 9–28 scope and publication plan](https://github.com/crabxl/crabxl/blob/main/docs/alpha-9-28-plan.md) supersedes the previous single-release M5 target.
+The consolidated [Alpha 9–28 scope and publication plan](https://github.com/crabxl/crabxl/blob/main/internal/alpha-9-28-plan.md) supersedes the previous single-release M5 target.
 
 Loaded scalar/formula row append now uses canonical atomic model/package
 updates and is covered by the shared public-reference edit/save workflow.
@@ -53,10 +53,10 @@ retain alpha.4 compression policies without a binding ZIP codec.
 Ordinary `iter_rows(values_only=True)` batches native conversion one row at a
 time, retaining live structured formulas and edits between rows. Same-mode
 numeric measurements are recorded in
-[values iteration evidence](../benchmarks/values-calls.md). Scalar `read_only` and `write_only` modes now use bounded canonical streams;
+[values iteration evidence](../benchmarks/reports/values-calls.md). Scalar `read_only` and `write_only` modes now use bounded canonical streams;
 see [stream ownership](decisions/0014-optimized-stream-ownership.md).
 
-Target: openpyxl 3.1.5 public calls, mental model and observable behavior. Core capabilities remain governed by the CrabXL M4-M7 roadmap at https://github.com/crabxl/crabxl/blob/main/docs/roadmap.md.
+Target: openpyxl 3.1.5 public calls, mental model and observable behavior. Core capabilities remain governed by the CrabXL M4-M7 roadmap at https://github.com/crabxl/crabxl/blob/main/internal/roadmap.md.
 
 Current acceptance is partial: 547 tests, including 63 unchanged original test bodies, cover supported owned scalar/date/ISO and normal/shared/array/data-table formula models and lazy preserving edits. Typed style editing and rich-string Python objects, loaded structural/feature editing, complete optimized-mode styles, file-like I/O, tokenizer and all advanced baseline features remain required. This is not full-suite compatibility.
 
@@ -72,13 +72,13 @@ Nonfinite owned numbers are retained until save; NaN/infinity serialize as blank
 
 Core revision 7e9eb8db (post-alpha.1 source with Windows same-path save replacement, quick-xml 0.42 and streaming APIs) is pinned for canonical style/default-theme serialization, visible annotated-value projection, compatible cache-only reads and formula attribute write policies. Public tests compare every data-table field after creation and loaded-property edits, including false/source-string flags and empty input omission. These capabilities live in core; the adapter adds no duplicate codec. Owned theme/style Python properties, complete rich text and loaded structural editing remain staged.
 
-Array formula literal text and optional range properties use canonical Rust conversions. Forty additional public comparisons cover None/empty/equals/non-equals/Unicode text, missing array references, loaded property updates and repeated saves. None data-table reference reload remains a recorded reference defect, not a native crash requirement. See ADR 0008 and benchmarks/array-calls.md.
+Array formula literal text and optional range properties use canonical Rust conversions. Forty additional public comparisons cover None/empty/equals/non-equals/Unicode text, missing array references, loaded property updates and repeated saves. None data-table reference reload remains a recorded reference defect, not a native crash requirement. See ADR 0008 and benchmarks/reports/array-calls.md.
 
 Owned temporal value replacement retains canonical format IDs and supports repeated default-catalog saves (ADR 0012). General Python style object APIs and arbitrary source-catalog save integration remain required.
 
-Literal shared-formula group identities, including absent, empty, padded, signed, opaque and escaped IDs, now match public ordinary/data-only loading; normal-mode unchanged saves are repeatable. Core worksheet views and printing exist at this pin, but their Python property proxies remain staged. See ADR 0013 and benchmarks/shared-identity-calls.md.
+Literal shared-formula group identities, including absent, empty, padded, signed, opaque and escaped IDs, now match public ordinary/data-only loading; normal-mode unchanged saves are repeatable. Core worksheet views and printing exist at this pin, but their Python property proxies remain staged. See ADR 0013 and benchmarks/reports/shared-identity-calls.md.
 
-Optimized-mode and current ordinary performance evidence: [numeric and Unicode workloads](../benchmarks/optimized-modes.md).
+Optimized-mode and current ordinary performance evidence: [numeric and Unicode workloads](../benchmarks/reports/optimized-modes.md).
 
 Alpha.5 exposes canonical read resource limits, Auto tuning,
 SST RAM/disk/Auto policies, decoded cache/temp bounds and loaded patch caps.
@@ -108,7 +108,7 @@ saves. Unsupported graph owners remain explicitly staged for M5/M6. Final A7
 compatibility/resource/platform acceptance and publication remain open.
 
 A7 staged M4 evidence is consolidated in the canonical core's
-`docs/validation/alpha7-m4-stage-acceptance.md`. The adapter pins its exact A7
+`internal/validation/alpha7-m4-stage-acceptance.md`. The adapter pins its exact A7
 release revision and passes a fresh CPython 3.12 release-wheel run (547 tests),
 Ruff format/check and strict native Clippy. A7 public multi-platform publication is verified in the core audit; the deferred M5/M6 graph interactions still keep full M4 open.
 

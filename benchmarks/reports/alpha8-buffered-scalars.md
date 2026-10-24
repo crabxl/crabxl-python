@@ -8,8 +8,8 @@ Ruff format/check and strict Clippy.
 The baseline is the A7 release wheel built from adapter
 `e0fe86ad83390c3788759bc514a1400660ddd83a`. Raw installed-module hashes,
 fixture hashes, versions and individual samples are in the
-[ordinary report](results/alpha8-buffered-scalars-python-normal.json) and
-[read-only report](results/alpha8-buffered-scalars-python-stream.json).
+[ordinary report](../results/alpha8-buffered-scalars-python-normal.json) and
+[read-only report](../results/alpha8-buffered-scalars-python-stream.json).
 Each scale has one warmup and three rotating serial cold-process samples,
 without overlapping compilation. Generation is excluded; imports, loading,
 iteration, checksums and cleanup are included. Both CrabXL modes use the same
@@ -49,8 +49,8 @@ RSS is 161,992 KiB versus 321,716 KiB; retained SST metadata is additional to
 the bounded row stream. The workload is generated plain ASCII shared text,
 not arbitrary rich/Unicode XML or the real NYC fixture. Cold-process CPU time
 can exceed wall time for read-only producer/consumer overlap and is retained
-in the [ordinary](results/alpha8-direct-sst-python-normal.json) and
-[read-only](results/alpha8-direct-sst-python-stream.json) raw reports.
+in the [ordinary](../results/alpha8-direct-sst-python-normal.json) and
+[read-only](../results/alpha8-direct-sst-python-stream.json) raw reports.
 
 ## Writer integration
 
@@ -61,6 +61,6 @@ Ruff and Clippy. Python write-only numeric append/save compared with A7 is
 Both produce 2,942,955-byte archives and report a 32,866,902-byte spool peak;
 all values are independently verified after timing. These small differences
 do not establish a meaningful Python numeric-write improvement.
-[Raw observations](results/alpha8-byte-escape-python-writes.json) include native
+[Raw observations](../results/alpha8-byte-escape-python-writes.json) include native
 module hashes and complete cold-process conversion/save costs. The core's
 larger Unicode/text improvements remain distinct from this numeric workload.

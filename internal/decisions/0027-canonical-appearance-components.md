@@ -44,4 +44,4 @@ Release workflow 37561869461 passed all five platform jobs and CPython 3.11–3.
 gates before OIDC publication. PyPI now contains 25 wheels and one source archive.
 A clean CPython 3.12 installation of the public manylinux 2.28 wheel passed the
 release commit's unchanged 547 cases in 4.88 seconds. See the canonical
-[artifact receipt](https://github.com/crabxl/crabxl/blob/main/docs/validation/alpha10-release.json).
+[artifact receipt](https://github.com/crabxl/crabxl/blob/main/internal/validation/alpha10-release.json).

@@ -80,8 +80,8 @@ python benchmarks/text_reads.py --python /path/to/venv/bin/python \
   --measure /path/to/measure --output /tmp/text.json
 ```
 
-Raw numeric evidence: [optimized modes](results/optimized-modes.json) and
-[ordinary latest core](results/values-calls-optimized-core.json).
+Raw numeric evidence: [optimized modes](../results/optimized-modes.json) and
+[ordinary latest core](../results/values-calls-optimized-core.json).
 
 ## Unicode and escaped inline text
 
@@ -95,4 +95,4 @@ and references are used, with a 64 MiB component allowance and no SST/temp files
 | 100,000 | 0.9357 / 18,508 | 1.9162 / 34,576 | 0.6093 / 38,968 |
 
 Required openpyxl speed holds; desired calamine speed remains unmet.
-[Raw text results](results/text-reads.json).
+[Raw text results](../results/text-reads.json).

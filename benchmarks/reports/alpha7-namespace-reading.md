@@ -25,10 +25,10 @@ At one million cells, median complete wall time drops approximately 5.1% in
 ordinary mode and 14.0% in read-only mode. The smaller read-only fixture changes
 by less than 1%; these results do not imply a universal improvement. RSS remains
 similar. Full native text/style results and remaining performance gaps are in
-the [core evidence](https://github.com/crabxl/crabxl/blob/main/benchmarks/alpha7-namespace-scope.md).
+the [core evidence](https://github.com/crabxl/crabxl/blob/main/benchmarks/reports/alpha7-namespace-scope.md).
 
-Raw reports: [ordinary](results/alpha7-namespace-values.json) and
-[read-only](results/alpha7-namespace-read-only.json). Full 547-test compatibility
+Raw reports: [ordinary](../results/alpha7-namespace-values.json) and
+[read-only](../results/alpha7-namespace-read-only.json). Full 547-test compatibility
 suite and Ruff format/check passed against the rebuilt installed wheel.
 
 ```sh

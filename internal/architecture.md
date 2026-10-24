@@ -25,7 +25,7 @@ changing Python worksheet views. Signed active display indexes remain deferred;
 affected local defined-name graphs reject atomically pending M5. See
 [ADR 0020](decisions/0020-source-sheet-display-order.md).
 The pinned packed model's numeric Python cost is recorded in
-[paired measurements](../benchmarks/alpha7-packed-reading.md).
+[paired measurements](../benchmarks/reports/alpha7-packed-reading.md).
 
 Loaded row/column insertion/deletion and range moves now use the canonical
 preserving coordinator; Python updates existing Cell aliases only after success.
@@ -36,10 +36,10 @@ Ordinary scalar values iteration now projects canonical ordered row cursors
 directly into Python values, retaining live structured-formula objects. Cached
 read-only rows avoid a GIL detach/attach cycle; blocking receives still release
 the GIL. Both use one adapter conversion helper and unchanged bounded buffers.
-The [calamine comparison](../benchmarks/alpha7-direct-values.md) records remaining
+The [calamine comparison](../benchmarks/reports/alpha7-direct-values.md) records remaining
 parser/model and conversion costs; neither mode meets the speed target yet.
 Output tags borrow fixed native literals, while input tags retain owned caller
-validation. The [paired adapter measurement](../benchmarks/alpha7-static-tags.md)
+validation. The [paired adapter measurement](../benchmarks/reports/alpha7-static-tags.md)
 records small ordinary gains and no clear streaming gain, independently of core
 namespace representation changes.
 
@@ -51,12 +51,12 @@ loaded changes do not materialize cell models. Read-only visibility is a snapsho
 view and cannot be serialized. Python maps the core's no-visible-sheet error to
 `IndexError`; a single hidden sheet maps to `ValueError`.
 
-The core roadmap and feature inventory are authoritative: https://github.com/crabxl/crabxl/blob/main/docs/roadmap.md and https://github.com/crabxl/crabxl/blob/main/docs/features.json. See docs/binding-contract.md for all adapter priorities.
+The core roadmap and feature inventory are authoritative: https://github.com/crabxl/crabxl/blob/main/internal/roadmap.md and https://github.com/crabxl/crabxl/blob/main/internal/features.json. See internal/binding-contract.md for all adapter priorities.
 
 Optimized streams and ownership are described in [ADR 0014](decisions/0014-optimized-stream-ownership.md). The pinned canonical core uses quick-xml 0.42; the binding contains no duplicated codecs.
 
 The canonical default-namespace cache is verified through ordinary and read-only
-Python values iteration; see [paired performance evidence](../benchmarks/alpha7-namespace-reading.md).
+Python values iteration; see [paired performance evidence](../benchmarks/reports/alpha7-namespace-reading.md).
 
 Resource extensions map immutable Python configuration to canonical Rust limits,
 SST options and Auto controls. Both ordinary and optimized readers inherit the
@@ -95,7 +95,7 @@ bounded buffered scalar decoding (core ADR 0077). Python uses the same native
 stream and loaded model; no separate scalar parser or compatibility fallback is
 added. All 547 compatibility cases and Ruff/Clippy pass with a freshly rebuilt
 wheel. Complete Python-operation measurements and remaining performance gaps
-are recorded in [the A8 report](../benchmarks/alpha8-buffered-scalars.md).
+are recorded in [the A8 report](../benchmarks/reports/alpha8-buffered-scalars.md).
 
 Core `4f25c545684a03a879d717c27cf1bb91acd14676` additionally prepares simple
 SST entries from bounded buffered XML (core ADR 0078), with direct canonical
@@ -127,7 +127,7 @@ The final `0.1.0a8` wheel passes 547 compatibility cases, Ruff and strict Clippy
 Two existing resource fixtures retain their atomic failure, retry, alias and source
 checks with capacities appropriate to the new ledger. Complete numeric/unique-text
 Python measurements, exact preview-wheel identities and remaining limits are in
-[the A8 verification report](../benchmarks/alpha8-python-acceptance.md).
+[the A8 verification report](../benchmarks/reports/alpha8-python-acceptance.md).
 
 ## Source module boundaries
 

@@ -3,7 +3,7 @@
 This checkpoint replaces the separate loaded reader/editor/model owners with the
 canonical Rust source-backed bank. Source catalogs, all models, overlays and
 SST/cache share a retained allowance. Python no longer applies cloned overlays
-each time it requests a model; see [ADR 0017](../docs/decisions/0017-canonical-loaded-workbook-owner.md).
+each time it requests a model; see [ADR 0017](../../internal/decisions/0017-canonical-loaded-workbook-owner.md).
 It is not complete A6 acceptance or a claim of general speed improvement.
 
 ## Same-mode comparison
@@ -12,7 +12,7 @@ Both CrabXL candidates use ordinary editable `load_workbook` and
 `iter_rows(values_only=True)`, with a 1 GiB retained-model allowance. The before
 environment installs public PyPI `0.1.0a5`; the candidate has unreleased alpha.5
 metadata and pins published core `ea969d9`. Hashes distinguish installed code and
-native binaries in [raw results](results/alpha6-loaded-values.json).
+native binaries in [raw results](../results/alpha6-loaded-values.json).
 
 Python 3.12.14, Linux, openpyxl 3.1.5 with lxml 6.1.3. Each scale warms up once,
 then runs three serial samples per implementation in rotating order. No builds
