@@ -112,7 +112,7 @@ and [resource configuration](internal/decisions/0016-canonical-resource-configur
 
 - [Project status](internal/STATUS.md)
 - [Changelog](CHANGELOG.md)
-- [Benchmarks](benchmarks/reports/optimized-modes.md)
+- [Benchmarks](benchmarks/reports/modes-comparison.md)
 
 ## Contributing
 
