@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Rust core problem
+    url: https://github.com/crabxl/crabxl/issues/new/choose
+    about: Report problems with the Rust API in the crabxl repository.
+  - name: Security vulnerability
+    url: https://github.com/crabxl/crabxl-python/security/advisories/new
+    about: Report a vulnerability privately. Do not open a public issue.
