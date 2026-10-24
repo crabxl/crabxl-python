@@ -1,0 +1,173 @@
+{
+  "method": "Fresh process per sample, pinned to the listed CPUs. One warmup, then the measured samples. The case order rotates in each round. Wall time includes interpreter start, imports and cleanup. Peak RSS comes from wait4. Every case must read the same number of values.",
+  "environment": {
+    "python": "3.12.3",
+    "packages": {
+      "crabxl": "0.1.0a11",
+      "python-calamine": "0.9.0",
+      "XlsxWriter": "3.3.0"
+    },
+    "platform": "Linux-6.18.44-fc-v153-x86_64-with-glibc2.39",
+    "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "logical_cpus_on_host": 4,
+    "memory_bytes_on_host": 16872804352,
+    "pinned_cpus": [
+      2,
+      3
+    ]
+  },
+  "inputs": [
+    {
+      "input": "numeric",
+      "input_bytes": 31412539,
+      "input_sha256": "4cfef2029956b9fc161b128870de73ce0d0ee978fa024ce6dbeb7233a34cfaf4",
+      "cases": {
+        "crabxl/standard": [
+          {
+            "seconds": 4.951664,
+            "cpu_seconds": 4.860243,
+            "peak_rss_kib": 343088
+          },
+          {
+            "seconds": 4.894049,
+            "cpu_seconds": 4.860704,
+            "peak_rss_kib": 343104
+          },
+          {
+            "seconds": 5.009208,
+            "cpu_seconds": 4.971334,
+            "peak_rss_kib": 343112
+          }
+        ],
+        "crabxl/read_only": [
+          {
+            "seconds": 3.458564,
+            "cpu_seconds": 6.212581,
+            "peak_rss_kib": 24544
+          },
+          {
+            "seconds": 3.593423,
+            "cpu_seconds": 6.297344,
+            "peak_rss_kib": 24472
+          },
+          {
+            "seconds": 3.532821,
+            "cpu_seconds": 6.302221,
+            "peak_rss_kib": 24516
+          }
+        ],
+        "python-calamine/standard": [
+          {
+            "seconds": 6.343322,
+            "cpu_seconds": 6.309933,
+            "peak_rss_kib": 723196
+          },
+          {
+            "seconds": 6.11619,
+            "cpu_seconds": 6.081699,
+            "peak_rss_kib": 723260
+          },
+          {
+            "seconds": 6.359733,
+            "cpu_seconds": 6.287969,
+            "peak_rss_kib": 723272
+          }
+        ]
+      },
+      "values": 10000000,
+      "medians": {
+        "crabxl/standard": {
+          "seconds": 4.951664,
+          "cpu_seconds": 4.860704,
+          "peak_rss_kib": 343104
+        },
+        "crabxl/read_only": {
+          "seconds": 3.532821,
+          "cpu_seconds": 6.297344,
+          "peak_rss_kib": 24516
+        },
+        "python-calamine/standard": {
+          "seconds": 6.343322,
+          "cpu_seconds": 6.287969,
+          "peak_rss_kib": 723260
+        }
+      }
+    },
+    {
+      "input": "nyc311",
+      "input_bytes": 171042932,
+      "input_sha256": "ec3c2083594a3a6d50f725b943e7432bee58036c6c824f26f1482a508d12f457",
+      "cases": {
+        "crabxl/standard": [
+          {
+            "seconds": 26.770634,
+            "cpu_seconds": 26.519855,
+            "peak_rss_kib": 1716420
+          },
+          {
+            "seconds": 25.503424,
+            "cpu_seconds": 25.293137,
+            "peak_rss_kib": 1716432
+          },
+          {
+            "seconds": 30.154036,
+            "cpu_seconds": 29.883319,
+            "peak_rss_kib": 1716432
+          }
+        ],
+        "crabxl/read_only": [
+          {
+            "seconds": 34.523405,
+            "cpu_seconds": 53.230343,
+            "peak_rss_kib": 56956
+          },
+          {
+            "seconds": 35.052836,
+            "cpu_seconds": 53.839265,
+            "peak_rss_kib": 56884
+          },
+          {
+            "seconds": 35.608209,
+            "cpu_seconds": 54.742671,
+            "peak_rss_kib": 56904
+          }
+        ],
+        "python-calamine/standard": [
+          {
+            "seconds": 32.661056,
+            "cpu_seconds": 32.359458,
+            "peak_rss_kib": 2448840
+          },
+          {
+            "seconds": 35.138898,
+            "cpu_seconds": 34.71775,
+            "peak_rss_kib": 2448760
+          },
+          {
+            "seconds": 31.772929,
+            "cpu_seconds": 31.547887,
+            "peak_rss_kib": 2448672
+          }
+        ]
+      },
+      "values": 28478615,
+      "medians": {
+        "crabxl/standard": {
+          "seconds": 26.770634,
+          "cpu_seconds": 26.519855,
+          "peak_rss_kib": 1716432
+        },
+        "crabxl/read_only": {
+          "seconds": 35.052836,
+          "cpu_seconds": 53.839265,
+          "peak_rss_kib": 56904
+        },
+        "python-calamine/standard": {
+          "seconds": 32.661056,
+          "cpu_seconds": 32.359458,
+          "peak_rss_kib": 2448760
+        }
+      }
+    }
+  ]
+}
