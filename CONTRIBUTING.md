@@ -1,19 +1,12 @@
 # Contributing to CrabXL for Python
 
-Thank you for your help. This guide tells you how the repository is organized,
-how to build and test it, and what a pull request must include.
-
-CrabXL is alpha software. A bug report with a small file that shows the problem
-is as valuable as code.
-
 ## Ways to contribute
 
 - **Report a bug.** Use the [issue forms](https://github.com/crabxl/crabxl-python/issues/new/choose).
   Give the CrabXL version, the Python version and the smallest code or `.xlsx`
   file that shows the problem. Remove confidential data first.
 - **Report a difference from openpyxl.** CrabXL must behave like openpyxl
-  3.1.5. Give the code, the openpyxl result and the CrabXL result. This is the
-  most useful kind of report.
+  3.1.5. Give the code, the openpyxl result and the CrabXL result.
 - **Improve the documentation.** User documentation is in [docs](docs). The
   documentation site is built from it by
   [crabxl-docs](https://github.com/crabxl/crabxl-docs).
