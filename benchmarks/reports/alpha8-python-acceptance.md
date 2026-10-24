@@ -31,12 +31,12 @@ different. These controlled cases do not prove universal superiority or an
 actual NYC workbook result. No dataframe integration is implemented.
 
 Raw reports preserve installed identities, samples, fixture hashes and settings:
-[numeric ordinary](results/alpha8-final-python-numeric-normal.json),
-[numeric read-only](results/alpha8-final-python-numeric-stream.json),
-[unique ordinary](results/alpha8-final-python-unique-normal.json) and
-[unique read-only](results/alpha8-final-python-unique-stream.json).
+[numeric ordinary](../results/alpha8-final-python-numeric-normal.json),
+[numeric read-only](../results/alpha8-final-python-numeric-stream.json),
+[unique ordinary](../results/alpha8-final-python-unique-normal.json) and
+[unique read-only](../results/alpha8-final-python-unique-stream.json).
 Earlier write-only measurements and their limited gains remain in
-[the byte-escaping report](results/alpha8-byte-escape-python-writes.json).
+[the byte-escaping report](../results/alpha8-byte-escape-python-writes.json).
 
 Existing resource tests retain failure/retry, alias and source-preservation
 checks. Their finite fixtures now exercise real vector expansion and aggregate

@@ -6,4 +6,4 @@ Forty new shared tests cover four initial temporal kinds replaced by four kinds 
 
 The default owned temporal registry and ordinary default writer share canonical preset identities. Repeated adapter save borrows the cells; it does not consume the public workbook. Arbitrary owned/source style catalog saving, general style object getters/setters, rich strings and unified loaded bank ownership remain staged. No default-ID assumption is extended to arbitrary imported styles.
 
-benchmarks/temporal-calls.md records actual identical Python assignment/getter/two-save calls, separately from native Rust owned/streaming measurements. Required speed and desired RSS hold for this supported overlap; other APIs, native competitors and full package compatibility remain independent acceptance work.
+benchmarks/reports/temporal-calls.md records actual identical Python assignment/getter/two-save calls, separately from native Rust owned/streaming measurements. Required speed and desired RSS hold for this supported overlap; other APIs, native competitors and full package compatibility remain independent acceptance work.

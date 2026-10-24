@@ -28,4 +28,4 @@ Unsupported loaded values/graphs remain explicit errors.
 No calamine Python or dataframe comparison is claimed. Native retained-model
 speed remains slower than calamine; source-aware structural changes, further
 parser improvements and bounded dataframe conversion remain open.
-All sizes and samples: [raw report](results/alpha7-packed-python.json).
+All sizes and samples: [raw report](../results/alpha7-packed-python.json).

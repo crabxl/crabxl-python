@@ -1,8 +1,8 @@
 # Python independent hyperlink reference checkpoint
 
-Same fresh serial three-process workload and [worker](point_hyperlinks.py) as the
+Same fresh serial three-process workload and [worker](../point_hyperlinks.py) as the
 [initial point report](alpha11-point-hyperlinks.md), rebuilt against core 3754bb8.
-No tests/builds overlap measurement. [Raw observations](alpha11-hyperlink-references.txt).
+No tests/builds overlap measurement. [Raw observations](../results/alpha11-hyperlink-references.txt).
 
 | Rows | Median preparation | Median initial save | Median load/scan/edit/save | Median peak RSS |
 | --- | --- | --- | --- | --- |

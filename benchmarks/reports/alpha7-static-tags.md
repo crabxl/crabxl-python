@@ -37,5 +37,5 @@ workload. Calamine remains a benchmark-only dependency.
 
 All 547 tests, Ruff format/check and strict Clippy pass with the fresh wheel.
 No mirrored implementation tests or timing thresholds were added.
-Raw reports: [ordinary](results/alpha7-static-tags-python.json),
-[read-only](results/alpha7-static-tags-read-only.json).
+Raw reports: [ordinary](../results/alpha7-static-tags-python.json),
+[read-only](../results/alpha7-static-tags-read-only.json).

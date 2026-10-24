@@ -6,7 +6,7 @@ Reproduce with the installed locked release wheel and public openpyxl 3.1.5:
 python benchmarks/shared_identity_calls.py --measure /workspace/crabxl/benchmarks/measure
 ```
 
-Raw evidence: [results/shared-identity-calls.json](results/shared-identity-calls.json). One warmup and five alternating serial cold-process runs include imports, ordinary load_workbook, values-only iteration, identical per-value checks and SHA256. Fixture generation is excluded. Both engines use ordinary loaded models; this is not read-only streaming or pure Rust throughput. Builds/tests did not overlap timing.
+Raw evidence: [results/shared-identity-calls.json](../results/shared-identity-calls.json). One warmup and five alternating serial cold-process runs include imports, ordinary load_workbook, values-only iteration, identical per-value checks and SHA256. Fixture generation is excluded. Both engines use ordinary loaded models; this is not read-only streaming or pure Rust throughput. Builds/tests did not overlap timing.
 
 | Cells | Projection | crabxl seconds / RSS KiB | openpyxl seconds / RSS KiB |
 |---|---|---|---|

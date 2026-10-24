@@ -55,5 +55,5 @@ work from the headline. Pandas/Polars integration and bounded dataframe delivery
 remain planned and are not implemented or accepted by this checkpoint.
 
 Raw samples and installed hashes:
-[ordinary](results/alpha7-direct-values-python.json),
-[read-only](results/alpha7-buffered-python-read-only.json).
+[ordinary](../results/alpha7-direct-values-python.json),
+[read-only](../results/alpha7-buffered-python-read-only.json).

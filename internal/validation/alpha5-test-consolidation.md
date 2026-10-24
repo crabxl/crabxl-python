@@ -24,7 +24,7 @@ actual read/edit limits and RAM/Auto/disk SST/cache/temp behavior. This yields
 544 tests while retaining all original semantic combinations. The canonical
 core revision is 6c151ee5391d0d813fea2b5ea21f065d95c0bb3d; its M2 acceptance,
 coverage, native-platform checks and measurements are linked in the core's
-`docs/validation/alpha5-m2-acceptance.md`. Complete Python compatibility remains
+`internal/validation/alpha5-m2-acceptance.md`. Complete Python compatibility remains
 staged. Ruff validation covers the whole repository, including README snippets.
 
 Final installed alpha.5 candidate wheels, tested serially against the exact

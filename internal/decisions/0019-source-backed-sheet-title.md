@@ -20,6 +20,6 @@ The candidate pins published core `51b65405d83e9a4435d6673a8f26bb8e348e5729`.
 All 547 tests, Ruff format/check and strict Clippy pass using a fresh release
 wheel on Python 3.12.14/Rust 1.99. Core release resources and full streaming
 readback are recorded in
-[lazy rename evidence](https://github.com/crabxl/crabxl/blob/main/benchmarks/alpha7-lazy-renaming.md).
+[lazy rename evidence](https://github.com/crabxl/crabxl/blob/main/benchmarks/reports/alpha7-lazy-renaming.md).
 This feature checkpoint does not close remaining A7 structural gates or publish
 a new package version. Typed metadata graph support remains separately staged.

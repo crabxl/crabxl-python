@@ -26,14 +26,14 @@ Canonical loaded edit/save also gains fixed 64 KiB compression buffering. The
 core measurement is 7.0485 seconds to 1.3450 seconds for a one-million-numeric-cell
 A1 replacement/save, with every uncompressed package part identical. It excludes
 Python full-model loading/conversion and is not an end-to-end Python editing
-measurement. See the [canonical core evidence](https://github.com/crabxl/crabxl/blob/main/benchmarks/alpha3-edit-buffering.md).
+measurement. See the [canonical core evidence](https://github.com/crabxl/crabxl/blob/main/benchmarks/reports/alpha3-edit-buffering.md).
 
 Write-only mode still uses worksheet XML spools plus an adjacent output ZIP at
 save. The table reports logical worksheet storage, not total filesystem peak;
 the existing target and new ZIP can coexist during atomic replacement. Managed
 allowances and peak RSS observations are not a hard process RSS cap.
 
-Raw samples: [results](results/alpha3-write-regression.json).
+Raw samples: [results](../results/alpha3-write-regression.json).
 
 ```sh
 python benchmarks/write_regression.py --before-python /path/to/alpha2/python \
