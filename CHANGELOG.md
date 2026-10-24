@@ -1,8 +1,7 @@
 # Changelog
 
-This file lists the changes in each release of the `crabxl` Python package. The
-format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-The project is alpha software, so any release can change behavior.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+Before version 1.0, any release can change the API.
 
 Each release uses a pinned revision of the Rust core. The core has its own
 [changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).

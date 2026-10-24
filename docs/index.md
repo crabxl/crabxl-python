@@ -1,14 +1,7 @@
 ---
 title: CrabXL for Python
-description: An XLSX library with an openpyxl-compatible API and a Rust core.
+description: Install the crabxl package and use it in place of openpyxl.
 ---
-
-CrabXL reads, writes and edits XLSX files. It uses the openpyxl API, so most
-openpyxl code works after you change the import. The CrabXL Rust core does the
-work. openpyxl is not a run-time dependency.
-
-CrabXL is alpha software. An unsupported feature raises an explicit error. It
-does not drop data. CrabXL does not calculate formulas.
 
 ## Install
 
@@ -20,21 +13,23 @@ Wheels are available for CPython 3.11–3.15 on Linux, Windows and macOS.
 
 ## Use
 
-Change the import. Keep the rest of your openpyxl code.
+Import `crabxl` in place of `openpyxl`. The calls are the same.
 
 ```python
 import crabxl as openpyxl
 
 book = openpyxl.load_workbook("input.xlsx")
-sheet = book.active
-sheet["A1"] = "Updated"
+book.active["A1"] = "Updated"
 book.save("output.xlsx")
 book.close()
 ```
 
 ## Limits
 
-- Open and save files by path. File-like objects are not supported.
-- Open `.xlsm` and `.xltm` files with `keep_vba=True`.
-
-More pages are in preparation.
+- An unsupported call raises `NotImplementedError`. CrabXL does not fall back
+  to openpyxl.
+- `load_workbook` and `save` accept a path only. File-like objects are not
+  supported.
+- To open an `.xlsm` or `.xltm` file, set `keep_vba=True`.
+- CrabXL does not calculate formulas. With `data_only=True`, a formula cell
+  contains the cached result from the file.
