@@ -1,11 +1,11 @@
 ---
 title: CrabXL for Python
-description: An XLSX library with an openpyxl-compatible API and a Rust engine.
+description: An XLSX library with an openpyxl-compatible API and a Rust core.
 ---
 
 CrabXL reads, writes and edits XLSX files. It uses the openpyxl API, so most
-openpyxl code works after you change the import. A Rust engine does the work.
-openpyxl is not a run-time dependency.
+openpyxl code works after you change the import. The CrabXL Rust core does the
+work. openpyxl is not a run-time dependency.
 
 CrabXL is alpha software. An unsupported feature raises an explicit error. It
 does not drop data. CrabXL does not calculate formulas.
