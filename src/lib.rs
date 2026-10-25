@@ -1,6 +1,7 @@
 //! Python module registration; canonical models remain in crabxl.
 mod dimensions;
 mod editor;
+mod features;
 mod functions;
 mod hyperlink_views;
 mod imports;
@@ -39,6 +40,16 @@ fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(default_style_component, module)?)?;
     module.add_function(wrap_pyfunction!(styles::make_style_component, module)?)?;
     module.add_function(wrap_pyfunction!(save_models, module)?)?;
+    module.add_function(wrap_pyfunction!(features::sheet_features_read, module)?)?;
+    module.add_function(wrap_pyfunction!(features::reader_sheet_features, module)?)?;
+    module.add_function(wrap_pyfunction!(features::sheet_features_write, module)?)?;
+    module.add_function(wrap_pyfunction!(features::sheet_register_dxf, module)?)?;
+    module.add_function(wrap_pyfunction!(features::workbook_features_read, module)?)?;
+    module.add_function(wrap_pyfunction!(features::workbook_features_write, module)?)?;
+    module.add_function(wrap_pyfunction!(
+        features::workbook_default_properties,
+        module
+    )?)?;
     module.add_function(wrap_pyfunction!(resolve_model_budget, module)?)?;
     module.add_function(wrap_pyfunction!(cell_address, module)?)?;
     module.add_function(wrap_pyfunction!(translate_formula, module)?)?;

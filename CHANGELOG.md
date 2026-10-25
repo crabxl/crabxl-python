@@ -6,6 +6,24 @@ Before version 1.0, any release can change the API.
 Each release uses a pinned revision of the Rust core. The core has its own
 [changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).
 
+## [Unreleased]
+
+### Added
+
+- `ws.tables` and `ws.add_table`, `ws.auto_filter`, `ws.conditional_formatting`,
+  `ws.data_validations` and `ws.add_data_validation`, `cell.comment`,
+  `ws.protection`, headers and footers, `ws.print_area`, `ws.print_title_rows`,
+  `ws.print_title_cols` and `ws.defined_names`.
+- `wb.defined_names`, `wb.security`, `wb.properties` and `wb.custom_doc_props`.
+- The openpyxl import paths of these classes, for example
+  `crabxl.worksheet.table`, `crabxl.formatting.rule` and `crabxl.comments`.
+- Features load on first access and only changed features are written on save.
+
+### Changed
+
+- Loaded workbooks can move, copy and remove sheets when the workbook has
+  sheet-local defined names.
+
 ## [0.1.0a11] - 2026-10-21
 
 ### Added

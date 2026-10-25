@@ -79,6 +79,9 @@ class MultiCellRange:
             return False
         return self.ranges == other.ranges
 
+    def __hash__(self):
+        return hash(str(self))
+
     def __copy__(self):
         return type(self)(copy(value) for value in self.ranges)
 

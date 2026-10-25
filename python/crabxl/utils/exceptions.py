@@ -11,3 +11,19 @@ class WorkbookAlreadySaved(RuntimeError):
 
 class ReadOnlyWorkbookException(TypeError):
     """An operation requires an editable workbook."""
+
+
+class CellCoordinatesException(ValueError):
+    """Raised when a coordinate string is invalid."""
+
+
+class InvalidFileException(Exception):
+    """Raised when a file is not a valid workbook."""
+
+
+class SheetTitleException(Exception):
+    """Raised when a sheet title is invalid."""
+
+
+class NamedRangeException(Exception):
+    """Raised for an invalid named range."""

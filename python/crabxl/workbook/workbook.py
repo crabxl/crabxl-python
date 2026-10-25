@@ -34,6 +34,7 @@ class Workbook:
         "_streams",
         "_saved",
         "_stream_links",
+        "_wfeat",
     )
 
     def __init__(
@@ -54,6 +55,7 @@ class Workbook:
         )
         self._max_bytes = resolve_model_budget(max_memory_bytes, native_resources)
         self._closed = False
+        self._wfeat = None
         self._reader = self._editor = None
         self._iso_dates = bool(iso_dates)
         self.data_only = self.read_only = False
@@ -76,6 +78,82 @@ class Workbook:
         self._book = NativeBook(self._max_bytes)
         if not write_only:
             self.create_sheet("Sheet")
+
+    def _wstate(self):
+        state = self._wfeat
+        if state is None:
+            self._check_open()
+            from .._features import WorkbookState
+
+            state = self._wfeat = WorkbookState(self)
+        return state
+
+    def _names_state(self):
+        state = self._wstate()
+        if not state.bound:
+            state.build(self)
+        return state
+
+    def _wobj(self, key):
+        return self._names_state().objs[key]
+
+    @property
+    def defined_names(self):
+        return self._wobj("names")
+
+    @defined_names.setter
+    def defined_names(self, value):
+        self._names_state().objs["names"] = value
+
+    @property
+    def security(self):
+        return self._wobj("security")
+
+    @security.setter
+    def security(self, value):
+        self._names_state().objs["security"] = value
+
+    @property
+    def properties(self):
+        return self._wobj("properties")
+
+    @properties.setter
+    def properties(self, value):
+        self._names_state().objs["properties"] = value
+
+    @property
+    def custom_doc_props(self):
+        return self._wobj("custom")
+
+    @custom_doc_props.setter
+    def custom_doc_props(self, value):
+        self._names_state().objs["custom"] = value
+
+    def _duplicate_name(self, name):
+        """Check defined names and the tables of each worksheet (case-insensitive)."""
+        name = name.lower()
+        for sheet in self._sheets:
+            for table in sheet.tables:
+                if name == table.lower():
+                    return True
+        return name in {key.lower() for key in self.defined_names}
+
+    def _flush_features(self):
+        if self.write_only or self.read_only:
+            return
+        for sheet in self._sheets:
+            sheet._flush_features()
+        if self._wfeat is None and self._editor is None:
+            # New workbook: openpyxl's default properties, set natively so that
+            # saving does not load the property classes.
+            from datetime import datetime, timezone
+
+            from .._native import workbook_default_properties
+
+            now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            workbook_default_properties(self._book, now)
+        if self._wfeat is not None:
+            self._wfeat.push(self)
 
     def _style_owner(self):
         self._check_open()
@@ -290,6 +368,7 @@ class Workbook:
         ):
             raise ValueError("Cannot copy between workbooks")
         self.index(from_worksheet)
+        from_worksheet._flush_features()
         title = self._unique_title(from_worksheet.title + " Copy")
         Worksheet._validate_title(title)
         if self._editor is not None:
@@ -343,6 +422,7 @@ class Workbook:
             raise NotImplementedError("File-like binding output is not implemented")
         if self.read_only:
             raise TypeError("Workbook is read-only")
+        self._flush_features()
         hyperlink_sheets = []
         hyperlink_ids = []
         if not self.write_only:

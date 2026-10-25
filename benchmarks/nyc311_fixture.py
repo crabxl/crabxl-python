@@ -45,7 +45,13 @@ COLUMNS = [
 ]  # fmt: skip
 
 DATES = {"created_date", "closed_date", "due_date", "resolution_action_updated_date"}
-INTEGERS = {"unique_key", "incident_zip", "bbl", "x_coordinate_state_plane", "y_coordinate_state_plane"}
+INTEGERS = {
+    "unique_key",
+    "incident_zip",
+    "bbl",
+    "x_coordinate_state_plane",
+    "y_coordinate_state_plane",
+}
 FLOATS = {"latitude", "longitude"}
 
 
@@ -142,8 +148,12 @@ def build(paths: list[Path], output: Path) -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--cache", required=True, help="directory for the downloaded CSV files")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--cache", required=True, help="directory for the downloaded CSV files"
+    )
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
     summary = build(download(Path(args.cache)), Path(args.output))
