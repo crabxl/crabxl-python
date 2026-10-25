@@ -108,11 +108,15 @@ If you claim a speed or memory improvement, include the measurements. Compare
 the same mode and the same behavior in CrabXL and openpyxl. Give the time, peak
 memory and the commands that you used.
 
+### Code from other projects
+
+You can copy code from another project, including openpyxl, if its license is
+compatible with MIT. Keep the original copyright notice and add the project to
+[third_party/](third_party).
+
 ### Design decisions
 
-Record a significant design decision as an Architecture Decision Record (ADR)
-in [internal/decisions](internal/decisions). The ADR numbers in this
-repository are independent of the ADR numbers in the Rust core.
+Explain large design changes in the pull request.
 
 ## Documentation style
 

@@ -1,11 +1,59 @@
 # Instructions for AI agents
 
-These rules apply to AI agents that work on this repository. Human contributors
-use [CONTRIBUTING.md](CONTRIBUTING.md). The rules in CONTRIBUTING.md also apply
-to agents.
+These rules apply to AI agents that work on this repository. Where they differ
+from [CONTRIBUTING.md](CONTRIBUTING.md), these rules win.
 
-Read [internal/STATUS.md](internal/STATUS.md) before you start. It tells you
-the current state and the next tasks.
+Read [internal/STATUS.md](internal/STATUS.md) before you start. It gives the
+current state and the next tasks.
+
+## Goal
+
+This package gives Python users the openpyxl 3.1.5 API on top of the CrabXL
+Rust core. It has two hard requirements:
+
+1. **Fast.** Faster than openpyxl. Faster than python-calamine (reading) and
+   XlsxWriter (writing) is the target.
+2. **Low memory.** Lower peak memory than openpyxl, python-calamine and
+   XlsxWriter.
+
+Everything else (code style, module layout, how files are split or merged,
+internal names) is up to you.
+
+## How to work
+
+- **Plan a whole stage, then build it.** A stage normally adds a feature group
+  to the Rust core and to this package together. Implement the whole stage,
+  then test and fix in one pass.
+- **Copy code freely.** You may read and copy any code whose license is
+  compatible with MIT, including openpyxl. Keep the original copyright notice
+  and record the project once in `third_party/`.
+- **Measure at the end of a stage.** Run the fixed benchmark suite once per
+  stage against openpyxl, python-calamine and XlsxWriter. Do not write a
+  benchmark script or a report for each feature.
+- **Keep records short.** Update `internal/STATUS.md` when a stage ends. Do not
+  write new ADRs, checkpoint reports or validation records.
+
+## Product rules
+
+- The public API must match openpyxl 3.1.5: call names, object access and
+  observable behavior. Extensions are permitted.
+- Implement spreadsheet features in the Rust core, not in Python. This package
+  only adapts the core to the openpyxl API.
+- Do not fall back to openpyxl at run time. Do not accept a property that is
+  lost on save. Raise an explicit error for an unsupported feature.
+- Pin the Rust core to an exact Git revision in `Cargo.toml`. During a stage
+  you can use a local path or patch to the core; pin the revision before you
+  push.
+- Do not change the assertions of the selected openpyxl tests. Track expected
+  failures explicitly. Do not count them as passes.
+
+## Memory and performance
+
+- Convert values between Python and Rust in batches. Release the GIL for
+  native work.
+- Do not create one Python object per cell unless the openpyxl API returns
+  one.
+- Keep timing measurements out of ordinary tests.
 
 ## Repository map
 
@@ -14,99 +62,30 @@ the current state and the next tasks.
 | `python/crabxl` | Public Python package. Its modules follow the openpyxl module layout. |
 | `src/` | PyO3 bindings to the Rust core. |
 | `tests/` | Compatibility tests, including selected openpyxl tests. |
-| `third_party/` | Provenance and licenses of the selected openpyxl tests. |
+| `third_party/` | Licenses and sources of copied code and tests. |
 | `docs/` | Public user documentation. The documentation site publishes this folder. |
-| `internal/` | Records for maintainers and agents. Not published. |
-| `benchmarks/` | Benchmark scripts. Reports are in `reports/`, raw data is in `results/`. |
+| `internal/` | Status, roadmap and architecture. Not published. Older ADRs and reports are history; do not add to them. |
+| `benchmarks/` | Benchmark scripts and results. |
 | `tools/` | Release, wheel and provenance scripts. |
 
 The Rust core is in [crabxl](https://github.com/crabxl/crabxl). The
 documentation site is in [crabxl-docs](https://github.com/crabxl/crabxl-docs).
 
-## Language and identity
+## Writing
 
 - Write all repository content in English.
-- Use this Git identity for author and committer, unless the user gives another
-  identity: `cmostw <300344883+cmostw@users.noreply.github.com>`. Set it in the
-  repository configuration. Do not use the global identity of the environment.
-
-## Writing rules
-
-These rules apply to all text: documentation, internal records, comments, error
-messages and commit messages. They follow the principles of ASD-STE100
-(Simplified Technical English). The STE dictionary is not used. Use the project
-glossary in crabxl-docs instead.
-
-- Write only information that the reader uses. Each sentence must give a fact,
-  an instruction or a limit. Do not write slogans, praise, thanks or text about
-  the text. Do not repeat a statement on the same page.
-- Write short sentences. Use a maximum of 20 words in an instruction and 25
-  words in a description.
-- Give one instruction in each sentence.
-- Use the active voice and the imperative for instructions.
-- Use one word for one meaning. Use the glossary term. Do not use synonyms.
-- Do not put more than three nouns in a sequence.
-- Write for a reader who does not know the history of the project. Do not use
-  milestone or release codes (for example "M4" or "A11") without a definition.
-- Do not record conversations. Do not write "the user approved" or "the user
-  asked". Record the decision and its reason.
-
-## Where to write records
-
-- `docs/` is public. Put only user documentation there. Follow the content
+- User documentation in `docs/` and the README is for people. Follow the
+  documentation style in [CONTRIBUTING.md](CONTRIBUTING.md) and the content
   specification in crabxl-docs.
-- `internal/STATUS.md` is the single current status. Replace its content when
-  the status changes. Do not append a history log.
-- `internal/roadmap.md` is the long-term plan. Edit it in place. Remove items
-  that are done or no longer planned.
-- `internal/decisions/` contains Architecture Decision Records (ADRs) of this
-  repository. Their numbers are independent of the ADRs in the Rust core.
-  Write an ADR only for a decision that changes a public contract or a
-  resource strategy.
-- `internal/validation/` contains release acceptance evidence.
-- `benchmarks/reports/` contains benchmark reports. `benchmarks/results/`
-  contains raw data.
-
-## Product rules
-
-- The public API must match openpyxl 3.1.5: call names, object access and
-  observable behavior. Users must not need to learn a different API.
-  Additional capabilities are permitted as extensions.
-- Implement spreadsheet features in the Rust core, not in Python. This
-  package only adapts the core to the openpyxl API.
-- Do not fall back to openpyxl at run time. Do not accept a property that is
-  lost on save. Raise an explicit error for an unsupported feature.
-- Pin the Rust core to an exact Git revision in `Cargo.toml`. Do not copy core
-  code into this repository. Test changes against the pinned revision.
-- Reuse selected openpyxl tests without changes to their assertions. Record
-  their license and provenance in `third_party/`. Track expected failures
-  explicitly. Do not count them as passes.
-- Use openpyxl documentation, public behavior and fixtures as references. Do
-  not read the openpyxl implementation broadly. Reading the diff of a pending
-  openpyxl merge request is permitted to review a known defect.
-- Follow the [binding contract](internal/binding-contract.md) and read
-  [internal/architecture.md](internal/architecture.md) before you change an
-  affected area.
-
-## Memory and performance
-
-- CrabXL must be faster than openpyxl. Compare equivalent modes and behavior.
-- Do not claim an improvement without a measurement. Record time, peak memory,
-  temporary storage and checksums.
-- Keep conversion between Python and Rust in batches where possible. Release
-  the GIL for native work.
-- Keep timing measurements out of ordinary tests.
+- Code comments, internal records and commit messages only need to be clear
+  and short. No word limits apply.
 
 ## Commits
 
-- Read and follow [Coherent Commits](.agents/skills/commit/SKILL.md) before you
-  make a commit.
-- Use Conventional Commits: `<type>(<scope>): <description>`. Describe the
-  result, not the work process.
-- Put one coherent intent in each commit.
-- Before you commit, review the staged changes, check the identity and run the
-  applicable checks.
-- Push each commit immediately after you make it. Make sure that the remote
-  has the commit before you make the next commit.
-- Do not force-push unless the user authorizes it.
-- If a push fails, keep the local commit, report the problem and try again.
+- Use this Git identity for author and committer, unless the user gives another
+  identity: `cmostw <300344883+cmostw@users.noreply.github.com>`. Set it in the
+  repository configuration.
+- Use Conventional Commits: `<type>(<scope>): <description>`.
+- Commit at natural boundaries. A whole stage can be one commit or a few.
+- Push when a stage is complete or when the user asks. Do not force-push unless
+  the user authorizes it.
