@@ -92,11 +92,25 @@ def generate_numeric(python: str, path: Path) -> None:
     subprocess.run([python, "-c", code], check=True)
 
 
-def measure(python: str, cpus: set[int], case, path: Path, numeric: bool) -> tuple[dict, dict]:
+def measure(
+    python: str, cpus: set[int], case, path: Path, numeric: bool
+) -> tuple[dict, dict]:
     library, mode = case
-    command = [python, __file__, "--worker", library, mode, str(path), "1" if numeric else "0"]
+    command = [
+        python,
+        __file__,
+        "--worker",
+        library,
+        mode,
+        str(path),
+        "1" if numeric else "0",
+    ]
     start = time.perf_counter()
-    child = subprocess.Popen(command, stdout=subprocess.PIPE, preexec_fn=lambda: os.sched_setaffinity(0, cpus))
+    child = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        preexec_fn=lambda: os.sched_setaffinity(0, cpus),
+    )
     output = child.stdout.read()
     _, status, usage = os.wait4(child.pid, 0)
     wall = time.perf_counter() - start
@@ -115,9 +129,17 @@ def environment(python: str, cpus: set[int]) -> dict:
         "import importlib.metadata as m, json, sys\n"
         f"print(json.dumps({{'python': sys.version.split()[0], 'packages': {{p: m.version(p) for p in {PACKAGES!r}}}}}))\n"
     )
-    info = json.loads(subprocess.run([python, "-c", code], check=True, capture_output=True, text=True).stdout)
+    info = json.loads(
+        subprocess.run(
+            [python, "-c", code], check=True, capture_output=True, text=True
+        ).stdout
+    )
     cpu_model = next(
-        (line.split(":", 1)[1].strip() for line in Path("/proc/cpuinfo").read_text().splitlines() if line.startswith("model name")),
+        (
+            line.split(":", 1)[1].strip()
+            for line in Path("/proc/cpuinfo").read_text().splitlines()
+            if line.startswith("model name")
+        ),
         "",
     )
     return {
@@ -125,12 +147,15 @@ def environment(python: str, cpus: set[int]) -> dict:
         "platform": platform.platform(),
         "cpu_model": cpu_model,
         "logical_cpus_on_host": os.cpu_count(),
-        "memory_bytes_on_host": os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES"),
+        "memory_bytes_on_host": os.sysconf("SC_PAGE_SIZE")
+        * os.sysconf("SC_PHYS_PAGES"),
         "pinned_cpus": sorted(cpus),
     }
 
 
-def run_input(python: str, cpus: set[int], name: str, path: Path, numeric: bool, runs: int) -> dict:
+def run_input(
+    python: str, cpus: set[int], name: str, path: Path, numeric: bool, runs: int
+) -> dict:
     result = {
         "input": name,
         "input_bytes": path.stat().st_size,
@@ -154,7 +179,10 @@ def run_input(python: str, cpus: set[int], name: str, path: Path, numeric: bool,
         raise RuntimeError(f"the cases read different value counts: {sorted(counts)}")
     result["values"] = counts.pop()
     result["medians"] = {
-        name: {key: statistics.median(s[key] for s in samples) for key in ("seconds", "cpu_seconds", "peak_rss_kib")}
+        name: {
+            key: statistics.median(s[key] for s in samples)
+            for key in ("seconds", "cpu_seconds", "peak_rss_kib")
+        }
         for name, samples in result["cases"].items()
     }
     return result
@@ -166,11 +194,17 @@ def main() -> None:
         print(json.dumps(worker(library, mode, path, numeric == "1")))
         return
 
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--python", required=True, help="interpreter with all packages installed")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--python", required=True, help="interpreter with all packages installed"
+    )
     parser.add_argument("--cpus", default="2,3", help="CPUs for every measured process")
     parser.add_argument("--nyc311", required=True, help="file from nyc311_fixture.py")
-    parser.add_argument("--runs", type=int, default=3, help="measured samples per case after one warmup")
+    parser.add_argument(
+        "--runs", type=int, default=3, help="measured samples per case after one warmup"
+    )
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
@@ -187,8 +221,12 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix="crabxl-large-") as tmp:
         numeric = Path(tmp) / "numeric-10m.xlsx"
         generate_numeric(args.python, numeric)
-        report["inputs"].append(run_input(args.python, cpus, "numeric", numeric, True, args.runs))
-    report["inputs"].append(run_input(args.python, cpus, "nyc311", Path(args.nyc311), False, args.runs))
+        report["inputs"].append(
+            run_input(args.python, cpus, "numeric", numeric, True, args.runs)
+        )
+    report["inputs"].append(
+        run_input(args.python, cpus, "nyc311", Path(args.nyc311), False, args.runs)
+    )
     Path(args.output).write_text(json.dumps(report, indent=2) + "\n")
 
 

@@ -25,6 +25,10 @@ Replace this file when the status changes. Do not append a history log.
 - Merged cells, row and column dimensions, outline groups and hyperlinks.
 - Sheet create, copy, remove, rename and move. Row and column insertion and
   deletion. Range moves.
+- Tables, auto filters, conditional formatting, data validation, comments,
+  sheet and workbook protection, headers and footers, defined names, print
+  areas and titles, and document properties in normal and `read_only` modes
+  (not in `write_only` mode). Stage 1 is on branch `stage1`, not released.
 - `ResourceOptions` for memory limits and shared-string storage.
   `compression_level` on save.
 

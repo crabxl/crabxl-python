@@ -85,7 +85,9 @@ def sum_values(values) -> tuple[int, int]:
     return count, total
 
 
-def worker(operation: str, library: str, mode: str, source: str, target: str, cells: int) -> dict:
+def worker(
+    operation: str, library: str, mode: str, source: str, target: str, cells: int
+) -> dict:
     if operation == "read":
         if library == "python-calamine":
             from python_calamine import CalamineWorkbook
@@ -177,26 +179,51 @@ def verify(python: str, path: str, cells: int, edited: bool) -> None:
         "            total += int(value)\n"
         "print(json.dumps({'count': count, 'total': total}))\n"
     )
-    result = json.loads(subprocess.run([python, "-c", code], check=True, capture_output=True, text=True).stdout)
+    result = json.loads(
+        subprocess.run(
+            [python, "-c", code], check=True, capture_output=True, text=True
+        ).stdout
+    )
     if result != {"count": cells, "total": expected_total(cells, edited)}:
         raise RuntimeError(f"verification failed for {path}: {result}")
 
 
-def measure(python: str, cpus: set[int], case, source: Path, target: Path, cells: int) -> dict:
+def measure(
+    python: str, cpus: set[int], case, source: Path, target: Path, cells: int
+) -> dict:
     operation, library, mode = case
     if target.exists():
         target.unlink()
-    command = [python, __file__, "--worker", operation, library, mode, str(source), str(target), str(cells)]
+    command = [
+        python,
+        __file__,
+        "--worker",
+        operation,
+        library,
+        mode,
+        str(source),
+        str(target),
+        str(cells),
+    ]
     start = time.perf_counter()
-    child = subprocess.Popen(command, stdout=subprocess.PIPE, preexec_fn=lambda: os.sched_setaffinity(0, cpus))
+    child = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        preexec_fn=lambda: os.sched_setaffinity(0, cpus),
+    )
     output = child.stdout.read()
     _, status, usage = os.wait4(child.pid, 0)
     wall = time.perf_counter() - start
     child.returncode = os.waitstatus_to_exitcode(status)
     if child.returncode != 0:
-        raise RuntimeError(f"{case_name(case)} failed with exit code {child.returncode}")
+        raise RuntimeError(
+            f"{case_name(case)} failed with exit code {child.returncode}"
+        )
     result = json.loads(output)
-    if operation == "read" and result != {"count": cells, "total": expected_total(cells, False)}:
+    if operation == "read" and result != {
+        "count": cells,
+        "total": expected_total(cells, False),
+    }:
         raise RuntimeError(f"{case_name(case)} read wrong values: {result}")
     if operation in ("write", "edit"):
         verify(python, str(target), cells, edited=operation == "edit")
@@ -213,7 +240,11 @@ def environment(python: str, cpus: set[int]) -> dict:
         "import importlib.metadata as m, json, platform, sys\n"
         f"print(json.dumps({{'python': sys.version.split()[0], 'packages': {{p: m.version(p) for p in {PACKAGES!r}}}}}))\n"
     )
-    info = json.loads(subprocess.run([python, "-c", code], check=True, capture_output=True, text=True).stdout)
+    info = json.loads(
+        subprocess.run(
+            [python, "-c", code], check=True, capture_output=True, text=True
+        ).stdout
+    )
     cpu_model = ""
     try:
         for line in Path("/proc/cpuinfo").read_text().splitlines():
@@ -237,11 +268,19 @@ def main() -> None:
         print(json.dumps(worker(operation, library, mode, source, target, int(cells))))
         return
 
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--python", required=True, help="interpreter with all packages installed")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--python", required=True, help="interpreter with all packages installed"
+    )
     parser.add_argument("--cpus", default="2,3", help="CPUs for every measured process")
-    parser.add_argument("--cells", type=int, nargs="+", default=[10_000, 100_000, 1_000_000])
-    parser.add_argument("--runs", type=int, default=3, help="measured samples per case after one warmup")
+    parser.add_argument(
+        "--cells", type=int, nargs="+", default=[10_000, 100_000, 1_000_000]
+    )
+    parser.add_argument(
+        "--runs", type=int, default=3, help="measured samples per case after one warmup"
+    )
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
@@ -277,7 +316,11 @@ def main() -> None:
                     sample = measure(args.python, cpus, case, source, target, cells)
                     if round_index > 0:  # round 0 is the warmup
                         size["cases"][case_name(case)].append(sample)
-                print(f"{cells} cells: round {round_index} done", file=sys.stderr, flush=True)
+                print(
+                    f"{cells} cells: round {round_index} done",
+                    file=sys.stderr,
+                    flush=True,
+                )
             size["medians"] = {
                 name: {
                     key: statistics.median(s[key] for s in samples)

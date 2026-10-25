@@ -68,6 +68,37 @@ class Cell:
         self.parent._model().set_named_style(self.row - 1, self.column - 1, value)
 
     @property
+    def comment(self):
+        """The comment bound to this cell, or None."""
+        if self._detached is not None:
+            return self._detached_comment()
+        comment = self.parent._comment_map().get((self.row, self.column))
+        if comment is not None and comment._parent is not self:
+            comment._parent = self
+        return comment
+
+    def _detached_comment(self):
+        return None
+
+    @comment.setter
+    def comment(self, value):
+        from copy import copy
+
+        comments = self.parent._comment_map()
+        key = (self.row, self.column)
+        current = comments.get(key)
+        if value is not None:
+            if value.parent:
+                value = copy(value)
+            if current is not None and current is not value:
+                current.unbind()
+            value.bind(self)
+            comments[key] = value
+        elif current is not None:
+            current.unbind()
+            del comments[key]
+
+    @property
     def hyperlink(self):
         if self._detached is not None:
             return self._detached_hyperlink

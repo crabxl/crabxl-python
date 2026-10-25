@@ -446,8 +446,10 @@ def test_loaded_style_image_comment_and_unknown_parts_are_preserved(tmp_path):
         archive.writestr("custom/unknown.xml", '<x xmlns="urn:custom">keep</x>')
     loaded = crabxl.load_workbook(source)
     loaded.active.title = "Renamed"
-    with pytest.raises(NotImplementedError, match="Local defined-name"):
-        loaded.move_sheet(loaded.active, offset=1)
+    # Sheet-local names follow their sheet when sheets move.
+    loaded.move_sheet(loaded.active, offset=1)
+    assert loaded.sheetnames == ["Other", "Renamed"]
+    loaded.move_sheet("Renamed", offset=-1)
     assert loaded.sheetnames == ["Renamed", "Other"]
     cell = loaded.active["A1"]
     with pytest.raises(NotImplementedError, match="feature graphs"):

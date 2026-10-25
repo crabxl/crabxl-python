@@ -29,6 +29,11 @@ class Worksheet:
         "_rich_views",
         "_assigned_rich_views",
         "_hyperlink_views",
+        "_feat",
+        "_names",
+        "_print_rows",
+        "_print_cols",
+        "_print_area",
         "__weakref__",
     )
 
@@ -49,9 +54,235 @@ class Worksheet:
         self._rich_views = WeakValueDictionary()
         self._assigned_rich_views = {}
         self._hyperlink_views = {}
+        self._feat = self._names = self._print_rows = self._print_cols = None
+        self._print_area = None
         self._row_dimensions = self._column_dimensions = None
         self._merged_cells = None
         self._validate_title(self._title)
+
+    # -- features (tables, filters, rules, validation, comments, names) ----
+
+    def _feature_handle(self):
+        # Features load without cells; do not store this lazy handle as the
+        # cell model handle, or cell reads would see an unloaded sheet.
+        if self._native is not None:
+            return self._native
+        return self.parent._editor.sheet_handle(self.title)
+
+    def _state(self):
+        if self.parent.write_only:
+            raise NotImplementedError(
+                "Features are not available on write-only worksheets"
+            )
+        state = self._feat
+        if state is None:
+            self.parent._check_open()
+            from .._features import SheetState
+
+            state = self._feat = SheetState(self)
+        return state
+
+    def _flush_features(self):
+        state = None if self.parent.write_only else self._feat
+        if state is not None and not self.parent.read_only:
+            state.push()
+
+    @property
+    def tables(self):
+        return self._state().get("tables")
+
+    def add_table(self, table):
+        """Check for a duplicate name in defined names and tables, then add."""
+        from .table import Table
+
+        if not isinstance(table, Table):
+            raise TypeError("Only Table objects can be added")
+        if self.parent._duplicate_name(table.name):
+            raise ValueError("Table with name {0} already exists".format(table.name))
+        self.tables.add(table)
+
+    @property
+    def auto_filter(self):
+        return self._state().get("auto_filter")
+
+    @auto_filter.setter
+    def auto_filter(self, value):
+        self._state().objs["auto_filter"] = value
+
+    @property
+    def conditional_formatting(self):
+        return self._state().get("conditional_formatting")
+
+    @conditional_formatting.setter
+    def conditional_formatting(self, value):
+        self._state().objs["conditional_formatting"] = value
+
+    @property
+    def data_validations(self):
+        return self._state().get("data_validations")
+
+    @data_validations.setter
+    def data_validations(self, value):
+        self._state().objs["data_validations"] = value
+
+    def add_data_validation(self, data_validation):
+        """Add a data-validation object to the sheet."""
+        self.data_validations.append(data_validation)
+
+    @property
+    def protection(self):
+        return self._state().get("protection")
+
+    @protection.setter
+    def protection(self, value):
+        self._state().objs["protection"] = value
+
+    @property
+    def HeaderFooter(self):
+        return self._state().get("header_footer")
+
+    @HeaderFooter.setter
+    def HeaderFooter(self, value):
+        self._state().objs["header_footer"] = value
+
+    def _comment_map(self):
+        return self._state().get("comments")
+
+    def _relocate_comments(self, transform):
+        state = self._feat
+        if state is None or "comments" not in state.objs:
+            return
+        moved = {}
+        for key, comment in state.objs["comments"].items():
+            target = transform(*key)
+            comment._parent = None
+            if target is not None:
+                moved[target] = comment
+        state.objs["comments"] = moved
+
+    def _local_names(self):
+        self.parent._names_state()
+        if self._names is None:
+            from ..workbook.defined_name import DefinedNameDict
+
+            self._names = DefinedNameDict()
+        return self._names
+
+    @property
+    def defined_names(self):
+        return self._local_names()
+
+    @defined_names.setter
+    def defined_names(self, value):
+        self.parent._names_state()
+        self._names = value
+
+    @property
+    def print_title_rows(self):
+        self.parent._names_state()
+        if self._print_rows:
+            return str(self._print_rows)
+
+    @print_title_rows.setter
+    def print_title_rows(self, rows):
+        from .print_settings import RowRange
+
+        self.parent._names_state()
+        if rows is not None:
+            self._print_rows = RowRange(rows)
+
+    @property
+    def print_title_cols(self):
+        self.parent._names_state()
+        if self._print_cols:
+            return str(self._print_cols)
+
+    @print_title_cols.setter
+    def print_title_cols(self, cols):
+        from .print_settings import ColRange
+
+        self.parent._names_state()
+        if cols is not None:
+            self._print_cols = ColRange(cols)
+
+    @property
+    def print_titles(self):
+        from .print_settings import PrintTitles
+
+        self.parent._names_state()
+        if not (self._print_rows or self._print_cols):
+            return None
+        return str(
+            PrintTitles(cols=self._print_cols, rows=self._print_rows, title=self.title)
+        )
+
+    @property
+    def print_area(self):
+        self.parent._names_state()
+        if self._print_area is None:
+            return None
+        self._print_area.title = self.title
+        return str(self._print_area)
+
+    @print_area.setter
+    def print_area(self, value):
+        from .print_settings import PrintArea
+
+        self.parent._names_state()
+        if not value:
+            self._print_area = None
+        elif isinstance(value, str):
+            self._print_area = PrintArea.from_string(value)
+        elif hasattr(value, "__iter__"):
+            self._print_area = PrintArea.from_string(",".join(value))
+
+    @property
+    def oddHeader(self):
+        return self.HeaderFooter.oddHeader
+
+    @oddHeader.setter
+    def oddHeader(self, value):
+        self.HeaderFooter.oddHeader = value
+
+    @property
+    def oddFooter(self):
+        return self.HeaderFooter.oddFooter
+
+    @oddFooter.setter
+    def oddFooter(self, value):
+        self.HeaderFooter.oddFooter = value
+
+    @property
+    def evenHeader(self):
+        return self.HeaderFooter.evenHeader
+
+    @evenHeader.setter
+    def evenHeader(self, value):
+        self.HeaderFooter.evenHeader = value
+
+    @property
+    def evenFooter(self):
+        return self.HeaderFooter.evenFooter
+
+    @evenFooter.setter
+    def evenFooter(self, value):
+        self.HeaderFooter.evenFooter = value
+
+    @property
+    def firstHeader(self):
+        return self.HeaderFooter.firstHeader
+
+    @firstHeader.setter
+    def firstHeader(self, value):
+        self.HeaderFooter.firstHeader = value
+
+    @property
+    def firstFooter(self):
+        return self.HeaderFooter.firstFooter
+
+    @firstFooter.setter
+    def firstFooter(self, value):
+        self.HeaderFooter.firstFooter = value
 
     @property
     def row_dimensions(self):
@@ -140,6 +371,7 @@ class Worksheet:
 
         self._relocate_rich_views(relocate)
         self._relocate_hyperlink_views(relocate)
+        self._relocate_comments(relocate)
         for key, cell, snapshot, hyperlink in aliases:
             cell._detached = snapshot
             cell._detached_hyperlink = hyperlink
@@ -474,6 +706,7 @@ class Worksheet:
 
         self._relocate_rich_views(relocate)
         self._relocate_hyperlink_views(relocate)
+        self._relocate_comments(relocate)
         self._cells.clear()
         for (row, col), cell in cached:
             coordinate = row if rows else col
@@ -532,6 +765,7 @@ class Worksheet:
 
         self._relocate_rich_views(relocate)
         self._relocate_hyperlink_views(relocate)
+        self._relocate_comments(relocate)
         if range_object is not None:
             range_object.shift(row_shift=rows, col_shift=cols)
         self._cells.clear()
