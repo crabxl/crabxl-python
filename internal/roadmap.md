@@ -12,16 +12,14 @@ Follow the canonical [Alpha.6 and later release plan](https://github.com/crabxl/
 - **A8:** measured read/write/edit and Python binding performance backlog.
 - **A9/A10:** published style assignment/temporal formats and complete cell appearance components.
 - **A11:** named styles/themes, row/column styles, merges/dimensions/outlines, hyperlinks and editable rich text.
-- **A12:** remaining M5 features and complete M5 acceptance.
-- **A13:** images, anchors, chart families/chartsheets and loaded drawing graph edits.
-- **A14:** pivots/cache records, external links, macro/template policies and complex metadata.
-- **A15:** complete M4/M6 feature integration and acceptance.
-- **A16:** full-feature performance/RAM work and M7 compatibility/platform/release quality.
+- **A12:** all remaining M5 features; images, anchors, all baseline chart families/chartsheets and loaded drawing graph edits; pivots/cache records, external links, macro/template policies and complex metadata; complete M4/M5/M6 integration and acceptance (W14–W26).
+- **A13:** full-feature performance/RAM work and M7 compatibility/platform/release quality (W27–W28).
 
-On 2026-10-07 the remaining work was consolidated into approximately six releases.
-The complete scope of the former A11–A28 targets is retained as work packages.
-Implement coherent feature groups before concentrating missing tests and fixes;
-retain the relevant acceptance gates before each publication.
+On 2026-11-01 former A12–A15 were combined into A12 and former A16 became
+A13. All work-package scope and acceptance gates are retained. Complete all
+combined A12 Rust and Python implementation before adding or running tests;
+then add missing high-value tests, run acceptance and fix failures together.
+Compilation and formatting checks are permitted during implementation.
 
 M4 acceptance is staged. A7 must reject affected unimplemented
 M5/M6 graphs before mutation and retain their dependency cases for later feature
