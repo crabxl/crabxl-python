@@ -171,7 +171,7 @@ class Serialisable(metaclass=MetaSerialisable):
 
     def __eq__(self, other):
         if not self.__class__ == other.__class__:
-            return False
+            return NotImplemented
         elif not dict(self) == dict(other):
             return False
         for el in self.__elements__:

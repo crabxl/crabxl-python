@@ -2,11 +2,36 @@
 
 import re
 
+from ..descriptors import Typed
+from ..xml.functions import Element
 from ._base import StyleValue
+
+aRGB_REGEX = re.compile(r"^([A-Fa-f0-9]{8}|[A-Fa-f0-9]{6})$")
+BLACK = "00000000"
+WHITE = "00FFFFFF"
+BLUE = "000000FF"
+RED = "00FF0000"
 
 
 class Color(StyleValue):
+    tagname = "color"
     _fields = ("type", "value", "tint")
+
+    def __setattr__(self, name, value):
+        if name == "value":
+            kind = getattr(self, "type", "rgb")
+            if kind == "rgb" and not isinstance(value, str):
+                raise TypeError("RGB color values must be strings")
+            if kind in ("theme", "indexed"):
+                value = int(value)
+            if kind == "auto":
+                value = value not in (False, 0, "0", "false", "f")
+        super().__setattr__(name, value)
+
+    def __add__(self, other):
+        if not isinstance(other, Color):
+            return NotImplemented
+        return self
 
     def __init__(
         self,
@@ -39,6 +64,10 @@ class Color(StyleValue):
         self.type, self.value, self.tint = type, value, float(tint)
 
     @property
+    def index(self):
+        return self.value
+
+    @property
     def rgb(self):
         return self.value if self.type == "rgb" else None
 
@@ -54,8 +83,43 @@ class Color(StyleValue):
     def auto(self):
         return self.value if self.type == "auto" else None
 
+    def __iter__(self):
+        value = self.value
+        yield self.type, str(int(value)) if isinstance(value, bool) else str(value)
+        if self.tint:
+            yield "tint", str(self.tint)
+
+    def to_tree(self, tagname=None, idx=None, namespace=None):
+        tag = tagname or self.tagname
+        return Element(f"{{{namespace}}}{tag}" if namespace else tag, dict(self))
+
+    @classmethod
+    def from_tree(cls, node):
+        values = dict(node.attrib)
+        for name in ("indexed", "theme"):
+            if name in values:
+                values[name] = int(values[name])
+        if "auto" in values:
+            values["auto"] = values["auto"] in ("1", "true")
+        return cls(**values)
+
+
+class ColorDescriptor(Typed):
+    expected_type = Color
+
+    def __set__(self, instance, value):
+        super().__set__(instance, color(value))
+
 
 def color(value):
     if value is None or isinstance(value, Color):
         return value
     return Color(rgb=value)
+
+
+def __getattr__(name):
+    if name in ("ColorList", "RgbColor", "COLOR_INDEX"):
+        from ._x import colors
+
+        return getattr(colors, name)
+    raise AttributeError(name)

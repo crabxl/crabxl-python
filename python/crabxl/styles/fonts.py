@@ -1,10 +1,20 @@
 """Font values with openpyxl-compatible aliases."""
 
 from ._base import StyleValue
+from .colors import Color
 from .colors import color as to_color
 
 
 class Font(StyleValue):
+    def __setattr__(self, name, value):
+        if name == "color":
+            value = to_color(value)
+        elif name in ("sz", "family") and value is not None:
+            value = float(value)
+        elif name == "charset" and value is not None:
+            value = int(value)
+        super().__setattr__(name, value)
+
     _component = "font"
     _children = ("color",)
     _fields = (
@@ -70,3 +80,8 @@ class Font(StyleValue):
         self.b = bool(self.b)
         self.i = bool(self.i)
         self.color = to_color(color)
+
+
+DEFAULT_FONT = Font(
+    name="Calibri", sz=11, family=2, color=Color(theme=1), scheme="minor"
+)

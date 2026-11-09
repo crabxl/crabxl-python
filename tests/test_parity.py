@@ -15,6 +15,390 @@ def engine(request):
     return request.param
 
 
+def test_alignment_xml_preserves_public_fields(engine):
+    from xml.etree.ElementTree import fromstring
+
+    cls = engine.styles.Alignment
+    values = dict(
+        horizontal="center",
+        vertical="top",
+        textRotation=45,
+        indent=2,
+        relativeIndent=1,
+        readingOrder=2,
+        wrapText=True,
+        shrinkToFit=False,
+        justifyLastLine=True,
+    )
+    expected = cls(**values)
+    parsed = cls.from_tree(
+        fromstring(
+            '<alignment horizontal="center" vertical="top" textRotation="45" '
+            'indent="2" relativeIndent="1" readingOrder="2" wrapText="1" '
+            'shrinkToFit="0" justifyLastLine="1"/>'
+        )
+    )
+    assert parsed == expected
+    assert cls.from_tree(parsed.to_tree()) == expected
+
+
+@pytest.mark.parametrize("edit", ["assign", "append"])
+def test_loaded_blank_workbook_accepts_temporal_values(tmp_path, engine, edit):
+    path = tmp_path / "empty.xlsx"
+    book = engine.Workbook()
+    book.save(path)
+    book.close()
+    book = engine.load_workbook(path)
+    values = [
+        date(2024, 2, 29),
+        datetime(2024, 2, 29, 12, 34, 56),
+        time(12, 34, 56),
+        timedelta(days=2, seconds=42),
+    ]
+    if edit == "append":
+        book.active.append(values)
+    else:
+        for column, value in enumerate(values, 1):
+            book.active.cell(1, column, value)
+    assert list(book.active.values) == [tuple(values)]
+    for index in range(2):
+        output = tmp_path / f"temporal-{index}.xlsx"
+        book.save(output)
+        check = openpyxl.load_workbook(output)
+        assert list(check.active.values) == [
+            (datetime(2024, 2, 29), values[1], values[2], values[3])
+        ]
+        assert all(cell.data_type == "d" for cell in check.active[1])
+        check.close()
+    book.close()
+
+
+@pytest.mark.parametrize("code", ["s", "str"])
+def test_append_explicit_rich_cell_keeps_live_value(tmp_path, engine, code):
+    from importlib import import_module
+
+    rich = import_module(f"{engine.__name__}.cell.rich_text").CellRichText
+    cell_type = import_module(f"{engine.__name__}.cell.cell").Cell
+    book = engine.Workbook()
+    text = rich(["before"])
+    cell = cell_type(book.active, value=text)
+    cell.data_type = code
+    book.active.append([cell])
+    assert book.active["A1"] is cell
+    assert cell.value is text
+    text.append("after")
+    assert str(cell.value) == "beforeafter"
+    assert cell.data_type == code
+    output = tmp_path / "rich.xlsx"
+    book.save(output)
+    check = openpyxl.load_workbook(output, rich_text=True)
+    assert str(check.active["A1"].value) == "beforeafter"
+    assert check.active["A1"].data_type == "s"
+    check.close()
+    book.close()
+
+
+@pytest.mark.parametrize("mode", ["new", "loaded", "write_only"])
+@pytest.mark.parametrize(
+    "original,kind,expected",
+    [
+        ("=SUM(1,2)", "s", "=SUM(1,2)"),
+        ("#N/A", "s", "#N/A"),
+        ("12.5", "n", 12.5),
+        ("0012", "n", 12),
+        ("1", "b", True),
+        (0, "b", False),
+        (2, "b", True),
+        (-1, "b", True),
+        ("12", "b", True),
+        (12, "str", "12"),
+        (True, "str", "1"),
+        ("#N/A", "f", "=N/A"),
+        (True, "n", 1),
+        ("SUM(A1)", "f", "=UM(A1)"),
+        ("=A1", "f", "=A1"),
+        ("12", "str", "12"),
+        ("#DIV/0!", "e", "#DIV/0!"),
+        (date(2024, 2, 29), "d", datetime(2024, 2, 29)),
+        (None, "s", None),
+        (None, "b", None),
+        (None, "f", None),
+        (None, "e", None),
+    ],
+)
+def test_explicit_cell_types_preserve_values_and_round_trip(
+    engine, tmp_path, mode, original, kind, expected
+):
+    from importlib import import_module
+
+    book = engine.Workbook(write_only=mode == "write_only")
+    sheet = book.create_sheet("Data")
+    if mode == "loaded":
+        source = tmp_path / "source.xlsx"
+        book.save(source)
+        book.close()
+        book = engine.load_workbook(source)
+        sheet = book["Data"]
+    if mode == "write_only":
+        cell = import_module(f"{engine.__name__}.cell.cell").WriteOnlyCell(
+            sheet, original
+        )
+    else:
+        cell = sheet["A1"]
+        cell.value = original
+    cell.data_type = kind
+    assert cell.data_type == kind
+    assert cell.value == original
+    if mode == "write_only":
+        sheet.append([cell])
+    else:
+        assert list(sheet.values) == [(original,)]
+    for index in range(1 if mode == "write_only" else 2):
+        output = tmp_path / f"output-{index}.xlsx"
+        book.save(output)
+        result = openpyxl.load_workbook(output)
+        try:
+            assert result["Data"]["A1"].value == expected
+            assert result["Data"]["A1"].data_type == (
+                "n" if expected is None else "s" if kind == "str" else kind
+            )
+        finally:
+            result.close()
+    book.close()
+
+
+@pytest.mark.parametrize("kind", ["n", "d", "s", "b", "f", "e"])
+def test_assigning_none_resets_explicit_cell_type(engine, kind):
+    book = engine.Workbook()
+    cell = book.active["A1"]
+    cell.data_type = kind
+    assert cell.data_type == kind
+    cell.value = None
+    assert cell.value is None
+    assert cell.data_type == "n"
+    book.close()
+
+
+@pytest.mark.parametrize("alternative_cells", [False, True])
+@pytest.mark.parametrize("nested", [False, True])
+@pytest.mark.parametrize("data_only", [False, True])
+@pytest.mark.parametrize("edit", [False, True])
+@pytest.mark.parametrize("materialize", [False, True])
+def test_cell_edits_preserve_unrelated_alternatives_and_reject_hidden_cells(
+    tmp_path, alternative_cells, nested, data_only, edit, materialize
+):
+    from xml.etree.ElementTree import canonicalize, fromstring, tostring
+
+    source = tmp_path / "source.xlsx"
+    output = tmp_path / "output.xlsx"
+    book = openpyxl.Workbook()
+    book.active["A1"] = "=1+1"
+    book.save(source)
+    book.close()
+    with zipfile.ZipFile(source) as archive:
+        parts = {name: archive.read(name) for name in archive.namelist()}
+    part = "xl/worksheets/sheet1.xml"
+    branch = (
+        b'<c r="B1"><f>2+2</f><v>4</v></c>'
+        if alternative_cells
+        else b'<x:opaque flag="keep"/>'
+    )
+    alternative = (
+        b'<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:x="urn:crabxl:test">'
+        b'<mc:Choice Requires="x">'
+        + branch
+        + b'</mc:Choice><mc:Fallback><x:opaque flag="fallback"/></mc:Fallback></mc:AlternateContent>'
+    )
+    inserted = b"<controls>" + alternative + b"</controls>" if nested else alternative
+    parts[part] = (
+        parts[part]
+        .replace(b"<v></v>", b"<v>2</v>")
+        .replace(b"</worksheet>", inserted + b"</worksheet>")
+    )
+    expected_alternative = fromstring(parts[part]).find(
+        ".//{http://schemas.openxmlformats.org/markup-compatibility/2006}AlternateContent"
+    )
+    with zipfile.ZipFile(source, "w") as archive:
+        for name, data in parts.items():
+            archive.writestr(name, data)
+    output.write_bytes(b"original output")
+    book = crabxl.load_workbook(source, data_only=data_only)
+    try:
+        assert book.active["A1"].value == (2 if data_only else "=1+1")
+        if materialize:
+            assert book.active["A1"].number_format == "General"
+        if edit:
+            book.active["A1"] = 3
+        if alternative_cells and (edit or data_only):
+            with pytest.raises(NotImplementedError, match="alternative cell data"):
+                book.save(output)
+            assert output.read_bytes() == b"original output"
+        else:
+            for _ in range(2):
+                book.save(output)
+                with zipfile.ZipFile(output) as archive:
+                    root = fromstring(archive.read(part))
+                    actual = root.find(
+                        ".//{http://schemas.openxmlformats.org/markup-compatibility/2006}AlternateContent"
+                    )
+                    assert canonicalize(
+                        tostring(actual), rewrite_prefixes=True
+                    ) == canonicalize(
+                        tostring(expected_alternative), rewrite_prefixes=True
+                    )
+                verified = openpyxl.load_workbook(output)
+                assert verified.active["A1"].value == (
+                    3 if edit else 2 if data_only else "=1+1"
+                )
+                assert verified.active["A1"].data_type == (
+                    "n" if edit or data_only else "f"
+                )
+                verified.close()
+    finally:
+        book.close()
+
+
+@pytest.mark.parametrize("read_only", [False, True])
+@pytest.mark.parametrize("stream", [False, True])
+def test_public_reader_module_loads_and_preserves_content(
+    engine, tmp_path, read_only, stream
+):
+    from importlib import import_module
+    from io import BytesIO
+
+    loader = import_module(f"{engine.__name__}.reader.excel").load_workbook
+    assert loader is engine.load_workbook
+    source = tmp_path / "source.xlsx"
+    original = openpyxl.Workbook()
+    original.active.append(["區域", "數量", "公式"])
+    original.active.append(["北區", 12, "=B2*2"])
+    original.active["B2"].number_format = "0.00"
+    original.save(source)
+    original.close()
+    data = BytesIO(source.read_bytes()) if stream else source
+    book = loader(data, read_only=read_only)
+    assert list(book.active.values) == [
+        ("區域", "數量", "公式"),
+        ("北區", 12, "=B2*2"),
+    ]
+    assert book.active["B2"].number_format == "0.00"
+    if not read_only:
+        result = tmp_path / "result.xlsx"
+        book.save(result)
+        check = openpyxl.load_workbook(result)
+        assert list(check.active.values) == list(book.active.values)
+        assert check.active["B2"].number_format == "0.00"
+        check.close()
+    book.close()
+    if stream:
+        assert not data.closed
+
+
+def test_public_coordinate_utility_exports(engine):
+    from importlib import import_module
+
+    utilities = import_module(f"{engine.__name__}.utils")
+    cells = import_module(f"{engine.__name__}.utils.cell")
+    for index in range(1, 18279):
+        name = utilities.get_column_letter(index)
+        assert name == cells.get_column_letter(index)
+        assert utilities.column_index_from_string(name.lower()) == index
+    assert utilities.get_column_letter(18278) == "ZZZ"
+    assert utilities.coordinate_to_tuple("ZZZ7") == (7, 18278)
+    assert utilities.range_boundaries("ZZA2:ZZZ7") == (18253, 2, 18278, 7)
+    for index in (0, -1, 18279):
+        with pytest.raises(ValueError):
+            utilities.get_column_letter(index)
+    for name in ("", "AAAA", "A1", "é"):
+        with pytest.raises(ValueError):
+            utilities.column_index_from_string(name)
+
+
+def test_public_style_xml_values_can_be_applied_and_saved(engine, tmp_path):
+    from xml.etree.ElementTree import fromstring
+
+    font = engine.styles.Font.from_tree(
+        fromstring(
+            '<font><name val="Calibri"/><family val="2"/><color theme="1"/><b/></font>'
+        )
+    )
+    fill_module = __import__(
+        engine.__name__ + ".styles.fills", fromlist=["Fill", "Stop"]
+    )
+    fill = fill_module.Fill.from_tree(
+        fromstring(
+            '<fill><gradientFill><stop position="0"><color rgb="FFFF0000"/></stop>'
+            '<stop position="1"><color rgb="FF0000FF"/></stop></gradientFill></fill>'
+        )
+    )
+    assert font.family == 2
+    assert font.bold
+    assert fill.stop[0].color.rgb == "FFFF0000"
+    assert engine.styles.Font.from_tree(font.to_tree()) == font
+    with pytest.raises(ValueError):
+        fill_module.Stop("FF0000", -0.1)
+    book = engine.Workbook()
+    try:
+        book.active["A1"] = "styled"
+        book.active["A1"].font = font
+        book.active["A1"].fill = fill
+        target = tmp_path / "style-xml.xlsx"
+        book.save(target)
+    finally:
+        book.close()
+    verified = openpyxl.load_workbook(target)
+    try:
+        cell = verified.active["A1"]
+        assert cell.font.bold
+        assert cell.font.color.theme == 1
+        assert cell.fill.stop[0].color.rgb == "FFFF0000"
+    finally:
+        verified.close()
+
+
+@pytest.mark.parametrize("loaded", [False, True])
+def test_cell_offsets_and_workbook_string_encoding(engine, tmp_path, loaded):
+    source = tmp_path / "encoding.xlsx"
+    seed = openpyxl.Workbook()
+    seed.save(source)
+    seed.close()
+    book = engine.load_workbook(source) if loaded else engine.Workbook()
+    try:
+        book.encoding = "latin1"
+        sheet = book.active
+        sheet["A1"] = "Price £".encode("latin1")
+        sheet.append({"B": "Total £".encode("latin1")})
+        assert sheet["A1"].offset(2, 1).coordinate == "B3"
+        assert sheet["A1"].value == "Price £"
+        assert sheet["B2"].value == "Total £"
+        assert repr(sheet["A1"]) == "<Cell 'Sheet'.A1>"
+        target = tmp_path / "encoded.xlsx"
+        book.save(target)
+    finally:
+        book.close()
+    result = openpyxl.load_workbook(target)
+    try:
+        assert result.active["A1"].value == "Price £"
+        assert result.active["B2"].value == "Total £"
+    finally:
+        result.close()
+
+
+def test_default_font_isolation_and_color_assignment(engine):
+    from copy import copy
+
+    first, second = engine.Workbook(), engine.Workbook()
+    try:
+        font = copy(first.active["A1"].font)
+        font.color = "FF0000"
+        first.active["A1"].font = font
+        assert first.active["A1"].font.color.rgb == "00FF0000"
+        assert second.active["A1"].font.color.index == 1
+    finally:
+        first.close()
+        second.close()
+
+
 def test_sheet_visibility_and_deferred_active_views(engine, tmp_path):
     cases = {
         2: [(-3, 0, 0), (-1, 0, 0), (1, 1, 0), (10, 10, 0)],
@@ -452,15 +836,10 @@ def test_loaded_style_image_comment_and_unknown_parts_are_preserved(tmp_path):
     loaded.move_sheet("Renamed", offset=-1)
     assert loaded.sheetnames == ["Renamed", "Other"]
     cell = loaded.active["A1"]
-    with pytest.raises(NotImplementedError, match="feature graphs"):
-        loaded.active.insert_rows(1)
-    with pytest.raises(NotImplementedError, match="feature graphs"):
-        loaded.active.move_range("A1", rows=1)
-    with pytest.raises(NotImplementedError):
-        del loaded.active["A1"]
+    loaded.active.insert_rows(1)
+    assert loaded.active["A2"] is cell
+    loaded.active.move_range("A2", rows=-1)
     assert loaded.active["A1"] is cell
-    with pytest.raises(NotImplementedError):
-        loaded.remove(loaded.active)
     assert loaded.sheetnames == ["Renamed", "Other"]
     assert cell.coordinate == "A1" and cell.value == 1
     loaded.active["A1"] = 9
@@ -492,8 +871,8 @@ def test_adapter_limits_exact_integers_closed_sources_and_unsupported_operations
     assert sheet["A1"].value == 10**100
     with pytest.raises(TypeError):
         sheet["A1"].font = object()
-    with pytest.raises(AttributeError):
-        sheet.freeze_panes = "A1"
+    sheet.freeze_panes = "A1"
+    assert sheet.freeze_panes is None
     streaming = crabxl.Workbook(write_only=True)
     with pytest.raises(NotImplementedError):
         streaming.create_sheet().cell(1, 1)
@@ -607,6 +986,7 @@ def test_formula_move_translation_and_failure_atomicity(engine):
     live.get_tokens()[0].value = "B2"
     assert live.translate_formula("B2") == "=C3+2"
     for value, subtype in [
+        ("", "RANGE"),
         ("1", "NUMBER"),
         ("NaN", "NUMBER"),
         ("true", "RANGE"),
@@ -1379,3 +1759,493 @@ def test_replacing_temporal_value_retains_format_across_repeated_save(engine, tm
         assert original.active.cell(row, 1).number_format == code, cases[row - 1]
     original.close()
     book.close()
+
+
+def test_append_detached_cell_preserves_identity_value_and_style():
+    import crabxl
+    from crabxl.cell import Cell
+    from crabxl.styles import Font
+
+    book = crabxl.Workbook()
+    try:
+        cell = Cell(None, 1, 1, 25)
+        cell.font = Font(bold=True)
+        cell.number_format = "0.00"
+        book.active.append([])
+        book.active.append([cell])
+        assert book.active["A2"] is cell
+        assert cell.value == 25
+        assert cell.font.bold
+        assert cell.number_format == "0.00"
+        other = book.create_sheet()
+        with pytest.raises(ValueError):
+            other.append([cell])
+        assert other["A1"].value is None
+    finally:
+        book.close()
+
+
+@pytest.mark.parametrize("mode", ["normal", "loaded", "write_only"])
+def test_named_style_binding_metadata_and_saved_snapshots(engine, tmp_path, mode):
+    book = engine.Workbook(write_only=mode == "write_only")
+    if mode == "loaded":
+        source = tmp_path / "named-source.xlsx"
+        book.save(source)
+        book.close()
+        book = engine.load_workbook(source)
+    sheet = book.create_sheet("Styled") if mode == "write_only" else book.active
+    style = engine.styles.NamedStyle(
+        name="AuditStyle",
+        font=engine.styles.Font(name="Arial", color="FF336699"),
+        alignment=engine.styles.Alignment(horizontal="center"),
+        number_format="0.0000",
+    )
+    style.bind(book)
+    assert style._wb is book
+    assert "AuditStyle" not in book.named_styles
+    assert style.as_xf().alignment == style.alignment
+    assert style.as_name().name == "AuditStyle"
+    book.add_named_style(style)
+    assert style.as_name().xfId == book.named_styles.index("AuditStyle")
+
+    def append(value):
+        if mode == "write_only":
+            from importlib import import_module
+            cell = import_module(engine.__name__ + ".cell").WriteOnlyCell(sheet, value)
+            cell.style = style
+            sheet.append([cell])
+        else:
+            cell = sheet.cell(row=sheet.max_row + 1, column=1, value=value)
+            cell.style = style
+
+    append(1.25)
+    style.font = engine.styles.Font(name="Courier New", bold=True)
+    style.number_format = "0.00"
+    append(2.5)
+    output = tmp_path / "named-output.xlsx"
+    book.save(output)
+    book.close()
+    result = openpyxl.load_workbook(output)
+    try:
+        cells = [cell for row in result["Styled" if mode == "write_only" else sheet.title] for cell in row if cell.value is not None]
+        assert [cell.value for cell in cells] == [1.25, 2.5]
+        assert [cell.font.name for cell in cells] == ["Arial", "Courier New"]
+        assert [cell.number_format for cell in cells] == ["0.0000", "0.00"]
+        assert all(cell.alignment.horizontal == "center" for cell in cells)
+    finally:
+        result.close()
+
+
+@pytest.mark.parametrize("mode", ["normal", "loaded", "write_only"])
+def test_all_builtin_named_styles_save_with_reference_appearance(engine, tmp_path, mode):
+    from importlib import import_module
+
+    from openpyxl.styles.builtins import styles as reference_styles
+
+    book = engine.Workbook(write_only=mode == "write_only")
+    if mode == "loaded":
+        source = tmp_path / "builtin-source.xlsx"
+        book.save(source)
+        book.close()
+        book = engine.load_workbook(source)
+    sheet = book.create_sheet("Builtins") if mode == "write_only" else book.active
+    title = sheet.title
+    names = [name for name in reference_styles if name != "Normal"]
+    for row, name in enumerate(names, 1):
+        if mode == "write_only":
+            cell = import_module(engine.__name__ + ".cell").WriteOnlyCell(sheet, name)
+            cell.style = name
+            sheet.append([cell])
+        else:
+            cell = sheet.cell(row=row, column=1, value=name)
+            cell.style = name
+    output = tmp_path / "builtin-output.xlsx"
+    book.save(output)
+    book.close()
+    result = openpyxl.load_workbook(output)
+    try:
+        for row, name in enumerate(names, 1):
+            cell = result[title].cell(row=row, column=1)
+            expected = reference_styles[name]
+            assert cell.value == name
+            for component in ("font", "fill", "border", "alignment", "protection", "number_format"):
+                assert getattr(cell, component) == getattr(expected, component), (name, component)
+    finally:
+        result.close()
+
+
+@pytest.mark.parametrize("copy_kind", ["copy", "deepcopy"])
+def test_named_style_copy_keeps_original_registration_and_format(tmp_path, copy_kind):
+    import copy
+
+    book = crabxl.Workbook()
+    style = crabxl.styles.NamedStyle(name="Original", number_format="0.0000")
+    book.add_named_style(style)
+    clone = getattr(copy, copy_kind)(book._named_styles["Original"])
+    clone.name = "Cloned"
+    clone.font = crabxl.styles.Font(bold=True)
+    assert book.named_styles == ["Normal", "Original"]
+    assert clone.number_format == "0.0000"
+    assert clone._wb is None
+    book.add_named_style(clone)
+    book.active["A1"] = 1.25
+    book.active["A1"].style = "Original"
+    book.active["B1"] = 2.5
+    book.active["B1"].style = "Cloned"
+    output = tmp_path / "copied-named-style.xlsx"
+    book.save(output)
+    book.close()
+    result = openpyxl.load_workbook(output)
+    try:
+        assert result.active["A1"].style == "Original"
+        assert result.active["B1"].style == "Cloned"
+        assert result.active["A1"].font.bold is False
+        assert result.active["B1"].font.bold is True
+        assert result.active["A1"].number_format == result.active["B1"].number_format == "0.0000"
+    finally:
+        result.close()
+
+
+@pytest.mark.parametrize("mode", ["normal", "loaded", "write_only"])
+@pytest.mark.parametrize("template", [False, True])
+def test_calculation_properties_persist_and_can_be_removed(engine, tmp_path, mode, template):
+    from importlib import import_module
+
+    cls = import_module(engine.__name__ + ".workbook.properties").CalcProperties
+    book = engine.Workbook(write_only=mode == "write_only")
+    if mode == "write_only":
+        book.create_sheet("Data").append([5])
+    else:
+        book.active.append([5])
+    if mode == "loaded":
+        source = tmp_path / "calc-source.xlsx"
+        book.save(source)
+        book.close()
+        book = engine.load_workbook(source)
+    assert book.calculation.calcId == 124519
+    expected = cls(calcId=42, calcMode="manual", fullCalcOnLoad=False, refMode="R1C1",
+                   iterate=True, iterateCount=211, iterateDelta=0.0001,
+                   fullPrecision=False, calcCompleted=True, calcOnSave=False,
+                   concurrentCalc=False, concurrentManualCount=3, forceFullCalc=False)
+    book.calculation = expected
+    book.template = template
+    output = tmp_path / ("calc-output.xltx" if template else "calc-output.xlsx")
+    book.save(output)
+    book.close()
+    for readonly in (False, True):
+        result = engine.load_workbook(output, read_only=readonly)
+        try:
+            assert dict(result.calculation) == dict(expected)
+            assert result.template is template
+        finally:
+            result.close()
+    result = engine.load_workbook(output)
+    result.calculation = None
+    removed = tmp_path / ("calc-removed.xltx" if template else "calc-removed.xlsx")
+    result.save(removed)
+    result.close()
+    checked = engine.load_workbook(removed)
+    try:
+        assert checked.calculation is None
+    finally:
+        checked.close()
+
+
+def test_loaded_calculation_retains_opaque_attributes_on_repeated_metadata_saves(tmp_path):
+    from xml.etree import ElementTree as ET
+
+    source = tmp_path / "calc-opaque-source.xlsx"
+    book = openpyxl.Workbook()
+    book.save(source)
+    book.close()
+    main = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    mc = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+    vendor = "urn:crabxl:calculation-test"
+    original = source.read_bytes()
+    from io import BytesIO
+
+    with zipfile.ZipFile(BytesIO(original)) as incoming, zipfile.ZipFile(source, "w") as outgoing:
+        for name in incoming.namelist():
+            data = incoming.read(name)
+            if name == "xl/workbook.xml":
+                root = ET.fromstring(data)
+                calc = root.find(f"{{{main}}}calcPr")
+                calc.set("xmlns:proof", vendor)
+                calc.set("proof:marker", "retain")
+                calc.set(f"{{{mc}}}Ignorable", "proof")
+                data = ET.tostring(root)
+            outgoing.writestr(name, data)
+    native = crabxl.load_workbook(source)
+    native.calculation.calcMode = "manual"
+    native.calculation.fullCalcOnLoad = False
+    native.properties.title = "Calculation metadata"
+    try:
+        for count in (211, 212):
+            native.calculation.iterateCount = count
+            output = tmp_path / f"calc-opaque-{count}.xlsx"
+            native.save(output)
+            with zipfile.ZipFile(output) as archive:
+                root = ET.fromstring(archive.read("xl/workbook.xml"))
+                calculations = root.findall(f"{{{main}}}calcPr")
+                assert len(calculations) == 1
+                assert calculations[0].get(f"{{{vendor}}}marker") == "retain"
+                assert calculations[0].get(f"{{{mc}}}Ignorable") == "proof"
+                from crabxl.xml._preserve import (
+                    inherit_namespace_context,
+                    preserving_fromstring,
+                )
+
+                document = preserving_fromstring(archive.read("xl/workbook.xml"))
+                calc = document.find(f"{{{main}}}calcPr")
+                inherit_namespace_context(calc, document)
+                assert calc._ns_bindings["proof"] == vendor
+            result = openpyxl.load_workbook(output)
+            try:
+                assert result.calculation.calcMode == "manual"
+                assert result.calculation.fullCalcOnLoad is False
+                assert result.calculation.iterateCount == count
+                assert result.properties.title == "Calculation metadata"
+            finally:
+                result.close()
+    finally:
+        native.close()
+
+
+@pytest.mark.parametrize("mode", ["normal", "loaded", "write_only"])
+@pytest.mark.parametrize("empty", [False, True])
+def test_workbook_views_persist_all_fields_and_active_selection(engine, tmp_path, mode, empty):
+    from importlib import import_module
+
+    cls = import_module(engine.__name__ + ".workbook.views").BookView
+    book = engine.Workbook(write_only=mode == "write_only")
+    if mode == "write_only":
+        book.create_sheet("One")
+    else:
+        book.active.title = "One"
+    book.create_sheet("Two")
+    book.create_sheet("Three")
+    if mode == "loaded":
+        source = tmp_path / "views-source.xlsx"
+        book.save(source)
+        book.close()
+        book = engine.load_workbook(source)
+    book.active = 1
+    book.views = [] if empty else [
+        cls(visibility="visible", minimized=True, showHorizontalScroll=False,
+            showVerticalScroll=False, showSheetTabs=False, xWindow=10, yWindow=20,
+            windowWidth=14900, windowHeight=7800, tabRatio=880, firstSheet=1,
+            activeTab=2, autoFilterDateGrouping=False),
+        cls(visibility="hidden", minimized=False, showHorizontalScroll=True,
+            showVerticalScroll=False, showSheetTabs=True, xWindow=100, yWindow=200,
+            windowWidth=11000, windowHeight=5000, tabRatio=300, firstSheet=0,
+            activeTab=2, autoFilterDateGrouping=False),
+    ]
+    output = tmp_path / "views-output.xlsx"
+    book.save(output)
+    expected = [dict(view) for view in book.views]
+    if not empty:
+        assert book.views[0].activeTab == 1
+        assert book.views[1].activeTab == 2
+    book.close()
+    for readonly in (False, True):
+        result = engine.load_workbook(output, read_only=readonly)
+        try:
+            assert [dict(view) for view in result.views] == expected
+            assert result.active.title == ("One" if empty else "Two")
+        finally:
+            result.close()
+    result = engine.load_workbook(output)
+    if not empty:
+        result.views[0].activeTab = 2
+        result.views[1].windowWidth = 17000
+    result.properties.title = "View edit"
+    second = tmp_path / "views-second.xlsx"
+    result.save(second)
+    result.close()
+    check = engine.load_workbook(second)
+    try:
+        if not empty:
+            assert check.views[0].activeTab == 1
+            assert check.views[1].windowWidth == 17000
+        else:
+            assert check.views == []
+    finally:
+        check.close()
+
+
+def test_reordered_workbook_views_keep_their_own_opaque_namespace_metadata(tmp_path):
+    from io import BytesIO
+    from xml.etree import ElementTree as ET
+
+    from crabxl.xml._preserve import inherit_namespace_context, preserving_fromstring
+
+    source = tmp_path / "opaque-views-source.xlsx"
+    book = openpyxl.Workbook()
+    book.create_sheet("Second")
+    book.views = [type(book.views[0])(windowWidth=10000), type(book.views[0])(windowWidth=20000)]
+    book.save(source)
+    book.close()
+    main = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    mc = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+    vendor = "urn:crabxl:workbook-view-test"
+    original = source.read_bytes()
+    with zipfile.ZipFile(BytesIO(original)) as incoming, zipfile.ZipFile(source, "w") as outgoing:
+        for name in incoming.namelist():
+            data = incoming.read(name)
+            if name == "xl/workbook.xml":
+                root = ET.fromstring(data)
+                for view, marker in zip(root.find(f"{{{main}}}bookViews"), ("first", "second")):
+                    view.set("xmlns:proof", vendor)
+                    view.set("proof:marker", marker)
+                    view.set(f"{{{mc}}}Ignorable", "proof")
+                data = ET.tostring(root)
+            outgoing.writestr(name, data)
+    native = crabxl.load_workbook(source)
+    native.views.reverse()
+    native.views[0].windowWidth = 21000
+    native.views[1].windowWidth = 11000
+    try:
+        for phase in range(2):
+            output = tmp_path / f"opaque-views-{phase}.xlsx"
+            native.save(output)
+            with zipfile.ZipFile(output) as archive:
+                root = preserving_fromstring(archive.read("xl/workbook.xml"))
+            views = root.find(f"{{{main}}}bookViews")
+            inherit_namespace_context(views, root)
+            assert [view.get(f"{{{vendor}}}marker") for view in views] == ["second", "first"]
+            for view in views:
+                inherit_namespace_context(view, views)
+                assert view._ns_bindings["proof"] == vendor
+            result = openpyxl.load_workbook(output)
+            try:
+                assert [view.windowWidth for view in result.views] == [21000, 11000]
+            finally:
+                result.close()
+    finally:
+        native.close()
+
+
+@pytest.mark.parametrize("mode", ["normal", "loaded", "write_only"])
+@pytest.mark.parametrize("mac_epoch", [False, True])
+def test_workbook_code_name_keeps_date_epoch_and_can_be_cleared(engine, tmp_path, mode, mac_epoch):
+    from datetime import datetime
+    from importlib import import_module
+
+    dates = import_module(engine.__name__ + ".utils.datetime")
+    epoch = dates.CALENDAR_MAC_1904 if mac_epoch else dates.CALENDAR_WINDOWS_1900
+    book = engine.Workbook(write_only=mode == "write_only")
+    book.epoch = epoch
+    sheet = book.create_sheet("Data") if mode == "write_only" else book.active
+    sheet.append([datetime(2025, 3, 5, 12, 30)])
+    if mode == "loaded":
+        source = tmp_path / "codename-source.xlsx"
+        book.save(source)
+        book.close()
+        book = engine.load_workbook(source)
+    assert book.code_name is None
+    book.code_name = "ThisWorkbook_Alpha"
+    output = tmp_path / "codename-output.xlsx"
+    book.save(output)
+    book.close()
+    for readonly in (False, True):
+        result = engine.load_workbook(output, read_only=readonly)
+        try:
+            assert result.code_name == "ThisWorkbook_Alpha"
+            assert result.epoch == epoch
+            assert result.active.cell(1, 1).value == datetime(2025, 3, 5, 12, 30)
+        finally:
+            result.close()
+    result = engine.load_workbook(output)
+    result.code_name = None
+    cleared = tmp_path / "codename-cleared.xlsx"
+    result.save(cleared)
+    result.close()
+    checked = engine.load_workbook(cleared)
+    try:
+        assert checked.code_name is None
+        assert checked.epoch == epoch
+        assert checked.active.cell(1, 1).value == datetime(2025, 3, 5, 12, 30)
+    finally:
+        checked.close()
+
+
+def test_empty_write_only_workbook_keeps_workbook_metadata(engine, tmp_path):
+    book = engine.Workbook(write_only=True)
+    book.code_name = "ThisWorkbook_Empty"
+    book.calculation.calcMode = "manual"
+    book.views[0].showSheetTabs = False
+    output = tmp_path / "empty-workbook-metadata.xlsx"
+    book.save(output)
+    book.close()
+    checked = engine.load_workbook(output)
+    try:
+        assert checked.sheetnames == ["Sheet"]
+        assert checked.code_name == "ThisWorkbook_Empty"
+        assert checked.calculation.calcMode == "manual"
+        assert checked.views[0].showSheetTabs is False
+    finally:
+        checked.close()
+
+
+def test_code_name_edits_keep_opaque_workbook_properties_and_mac_epoch(tmp_path):
+    from datetime import datetime
+    from io import BytesIO
+    from xml.etree import ElementTree as ET
+
+    from crabxl.xml._preserve import inherit_namespace_context, preserving_fromstring
+
+    source = tmp_path / "opaque-workbook-properties.xlsx"
+    book = openpyxl.Workbook()
+    book.epoch = datetime(1904, 1, 1)
+    book.code_name = "SourceBook"
+    book.active["A1"] = datetime(2025, 3, 5, 12, 30)
+    book.save(source)
+    book.close()
+    main = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    mc = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+    vendor = "urn:crabxl:workbook-properties-test"
+    original = source.read_bytes()
+    with zipfile.ZipFile(BytesIO(original)) as incoming, zipfile.ZipFile(source, "w") as outgoing:
+        for name in incoming.namelist():
+            data = incoming.read(name)
+            if name == "xl/workbook.xml":
+                root = ET.fromstring(data)
+                props = root.find(f"{{{main}}}workbookPr")
+                props.set("filterPrivacy", "1")
+                props.set("saveExternalLinkValues", "0")
+                props.set("xmlns:proof", vendor)
+                props.set("proof:marker", "retain")
+                props.set(f"{{{mc}}}Ignorable", "proof")
+                data = ET.tostring(root)
+            outgoing.writestr(name, data)
+    native = crabxl.load_workbook(source)
+    assert native.code_name == "SourceBook"
+    native.properties.title = "Property edit"
+    native.views[0].showSheetTabs = False
+    try:
+        for phase, code_name in enumerate(("ChangedBook", None)):
+            native.code_name = code_name
+            output = tmp_path / f"opaque-workbook-properties-{phase}.xlsx"
+            native.save(output)
+            with zipfile.ZipFile(output) as archive:
+                root = preserving_fromstring(archive.read("xl/workbook.xml"))
+            properties = root.findall(f"{{{main}}}workbookPr")
+            assert len(properties) == 1
+            props = properties[0]
+            inherit_namespace_context(props, root)
+            assert props.get("codeName") == code_name
+            assert props.get("date1904") == "1"
+            assert props.get("filterPrivacy") == "1"
+            assert props.get("saveExternalLinkValues") == "0"
+            assert props.get(f"{{{vendor}}}marker") == "retain"
+            assert props._ns_bindings["proof"] == vendor
+            checked = openpyxl.load_workbook(output)
+            try:
+                assert checked.code_name == code_name
+                assert checked.epoch == datetime(1904, 1, 1)
+                assert checked.active["A1"].value == datetime(2025, 3, 5, 12, 30)
+                assert checked.views[0].showSheetTabs is False
+            finally:
+                checked.close()
+    finally:
+        native.close()

@@ -8,6 +8,81 @@ import openpyxl
 import pytest
 
 
+def test_style_representations_are_stable_and_match_reference():
+    results = []
+    for engine in (openpyxl, crabxl):
+        styles = engine.styles
+        inline = importlib.import_module(engine.__name__ + ".cell.text").InlineFont
+        values = [
+            styles.Font(),
+            styles.Font(b=True, color="123456"),
+            styles.Color(theme=1),
+            styles.PatternFill("solid", fgColor="123456"),
+            styles.Border(left=styles.Side(style="thin")),
+            styles.Alignment(horizontal="center"),
+            styles.Protection(),
+            inline(b=True, color="123456"),
+        ]
+        results.append(
+            [repr(value).replace(engine.__name__, "backend") for value in values]
+        )
+    assert results[0] == results[1]
+
+
+@pytest.mark.parametrize("engine", [openpyxl, crabxl])
+def test_rich_default_font_flags_match_reference_xml(engine, tmp_path):
+    from xml.etree.ElementTree import fromstring
+
+    rich = importlib.import_module(engine.__name__ + ".cell.rich_text")
+    inline = importlib.import_module(engine.__name__ + ".cell.text").InlineFont
+    book = engine.Workbook()
+    book.active["A1"] = rich.CellRichText(
+        [rich.TextBlock(inline(color="FF0000"), "inherit")]
+    )
+    book.active["A1"].font = engine.styles.Font(b=True, i=True)
+    path = tmp_path / "inherited-rich-font.xlsx"
+    book.save(path)
+    book.close()
+    with zipfile.ZipFile(path) as archive:
+        root = fromstring(archive.read("xl/worksheets/sheet1.xml"))
+    ns = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+    properties = root.find(f".//{ns}rPr")
+    assert properties is not None
+    assert properties.find(f"{ns}b") is properties.find(f"{ns}i") is None
+
+
+@pytest.mark.parametrize("rich", [False, True])
+def test_shared_string_xml_projection_matches_reference(rich):
+    from io import BytesIO
+
+    xml = b"""<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><si><t>plain_x005F_x0041_</t></si><si><r><rPr><b/></rPr><t>_x005F_x0041_</t></r><r><t> tail</t></r></si><si/><si><r><t>_x005F</t></r><r><t>_x0041_</t></r></si></sst>"""
+    results = []
+    for engine in (openpyxl, crabxl):
+        module = importlib.import_module(engine.__name__ + ".reader.strings")
+        stream = BytesIO(xml)
+        value = (module.read_rich_text if rich else module.read_string_table)(stream)
+        assert not stream.closed
+        assert len(value) == 4 and value[2] == ""
+        results.append(repr(value).replace(engine.__name__, "backend"))
+    assert results[0] == results[1]
+
+
+@pytest.mark.parametrize("engine", [openpyxl, crabxl])
+def test_rich_element_validation_and_decimal_values(engine):
+    from decimal import Decimal
+
+    module = importlib.import_module(engine.__name__ + ".cell.rich_text")
+    text = module.CellRichText(["price", Decimal("2.50")])
+    assert text.as_list() == ["price", "2.50"]
+    assert module.CellRichText._check_element(Decimal("2.50")) is None
+    assert module.CellRichText._check_rich_text(text) is None
+    with pytest.raises(TypeError, match="Illegal CellRichText element"):
+        module.CellRichText._check_element(None)
+    with pytest.raises(TypeError):
+        text.append(None)
+    assert text.as_list() == ["price", "2.50"]
+
+
 @pytest.mark.parametrize("engine", [openpyxl, crabxl])
 def test_rich_runs_live_mutation_loading_and_repeat_output(
     engine, tmp_path, shared_strings_source

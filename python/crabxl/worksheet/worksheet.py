@@ -1,3 +1,5 @@
+# Pane descriptor layout adapted from openpyxl, Copyright (c) 2010-2024 openpyxl.
+# MIT license in third_party/licenses/openpyxl-MIT.txt.
 """Worksheet compatibility facade over canonical native handles."""
 
 import re
@@ -29,6 +31,18 @@ class Worksheet:
         "_rich_views",
         "_assigned_rich_views",
         "_hyperlink_views",
+        "_images",
+        "_image_state",
+        "_charts",
+        "_chart_state",
+        "_pivot_state",
+        "_new_pivots",
+        "_pivot_creation_state",
+        "_views",
+        "_views_previous",
+        "_printing",
+        "_printing_previous",
+        "_chartsheet_state",
         "_feat",
         "_names",
         "_print_rows",
@@ -38,6 +52,10 @@ class Worksheet:
     )
 
     def __init__(self, parent, title=None, *, _existing=False, _native=None):
+        self._printing = None
+        self._printing_previous = None
+        self._views = None
+        self._views_previous = None
         self.parent = parent
         self._title = (
             (title or "Sheet") if _existing else parent._unique_title(title or "Sheet")
@@ -50,10 +68,19 @@ class Worksheet:
             if _existing
             else NativeSheet(self._title, parent._max_bytes)
         )
-        self._cells = WeakValueDictionary()
+        from ._cell_cache import CellCache
+
+        self._cells = CellCache(self)
         self._rich_views = WeakValueDictionary()
         self._assigned_rich_views = {}
         self._hyperlink_views = {}
+        self._images = []
+        self._image_state = (None, ())
+        self._charts = []
+        self._chart_state = (None, ())
+        self._pivot_state = None
+        self._new_pivots = []
+        self._pivot_creation_state = (None, ())
         self._feat = self._names = self._print_rows = self._print_cols = None
         self._print_area = None
         self._row_dimensions = self._column_dimensions = None
@@ -83,9 +110,157 @@ class Worksheet:
         return state
 
     def _flush_features(self):
+        if self._printing is not None:
+            current = self._printing_xml()
+            if current != self._printing_previous:
+                self._model().set_printing_xml(current)
+                self._printing_previous = current
+
+        if self._views is not None:
+            from ..xml.functions import tostring
+
+            current = tostring(self._views.to_tree())
+            if current != self._views_previous:
+                self._model().set_views_xml(current)
+                self._views_previous = current
+
         state = None if self.parent.write_only else self._feat
         if state is not None and not self.parent.read_only:
             state.push()
+        if self._pivot_state is not None:
+            self._pivot_state.push(self)
+        if self._new_pivots or self._pivot_creation_state[1]:
+            from .._native import sheet_pivots_write
+
+            base, previous = self._pivot_creation_state
+            sources = self._pivot_cache_sources()
+            current = self._pivot_inputs()
+            if current != previous:
+                base = sheet_pivots_write(
+                    self._feature_handle(), base, current, sources
+                )
+                self._pivot_creation_state = (base, current)
+        if self._images or self._image_state[1]:
+            from .._native import sheet_images_write
+
+            base, previous = self._image_state
+            current = tuple(image._native_input() for image in self._images)
+            if current != previous:
+                base = sheet_images_write(self._feature_handle(), base, current)
+                self._image_state = (base, current)
+        if self._charts or self._chart_state[1]:
+            from .._native import sheet_charts_write
+
+            base, previous = self._chart_state
+            current = tuple(chart._native_input() for chart in self._charts)
+            if current != previous:
+                base = sheet_charts_write(self._feature_handle(), base, current)
+                self._chart_state = (base, current)
+
+    def add_chart(self, chart, anchor=None):
+        """Add a chart to the worksheet, optionally changing its anchor."""
+        from ..chart._chart import ChartBase
+
+        self.parent._check_open()
+        if self.parent.read_only or (
+            self.parent.write_only and (self.closed or self._drawings_prepared)
+        ):
+            raise NotImplementedError("Charts require an editable worksheet")
+        if not isinstance(chart, ChartBase):
+            raise TypeError("Only chart objects can be added")
+        if anchor is not None:
+            chart.anchor = anchor
+        self._charts.append(chart)
+
+    @property
+    def _pivots(self):
+        if self.parent.read_only:
+            return ()
+        if self.parent.write_only or not self._existing:
+            return tuple(self._new_pivots)
+        if self._pivot_state is None:
+            from ..pivot._loaded import bind_pivots
+
+            bind_pivots(self)
+        return self._pivot_state.pivots + tuple(self._new_pivots)
+
+    def _pivot_cache_sources(self):
+        sources, pushed = {}, set()
+        for pivot in self._new_pivots:
+            cache = pivot.cache
+            origin = getattr(cache, "_crabxl_source", None)
+            if origin is None or origin[1]() is not cache:
+                continue
+            source = origin[0]()
+            if (
+                source is None
+                or source.parent is not self.parent
+                or source not in self.parent.worksheets
+            ):
+                continue
+            index = next(
+                (
+                    index
+                    for index, existing in enumerate(source._pivot_state.pivots)
+                    if existing.cache is cache
+                ),
+                None,
+            )
+            if index is None:
+                continue
+            if source is not self and source not in pushed:
+                source._pivot_state.push(source)
+                pushed.add(source)
+            sources[id(cache)] = (id(cache), source.title, index)
+        return tuple(sources.values())
+
+    def _pivot_inputs(self):
+        from ..xml.functions import tostring
+
+        return tuple(
+            (
+                id(pivot.cache),
+                tostring(pivot.to_tree()),
+                tostring(pivot.cache.to_tree()),
+                tostring(pivot.cache.records.to_tree())
+                if pivot.cache.records is not None
+                else None,
+            )
+            for pivot in self._new_pivots
+        )
+
+    def add_pivot(self, pivot):
+        from ..pivot.table import TableDefinition
+
+        self.parent._check_open()
+        from ..chartsheet import Chartsheet
+
+        if isinstance(self, Chartsheet):
+            raise TypeError("Pivot tables require a cell worksheet")
+        if self.parent.read_only or (
+            self.parent.write_only and (self.closed or self._drawings_prepared)
+        ):
+            raise NotImplementedError("Pivot creation requires an editable worksheet")
+        if not isinstance(pivot, TableDefinition):
+            raise TypeError("Expected a pivot TableDefinition")
+        if pivot.cache is None:
+            raise ValueError("A pivot table requires a cache")
+        self._new_pivots.append(pivot)
+
+    def add_image(self, img, anchor=None):
+        """Add an image to the worksheet, optionally changing its anchor."""
+        from ..drawing.image import Image
+
+        self.parent._check_open()
+        if self.parent.read_only or (
+            self.parent.write_only and (self.closed or self._drawings_prepared)
+        ):
+            raise NotImplementedError("Images require an editable worksheet")
+        if not isinstance(img, Image):
+            raise TypeError("Only Image objects can be added")
+        if anchor is not None:
+            img.anchor = anchor
+        self._images.append(img)
 
     @property
     def tables(self):
@@ -220,7 +395,7 @@ class Worksheet:
     def print_area(self):
         self.parent._names_state()
         if self._print_area is None:
-            return None
+            return ""
         self._print_area.title = self.title
         return str(self._print_area)
 
@@ -301,6 +476,178 @@ class Worksheet:
         return self._column_dimensions
 
     @property
+    def column_groups(self):
+        return [
+            dimension.range
+            for dimension in self.column_dimensions.values()
+            if dimension.min and dimension.max > dimension.min
+        ]
+
+    def _printing_get(self, name):
+        if self._printing is None:
+            from ..xml.functions import fromstring
+            from .page import PageMargins, PrintOptions, PrintPageSetup
+            from .pagebreak import ColBreak, RowBreak
+            from .properties import PageSetupProperties
+
+            root = fromstring(bytes(self._model().printing_xml()))
+            classes = {
+                "pageSetup": PrintPageSetup,
+                "pageMargins": PageMargins,
+                "printOptions": PrintOptions,
+                "rowBreaks": RowBreak,
+                "colBreaks": ColBreak,
+                "pageSetUpPr": PageSetupProperties,
+            }
+            self._printing = {}
+            for tag, cls in classes.items():
+                element = root.find(".//{*}" + tag)
+                obj = cls.from_tree(element) if element is not None else cls()
+                if tag == "pageSetup":
+                    obj._parent = self
+                    if element is not None:
+                        obj.id = element.get(
+                            "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
+                        )
+                self._printing[tag] = obj
+            self._printing_previous = self._printing_xml()
+        return self._printing[name]
+
+    def _printing_xml(self):
+        from ..xml.functions import Element, SubElement, tostring
+
+        root = Element(
+            "worksheet",
+            xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+        )
+        properties = SubElement(root, "sheetPr")
+        properties.append(self._printing["pageSetUpPr"].to_tree())
+        SubElement(root, "sheetData")
+        for tag in (
+            "printOptions",
+            "pageMargins",
+            "pageSetup",
+            "rowBreaks",
+            "colBreaks",
+        ):
+            root.append(self._printing[tag].to_tree())
+        return tostring(root)
+
+    @property
+    def page_setup(self):
+        return self._printing_get("pageSetup")
+
+    @page_setup.setter
+    def page_setup(self, value):
+        self._printing_get("pageSetup")
+        value._parent = self
+        self._printing["pageSetup"] = value
+
+    @property
+    def page_margins(self):
+        return self._printing_get("pageMargins")
+
+    @page_margins.setter
+    def page_margins(self, value):
+        self._printing_get("pageMargins")
+        self._printing["pageMargins"] = value
+
+    @property
+    def print_options(self):
+        return self._printing_get("printOptions")
+
+    @print_options.setter
+    def print_options(self, value):
+        self._printing_get("printOptions")
+        self._printing["printOptions"] = value
+
+    @property
+    def row_breaks(self):
+        return self._printing_get("rowBreaks")
+
+    @row_breaks.setter
+    def row_breaks(self, value):
+        self._printing_get("rowBreaks")
+        self._printing["rowBreaks"] = value
+
+    @property
+    def col_breaks(self):
+        return self._printing_get("colBreaks")
+
+    @col_breaks.setter
+    def col_breaks(self, value):
+        self._printing_get("colBreaks")
+        self._printing["colBreaks"] = value
+
+    @property
+    def views(self):
+        if self._views is None:
+            from ..xml.functions import fromstring, tostring
+            from .views import SheetViewList
+
+            self._views = SheetViewList.from_tree(
+                fromstring(bytes(self._model().views_xml()))
+            )
+            self._views_previous = tostring(self._views.to_tree())
+        return self._views
+
+    @property
+    def sheet_view(self):
+        return self.views.active
+
+    @property
+    def active_cell(self):
+        return self.sheet_view.selection[0].activeCell
+
+    @property
+    def selected_cell(self):
+        return self.sheet_view.selection[0].sqref
+
+    @property
+    def show_gridlines(self):
+        return self.sheet_view.showGridLines
+
+    @property
+    def freeze_panes(self):
+        if self.sheet_view.pane is not None:
+            return self.sheet_view.pane.topLeftCell
+
+    @freeze_panes.setter
+    def freeze_panes(self, topLeftCell=None):
+        from .views import Pane, Selection
+
+        if isinstance(topLeftCell, Cell):
+            topLeftCell = topLeftCell.coordinate
+        if topLeftCell == "A1":
+            topLeftCell = None
+
+        if not topLeftCell:
+            self.sheet_view.pane = None
+            return
+
+        row, column = _address(topLeftCell)
+
+        view = self.sheet_view
+        view.pane = Pane(topLeftCell=topLeftCell, activePane="topRight", state="frozen")
+        view.selection[0].pane = "topRight"
+
+        if column > 1:
+            view.pane.xSplit = column - 1
+        if row > 1:
+            view.pane.ySplit = row - 1
+            view.pane.activePane = "bottomLeft"
+            view.selection[0].pane = "bottomLeft"
+            if column > 1:
+                view.selection[0].pane = "bottomRight"
+                view.pane.activePane = "bottomRight"
+
+        if row > 1 and column > 1:
+            sel = list(view.selection)
+            sel.insert(0, Selection(pane="topRight", activeCell=None, sqref=None))
+            sel.insert(1, Selection(pane="bottomLeft", activeCell=None, sqref=None))
+            view.selection = sel
+
+    @property
     def merged_cells(self):
         from .merge import MultiCellRange
 
@@ -339,7 +686,14 @@ class Worksheet:
         )
 
     def _merge_cells(
-        self, range_string, start_row, start_column, end_row, end_column, merge
+        self,
+        range_string,
+        start_row,
+        start_column,
+        end_row,
+        end_column,
+        merge,
+        declare=True,
     ):
         if range_string is not None:
             bounds = _range(str(range_string))
@@ -356,15 +710,18 @@ class Worksheet:
         aliases = [
             (key, cell, cell._snapshot(), cell.hyperlink)
             for key, cell in list(self._cells.items())
-            if key != (first_row, first_col)
+            if declare
+            and key != (first_row, first_col)
             and first_row <= key[0] <= last_row
             and first_col <= key[1] <= last_col
         ]
-        self._model().merge_cells(*(value - 1 for value in bounds), merge)
+        self._model().merge_cells(tuple(value - 1 for value in bounds), merge, declare)
 
         def relocate(row, column):
-            if (row, column) != (first_row, first_col) and (
-                first_row <= row <= last_row and first_col <= column <= last_col
+            if (
+                declare
+                and (row, column) != (first_row, first_col)
+                and (first_row <= row <= last_row and first_col <= column <= last_col)
             ):
                 return None
             return row, column
@@ -436,6 +793,8 @@ class Worksheet:
         return self._model().get(row - 1, column - 1)
 
     def _set(self, row, column, value):
+        if isinstance(value, bytes):
+            value = value.decode(self.parent.encoding)
         tagged = _encode(value)
         self._set_tagged(row, column, tagged)
         if tagged[0] == "rich":
@@ -477,7 +836,7 @@ class Worksheet:
             value._bindings.get(self, set()).discard(coordinate)
         for coordinate, value, target in changed:
             if target is None:
-                cell = self._cells.get(coordinate)
+                cell = self._cells.get_cached(coordinate)
                 if cell is not None:
                     cell._detached_hyperlink = value
             else:
@@ -493,7 +852,7 @@ class Worksheet:
         ):
             raise ValueError("Row or column values must be within Excel bounds")
         key = row, column
-        cell = self._cells.get(key)
+        cell = self._cells.get_cached(key)
         if cell is None:
             pending = (
                 self.parent._editor.pending(self.title, row - 1, column - 1)
@@ -514,8 +873,13 @@ class Worksheet:
         return cell
 
     def __getitem__(self, key):
-        if isinstance(key, int):
-            return tuple(self.iter_rows(min_row=key, max_row=key))[0]
+        if isinstance(key, slice):
+            if not key.start or not key.stop:
+                raise IndexError(f"{key} is not a valid coordinate or range")
+            key = f"{key.start}:{key.stop}"
+        if isinstance(key, int) or (isinstance(key, str) and key.isdecimal()):
+            row = int(key)
+            return tuple(self.iter_rows(min_row=row, max_row=row))[0]
         if isinstance(key, str) and ":" not in key and _ADDRESS.fullmatch(key):
             return self.cell(*_address(key))
         if isinstance(key, str) and key.isalpha():
@@ -524,11 +888,12 @@ class Worksheet:
         if isinstance(key, str) and ":" in key:
             first, last = key.split(":", 1)
             if first.isdigit() and last.isdigit():
-                return tuple(self.iter_rows(min_row=int(first), max_row=int(last)))
+                rows = tuple(self.iter_rows(min_row=int(first), max_row=int(last)))
+                return rows[0] if int(first) == int(last) else rows
             if first.isalpha() and last.isalpha():
-                return tuple(
-                    self.iter_cols(min_col=_column(first), max_col=_column(last))
-                )
+                start, end = _column(first), _column(last)
+                columns = tuple(self.iter_cols(min_col=start, max_col=end))
+                return columns[0] if start == end else columns
             row, col, end_row, end_col = _range(key)
             return tuple(self.iter_rows(row, end_row, col, end_col))
         raise ValueError(f"{key} is not a valid coordinate or range")
@@ -545,7 +910,7 @@ class Worksheet:
     def __delitem__(self, key):
         self.parent._check_open()
         row, column = _address(key)
-        cell = self._cells.get((row, column))
+        cell = self._cells.get_cached((row, column))
         if self._native is None and self._existing:
             self._native = self.parent._editor.sheet_handle(self.title)
         style = cell._snapshot()[2:] if cell is not None else None
@@ -643,6 +1008,11 @@ class Worksheet:
     def iter_cols(
         self, min_col=None, max_col=None, min_row=None, max_row=None, values_only=False
     ):
+        if all(bound is None for bound in (min_col, max_col, min_row, max_row)):
+            if self._model().bounds() == (1, 1, 1, 1) and not self._native.contains(
+                0, 0
+            ):
+                return
         min_col, min_row = min_col or 1, min_row or 1
         max_col, max_row = max_col or self.max_column, max_row or self.max_row
         for column in range(min_col, max_col + 1):
@@ -678,11 +1048,38 @@ class Worksheet:
                 if len(values) == 16384:
                     raise ValueError("Appended row exceeds Excel column bounds")
                 values.append(value)
-        tagged = [_encode(value) for value in values]
+        values = [
+            value.decode(self.parent.encoding) if isinstance(value, bytes) else value
+            for value in values
+        ]
+        cells = {}
+        for index, value in enumerate(values):
+            if isinstance(value, Cell):
+                if value.parent is not None and value.parent is not self:
+                    raise ValueError("Cells cannot be copied from other worksheets")
+                cells[index] = (value, value._detached or value._snapshot())
+        literals = [
+            value.value if isinstance(value, Cell) else value for value in values
+        ]
+        tagged = [
+            ("typed", (value.data_type, _encode(literal)))
+            if isinstance(value, Cell)
+            else _encode(literal)
+            for value, literal in zip(values, literals)
+        ]
         row = self._model().append(tagged) + 1
-        for column, (value, encoded) in enumerate(zip(values, tagged), 1):
-            if encoded[0] == "rich":
-                value._bind(self, row, column)
+        for index, (cell, snapshot) in cells.items():
+            cell.parent, cell.row, cell.column = self, row, index + 1
+            cell._detached = None
+            self._cells[(row, index + 1)] = cell
+            if snapshot[3] != "General":
+                cell.number_format = snapshot[3]
+            for name, component in snapshot[4].items():
+                setattr(cell, name, component)
+        for column, (value, encoded) in enumerate(zip(literals, tagged), 1):
+            raw = encoded[1][1] if encoded[0] == "typed" else encoded
+            if raw[0] == "rich":
+                value._bind(self, row, column, retain=encoded[0] != "typed")
 
     def _shift(self, idx, amount, rows, insert):
         if idx < 1 or amount < 1:

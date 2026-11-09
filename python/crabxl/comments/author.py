@@ -1,8 +1,8 @@
-# Adapted from openpyxl 3.1.5 (MIT, Copyright (c) 2010 openpyxl); see third_party/licenses/openpyxl-MIT.txt.
+# Copyright (c) 2010-2024 openpyxl
 
 
+from crabxl.descriptors import Alias, Sequence
 from crabxl.descriptors.serialisable import Serialisable
-from crabxl.descriptors import Sequence, Alias
 
 
 class AuthorList(Serialisable):

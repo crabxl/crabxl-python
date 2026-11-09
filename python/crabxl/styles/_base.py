@@ -10,6 +10,37 @@ class StyleValue:
     _aliases = {}
     _children = ()
 
+    def __repr__(self):
+        from .differential import _convert
+
+        value = _convert(self)
+        result = repr(value).replace(
+            f"<{value.__module__}.{type(value).__name__} object>",
+            f"<{self.__module__}.{type(self).__name__} object>",
+            1,
+        )
+        return result.replace("crabxl.styles._x.", "crabxl.styles.")
+
+    def __iter__(self):
+        from .differential import _convert
+
+        return iter(_convert(self))
+
+    def to_tree(self, tagname=None, idx=None, namespace=None):
+        from .differential import _convert
+
+        options = {"tagname": tagname, "idx": idx, "namespace": namespace}
+        return _convert(self).to_tree(
+            **{key: value for key, value in options.items() if value is not None}
+        )
+
+    @classmethod
+    def from_tree(cls, node):
+        from . import _x
+
+        target = _x.fills.Stop if cls.__name__ == "Stop" else getattr(_x, cls.__name__)
+        return _from_xml_style(target.from_tree(node))
+
     def __setattr__(self, name, value):
         name = self._aliases.get(name, name)
         if name not in self._fields:
@@ -35,9 +66,15 @@ class StyleValue:
     def __eq__(self, other):
         if isinstance(other, StyleProxy):
             other = other._target
-        return type(self) is type(other) and all(
-            getattr(self, name) == getattr(other, name) for name in self._fields
-        )
+        if type(other).__module__.startswith("crabxl.styles._x."):
+            from .differential import _convert
+
+            return _convert(self) == other
+        if type(self) is not type(other):
+            return False
+        if getattr(self, "_component", None) == "alignment":
+            return dict(self) == dict(other)
+        return all(getattr(self, name) == getattr(other, name) for name in self._fields)
 
     def __hash__(self):
         return hash(
@@ -98,10 +135,60 @@ class StyleProxy:
     def __copy__(self):
         return copy(self._target)
 
+    def __repr__(self):
+        return repr(self._target)
+
+    def __add__(self, other):
+        return self._target + other
+
     def __eq__(self, other):
         return self._target == other
 
     __hash__ = None
+
+
+def _from_xml_style(value):
+    from . import (
+        Alignment,
+        Border,
+        Color,
+        Font,
+        GradientFill,
+        PatternFill,
+        Protection,
+        Side,
+        _x,
+    )
+    from .fills import Stop
+
+    if isinstance(value, _x.Color):
+        return Color(tint=value.tint, **{value.type: value.value})
+    classes = {
+        cls.__name__: cls
+        for cls in (
+            Alignment,
+            Border,
+            Font,
+            GradientFill,
+            PatternFill,
+            Protection,
+            Side,
+            Stop,
+        )
+    }
+    target = classes.get(type(value).__name__)
+    if target is not None:
+        return target(
+            **{
+                field: _from_xml_style(getattr(value, field))
+                for field in target._fields
+                # The XML descriptor omits the vestigial mergeCell argument.
+                if field != "mergeCell"
+            }
+        )
+    if isinstance(value, (list, tuple)):
+        return [_from_xml_style(item) for item in value]
+    return value
 
 
 def color_from_native(values):
@@ -117,9 +204,9 @@ def color_from_native(values):
 
 def font_from_native(values, font_type=None):
     """Share trusted component/run conversion while preserving public defaults."""
-    if font_type is None:
-        from .fonts import Font
+    from .fonts import Font
 
+    if font_type is None:
         font_type = Font
     result = font_type.__new__(font_type)
     result.__dict__.update(values)
@@ -148,6 +235,9 @@ def component(name, values):
     if name == "font":
         return font_from_native(values)
     if name == "border":
+        for field in ("diagonalUp", "diagonalDown", "outline"):
+            if values[field] is None:
+                del values[field]
         for edge in Border._fields[:9]:
             item = values[edge]
             if item is not None:

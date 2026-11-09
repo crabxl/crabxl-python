@@ -7,6 +7,55 @@ pub(crate) struct NativeBook {
 }
 #[pymethods]
 impl NativeBook {
+    pub(crate) fn style_array(&self, style: u32) -> PyResult<[u32; 9]> {
+        let book = lock(&self.book)?;
+        match book.style_catalog() {
+            Some(catalog) => catalog.style_array(StyleId::new(style)).map_err(failure),
+            None if style == 0 => Ok([0; 9]),
+            None => Err(PyValueError::new_err("Unknown cell style identity")),
+        }
+    }
+    pub(crate) fn number_format(&self, style: u32) -> PyResult<String> {
+        let book = lock(&self.book)?;
+        Ok(book
+            .style_catalog()
+            .and_then(|catalog| {
+                catalog
+                    .cell_format(StyleId::new(style))
+                    .and_then(|format| catalog.number_format(format.number_format_id))
+            })
+            .unwrap_or("General")
+            .to_owned())
+    }
+    pub(crate) fn style_component<'py>(
+        &self,
+        py: Python<'py>,
+        style: u32,
+        name: &str,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let book = lock(&self.book)?;
+        if let Some(catalog) = book.style_catalog() {
+            styles::encode(
+                py,
+                name,
+                catalog.cell_style(StyleId::new(style)).map_err(failure)?,
+            )
+        } else {
+            styles::default_component(py, name)
+        }
+    }
+    pub(crate) fn set_template(&self, template: bool) -> PyResult<()> {
+        let mut book = lock(&self.book)?;
+        let format = template.then_some(crabxl::features::WorkbookFormat::Xltx);
+        if book.features().and_then(|features| features.format) == format {
+            return Ok(());
+        }
+        let mut features = book.features().cloned().unwrap_or_default();
+        features.format = format;
+        book.set_features(Some(features));
+        Ok(())
+    }
+
     pub(crate) fn hyperlink_output_ids(
         &self,
         py: Python<'_>,
@@ -52,6 +101,27 @@ impl NativeBook {
         let style = book.named_style_format(name).map_err(failure)?;
         style_owners::snapshot(py, book.style_catalog(), style)
     }
+    fn style_collection<'py>(
+        &self,
+        py: Python<'py>,
+        name: &str,
+    ) -> PyResult<Vec<Bound<'py, PyDict>>> {
+        style_owners::collection(py, lock(&self.book)?.style_catalog(), name)
+    }
+    fn style_collection_add(&self, name: &str, value: &Bound<'_, PyAny>) -> PyResult<u32> {
+        style_owners::collection_add(&mut *lock(&self.book)?, name, value)
+    }
+    fn named_style_metadata(&self) -> PyResult<style_owners::NamedStyleMetadata> {
+        Ok(style_owners::named_metadata(
+            lock(&self.book)?.style_catalog(),
+        ))
+    }
+    fn prepare_named_style(&self, value: &Bound<'_, PyDict>) -> PyResult<[u32; 9]> {
+        style_owners::prepare_array(&mut *lock(&self.book)?, value)
+    }
+    fn prepare_cell_style(&self, value: &Bound<'_, PyDict>) -> PyResult<u32> {
+        style_owners::prepare(&mut *lock(&self.book)?, value).map(|style| style.get())
+    }
     #[pyo3(signature = (value, update=false))]
     pub(crate) fn add_named_style(&self, value: &Bound<'_, PyDict>, update: bool) -> PyResult<u32> {
         style_owners::register(&mut *lock(&self.book)?, value, update)
@@ -62,22 +132,50 @@ impl NativeBook {
     }
     #[new]
     pub(crate) fn new(max_bytes: usize) -> PyResult<Self> {
+        let mut book = Workbook::new(WorkbookLimits {
+            max_bytes,
+            sheet: EditLimits {
+                max_bytes,
+                ..EditLimits::default()
+            },
+            ..WorkbookLimits::default()
+        })
+        .map_err(failure)?;
+        book.set_features(Some(crabxl::WorkbookFeatures {
+            calculation: Some(crate::features::default_calculation()),
+            ..Default::default()
+        }));
         Ok(Self {
-            book: Arc::new(Mutex::new(
-                Workbook::new(WorkbookLimits {
-                    max_bytes,
-                    sheet: EditLimits {
-                        max_bytes,
-                        ..EditLimits::default()
-                    },
-                    ..WorkbookLimits::default()
-                })
-                .map_err(failure)?,
-            )),
+            book: Arc::new(Mutex::new(book)),
         })
     }
-    pub(crate) fn create_sheet(&self, name: String) -> PyResult<NativeSheet> {
-        let id = lock(&self.book)?.create_sheet(name).map_err(failure)?;
+    #[pyo3(signature = (name, chartsheet=false))]
+    pub(crate) fn create_sheet(&self, name: String, chartsheet: bool) -> PyResult<NativeSheet> {
+        let mut book = lock(&self.book)?;
+        let id = book.create_sheet(name).map_err(failure)?;
+        if chartsheet {
+            let mut root = crabxl::XmlElement::new("chartsheet");
+            root.set_attribute(
+                "xmlns",
+                "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+            );
+            let mut views = crabxl::XmlElement::new("sheetViews");
+            let mut view = crabxl::XmlElement::new("sheetView");
+            view.set_attribute("workbookViewId", "0");
+            view.set_attribute("zoomToFit", "1");
+            views.children.push(crabxl::XmlContent::Element(view));
+            root.children.push(crabxl::XmlContent::Element(views));
+            let result = book.sheet_mut(id).and_then(|mut sheet| {
+                sheet.set_features(Some(crabxl::SheetFeatures {
+                    chartsheet: Some(root),
+                    ..Default::default()
+                }))
+            });
+            if let Err(error) = result {
+                book.remove_sheet(id).map_err(failure)?;
+                return Err(failure(error));
+            }
+        }
         Ok(NativeSheet::in_bank(Arc::clone(&self.book), id))
     }
     pub(crate) fn copy_sheet(

@@ -1,11 +1,15 @@
+# Metadata projections adapted from openpyxl 3.1.5, Copyright (c) 2010–2024 openpyxl (MIT).
 """Live sparse dimension views over canonical Rust metadata."""
 
 from collections.abc import MutableMapping
 from copy import copy
 from weakref import WeakValueDictionary
 
+from ..compat import safe_string
 from ..styles import Alignment, Border, Font, GradientFill, PatternFill, Protection
 from ..styles._base import StyleProxy, component
+from ..utils.cell import column_index_from_string, get_column_letter
+from ..xml.functions import Element
 
 _COMPONENTS = {
     "font": Font,
@@ -28,6 +32,53 @@ _MISSING = object()
 
 
 class Dimension:
+    _fields = ("hidden", "outlineLevel", "collapsed")
+    __fields__ = _fields
+
+    def __init__(
+        self,
+        index,
+        hidden,
+        outlineLevel,
+        collapsed,
+        worksheet,
+        visible=True,
+        style=None,
+    ):
+        if style is not None:
+            raise NotImplementedError("Raw dimension style arrays are not implemented")
+        self._initialize(
+            worksheet,
+            index,
+            {
+                "hidden": hidden,
+                "outlineLevel": outlineLevel,
+                "collapsed": collapsed,
+            },
+        )
+
+    def __iter__(self):
+        for key in self.__fields__:
+            value = getattr(self, key, None)
+            if value:
+                yield key, safe_string(value)
+
+    def __repr__(self):
+        return f"<{type(self).__name__} Instance, Attributes={dict(self)}>"
+
+    def __copy__(self):
+        value = type(self).__new__(type(self))
+        metadata = self._metadata()
+        value._initialize(self.parent, self.index, metadata)
+        if self.has_style:
+            metadata["number_format"] = self.number_format
+            object.__setattr__(
+                value,
+                "_components",
+                {name: copy(getattr(self, name)) for name in _COMPONENTS},
+            )
+        return value
+
     def _initialize(self, worksheet, index, metadata):
         object.__setattr__(self, "parent", worksheet)
         object.__setattr__(self, "_index", index)
@@ -58,6 +109,16 @@ class Dimension:
 
     @property
     def style_id(self):
+        if self._holder is None and (
+            self._components or "number_format" in self._pending
+        ):
+            directives = {
+                name: value._native() for name, value in self._components.items()
+            }
+            directives["style_id"] = self._pending.get("style_id") or 0
+            if "number_format" in self._pending:
+                directives["number_format"] = self._pending["number_format"]
+            return self.parent.parent._style_owner().prepare_cell_style(directives)
         return self._metadata().get("style_id") or 0
 
     @property
@@ -66,7 +127,11 @@ class Dimension:
 
     @property
     def has_style(self):
-        return self.style_id != 0 or bool(self._components)
+        return (
+            bool(self._metadata().get("style_id"))
+            or bool(self._components)
+            or self.number_format != "General"
+        )
 
     @property
     def customFormat(self):
@@ -83,7 +148,12 @@ class Dimension:
     @property
     def number_format(self):
         if self._holder is None:
-            return self._pending.get("number_format", "General")
+            if "number_format" in self._pending:
+                return self._pending["number_format"]
+            style_id = self._pending.get("style_id") or 0
+            if style_id:
+                return self.parent.parent._style_owner().number_format(style_id)
+            return "General"
         return self._holder._call(
             "dimension_number_format",
             self._holder.rows,
@@ -110,8 +180,21 @@ class Dimension:
             value = self._components.get(name)
             if value is None:
                 if self._holder is None:
-                    expected = _COMPONENTS[name]
-                    value = (expected[0] if isinstance(expected, tuple) else expected)()
+                    owner = getattr(
+                        getattr(self.parent, "parent", None), "_style_owner", None
+                    )
+                    if owner is not None:
+                        value = component(
+                            name,
+                            owner().style_component(
+                                self._pending.get("style_id") or 0, name
+                            ),
+                        )
+                    else:
+                        expected = _COMPONENTS[name]
+                        value = (
+                            expected[0] if isinstance(expected, tuple) else expected
+                        )()
                 else:
                     value = component(
                         name,
@@ -173,6 +256,19 @@ class Dimension:
 
 
 class RowDimension(Dimension):
+    __fields__ = Dimension.__fields__ + (
+        "ht",
+        "customFormat",
+        "customHeight",
+        "s",
+        "thickBot",
+        "thickTop",
+    )
+
+    @property
+    def s(self):
+        return self.style_id
+
     _fields = (
         "height",
         "hidden",
@@ -224,6 +320,24 @@ class RowDimension(Dimension):
 
 
 class ColumnDimension(Dimension):
+    __fields__ = Dimension.__fields__ + (
+        "width",
+        "bestFit",
+        "customWidth",
+        "style",
+        "min",
+        "max",
+    )
+
+    def reindex(self):
+        if not self.min or not self.max:
+            self.min = self.max = column_index_from_string(self.index)
+
+    def to_tree(self):
+        attrs = dict(self)
+        if attrs.keys() != {"min", "max"}:
+            return Element("col", **attrs)
+
     _fields = (
         "width",
         "hidden",
@@ -234,6 +348,10 @@ class ColumnDimension(Dimension):
         "max",
         "phonetic",
     )
+
+    @property
+    def range(self):
+        return f"{get_column_letter(self.min)}:{get_column_letter(self.max)}"
 
     def __init__(
         self,
@@ -276,7 +394,25 @@ class DimensionHolder(MutableMapping):
     def __init__(self, worksheet, rows=False, default_factory=None):
         self.worksheet, self.rows = worksheet, rows
         self.default_factory = default_factory
+        self.max_outline = None
         self._views = WeakValueDictionary()
+
+    def to_tree(self):
+        if self.worksheet is None:
+            return None
+        columns = list(self.values())
+        for column in columns:
+            column.reindex()
+        tree = Element("cols")
+        outlines = []
+        for column in sorted(columns, key=lambda value: value.min):
+            child = column.to_tree()
+            if child is not None:
+                tree.append(child)
+                outlines.append(column.outlineLevel)
+        if outlines:
+            self.max_outline = max(outlines)
+        return tree if len(tree) else None
 
     def _index(self, key):
         from .._values import _column

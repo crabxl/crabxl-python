@@ -2,6 +2,18 @@
 use crate::*;
 
 #[pyfunction]
+pub(crate) fn resolve_relationship_targets(
+    part: &str,
+    targets: Vec<(String, bool)>,
+) -> PyResult<Vec<String>> {
+    let borrowed = targets
+        .iter()
+        .map(|(target, external)| (target.as_str(), *external))
+        .collect::<Vec<_>>();
+    crabxl::resolve_relationship_targets(part, &borrowed).map_err(failure)
+}
+
+#[pyfunction]
 pub(crate) fn tokenize_formula<'py>(
     py: Python<'py>,
     expression: &str,
@@ -19,6 +31,58 @@ pub(crate) fn tokenize_formula<'py>(
         }),
     )
 }
+#[pyfunction]
+pub(crate) fn scan_formula_fragment(
+    source: &str,
+    offset: usize,
+    operation: &str,
+    pending: &str,
+    previous_operand: bool,
+    top: Option<&str>,
+    max_bytes: usize,
+) -> PyResult<(String, &'static str, &'static str, usize)> {
+    use crabxl::{FormulaScan, TokenKind};
+    let operation = match operation {
+        "string" => FormulaScan::Quoted,
+        "brackets" => FormulaScan::Brackets,
+        "error" => FormulaScan::Error,
+        "whitespace" => FormulaScan::Whitespace,
+        "operator" => FormulaScan::Operator,
+        "opener" => FormulaScan::Opener,
+        "closer" => FormulaScan::Closer,
+        "separator" => FormulaScan::Separator,
+        _ => return Err(PyValueError::new_err("Unknown formula scan operation")),
+    };
+    let top = match top {
+        None => None,
+        Some("FUNC") => Some(TokenKind::Function),
+        Some("ARRAY") => Some(TokenKind::Array),
+        Some("PAREN") => Some(TokenKind::Parenthesis),
+        _ => return Err(PyValueError::new_err("Unknown formula opening token")),
+    };
+    let (token, consumed) = crabxl::scan_formula_fragment(
+        source,
+        offset,
+        operation,
+        pending,
+        previous_operand,
+        top,
+        max_bytes,
+    )
+    .map_err(failure)?;
+    Ok((
+        token.value.into_owned(),
+        token.kind.as_str(),
+        token.subtype.as_str(),
+        consumed,
+    ))
+}
+
+#[pyfunction]
+pub(crate) fn formula_scientific_prefix(value: &str) -> bool {
+    crabxl::formula_scientific_prefix(value)
+}
+
 #[pyfunction]
 pub(crate) fn classify_formula_operand(value: &str) -> &'static str {
     crabxl::classify_formula_operand(value).as_str()

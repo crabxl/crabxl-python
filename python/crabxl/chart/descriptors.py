@@ -1,0 +1,44 @@
+# Adapted from openpyxl 3.1.5 (MIT); see third_party/licenses/openpyxl-MIT.txt.
+# Copyright (c) 2010-2024 openpyxl
+
+
+
+from crabxl.descriptors.nested import (
+    NestedMinMax
+    )
+
+from crabxl.descriptors import Typed
+
+from .data_source import NumFmt
+
+"""
+Utility descriptors for the chart module.
+For convenience but also clarity.
+"""
+
+class NestedGapAmount(NestedMinMax):
+
+    allow_none = True
+    min = 0
+    max = 500
+
+
+class NestedOverlap(NestedMinMax):
+
+    allow_none = True
+    min = -100
+    max = 100
+
+
+class NumberFormatDescriptor(Typed):
+    """
+    Allow direct assignment of format code
+    """
+
+    expected_type = NumFmt
+    allow_none = True
+
+    def __set__(self, instance, value):
+        if isinstance(value, str):
+            value = NumFmt(value)
+        super().__set__(instance, value)

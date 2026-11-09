@@ -1,5 +1,6 @@
 """Cell compatibility facade over canonical native handles."""
 
+from datetime import date, datetime, time, timedelta
 from typing import TYPE_CHECKING
 
 from .._values import _data_type, _decode, _encode, _letters
@@ -8,6 +9,23 @@ from ..styles._base import cell_component
 
 if TYPE_CHECKING:
     from ..optimized import WriteOnlyCell
+
+ERROR_CODES = ("#NULL!", "#DIV/0!", "#VALUE!", "#REF!", "#NAME?", "#NUM!", "#N/A")
+TIME_FORMATS = {
+    datetime: "yyyy-mm-dd h:mm:ss",
+    date: "yyyy-mm-dd",
+    time: "h:mm:ss",
+    timedelta: "[hh]:mm:ss",
+}
+
+
+def get_time_format(value_type):
+    for candidate in value_type.__mro__:
+        if candidate in TIME_FORMATS:
+            result = TIME_FORMATS[candidate]
+            TIME_FORMATS[value_type] = result
+            return result
+    raise ValueError("Could not get time format")
 
 
 class Cell:
@@ -29,11 +47,15 @@ class Cell:
     alignment = cell_component("alignment", Alignment)
     protection = cell_component("protection", Protection)
 
-    def __init__(self, worksheet, row, column):
+    def __init__(self, worksheet, row=None, column=None, value=None):
         self.parent, self.row, self.column = worksheet, row, column
         self._detached = None
         self._detached_hyperlink = None
         self._formula = None
+        if worksheet is None or row is None or column is None:
+            self._detached = ("n", None, 0, "General", {})
+        if value is not None:
+            self.value = value
 
     @property
     def style(self):
@@ -43,15 +65,10 @@ class Cell:
 
     @style.setter
     def style(self, value):
-        from ..styles import NamedStyle
+        from ..styles.named_styles import resolve_named_style
 
         workbook = self.parent.parent
-        if isinstance(value, NamedStyle):
-            if value.name not in workbook.named_styles:
-                workbook.add_named_style(value)
-            value = value.name
-        if not isinstance(value, str):
-            raise TypeError("Style must be a name or NamedStyle")
+        value = resolve_named_style(workbook, value)
         if self._detached is not None:
             from ..styles._base import component
 
@@ -97,6 +114,8 @@ class Cell:
         elif current is not None:
             current.unbind()
             del comments[key]
+
+    _comment = comment
 
     @property
     def hyperlink(self):
@@ -157,13 +176,33 @@ class Cell:
     def column_letter(self):
         return _letters(self.column)
 
+    def __repr__(self):
+        return f"<{type(self).__name__} '{self.parent.title}'.{self.coordinate}>"
+
+    def offset(self, row=0, column=0):
+        return self.parent.cell(row=self.row + row, column=self.column + column)
+
+    @property
+    def encoding(self):
+        return self.parent.parent.encoding
+
+    def check_string(self, value):
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            value = str(value, self.encoding)
+        value = value[:32767]
+        _encode(value)
+        return value
+
     @property
     def value(self):
         from ..worksheet.formula import ArrayFormula, DataTableFormula, bind
         from .rich_text import CellRichText
 
         tagged = self._tagged()
-        if tagged[0] == "rich" and self._detached is None:
+        raw = tagged[1][1] if tagged[0] == "typed" else tagged
+        if raw[0] == "rich" and self._detached is None:
             retained = self.parent._rich_views.get((self.row, self.column))
             if retained is not None:
                 return retained
@@ -184,6 +223,11 @@ class Cell:
 
     @value.setter
     def value(self, value):
+        self._bind_value(value)
+
+    def _bind_value(self, value):
+        if isinstance(value, bytes):
+            value = self.check_string(value)
         if self._detached is not None:
             tag = _encode(value)
             self._detached = (_data_type(tag), value, *self._detached[2:])
@@ -199,7 +243,10 @@ class Cell:
 
     @property
     def data_type(self):
-        kind = self._tagged()[0]
+        tagged = self._tagged()
+        if tagged[0] == "typed":
+            return tagged[1][0]
+        kind = tagged[0]
         return (
             "f"
             if kind in ("array", "table")
@@ -211,6 +258,19 @@ class Cell:
             if kind == "rich"
             else kind
         )
+
+    @data_type.setter
+    def data_type(self, value):
+        if self._detached is not None:
+            self._detached = ("typed", (value, self._detached[:2]), *self._detached[2:])
+        else:
+            current = self.value
+            self.parent._model().set_data_type(self.row - 1, self.column - 1, value)
+            from .rich_text import CellRichText
+
+            if isinstance(current, CellRichText):
+                self.parent._assigned_rich_views.pop((self.row, self.column), None)
+                current._bind(self.parent, self.row, self.column, retain=False)
 
     @property
     def internal_value(self):
@@ -274,6 +334,9 @@ class MergedCell(Cell):
     """A lazy view of a covered coordinate with shared Rust-owned appearance."""
 
     __slots__ = ()
+
+    hyperlink = None
+    _value = None
 
     @property
     def value(self):

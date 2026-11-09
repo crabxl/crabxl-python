@@ -167,6 +167,9 @@ class HyperlinkList:
     def __init__(self, hyperlink=()):
         self.hyperlink = hyperlink
 
+    def __eq__(self, other):
+        return isinstance(other, HyperlinkList) and self.hyperlink == other.hyperlink
+
     @property
     def hyperlink(self):
         return self._hyperlinks

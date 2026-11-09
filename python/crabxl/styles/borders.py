@@ -63,3 +63,6 @@ class Border(StyleValue):
         values = locals()
         for field in self._fields:
             setattr(self, field, values[field])
+
+
+DEFAULT_BORDER = Border(left=Side(), right=Side(), top=Side(), bottom=Side(), diagonal=Side())

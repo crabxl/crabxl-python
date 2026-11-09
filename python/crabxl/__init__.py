@@ -53,3 +53,14 @@ from .workbook.workbook import Workbook as Workbook
 from .worksheet.worksheet import Worksheet as Worksheet
 
 __version__ = "0.1.0a11"
+LXML = False
+DEFUSEDXML = False
+
+
+def __getattr__(name):
+    if name == "NUMPY":
+        from .compat.numbers import NUMPY
+
+        globals()[name] = NUMPY
+        return NUMPY
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -1,10 +1,11 @@
 //! Sequential writer bindings, separate from read-only worker lifetimes.
 use super::*;
 use crabxl::WriteStats;
+use crabxl::feature_xml;
 type OutputIdentities = Vec<(u64, Option<String>)>;
 
-struct WriteState {
-    writer: Option<WorkbookWriter>,
+pub(crate) struct WriteState {
+    pub(crate) writer: Option<WorkbookWriter>,
     stats: WriteStats,
 }
 
@@ -50,7 +51,7 @@ impl IdentityWorkspace {
 }
 #[pyclass]
 pub(crate) struct NativeWriteBook {
-    state: Arc<Mutex<WriteState>>,
+    pub(crate) state: Arc<Mutex<WriteState>>,
     maximum_row: usize,
     maximum_metadata: usize,
 }
@@ -308,6 +309,50 @@ impl NativeWriteBook {
                 .style_catalog(),
         ))
     }
+    fn style_collection<'py>(
+        &self,
+        py: Python<'py>,
+        name: &str,
+    ) -> PyResult<Vec<Bound<'py, PyDict>>> {
+        style_owners::collection(
+            py,
+            lock(&self.state)?
+                .writer
+                .as_ref()
+                .ok_or_else(closed)?
+                .style_catalog(),
+            name,
+        )
+    }
+    fn style_collection_add(&self, name: &str, value: &Bound<'_, PyAny>) -> PyResult<u32> {
+        style_owners::collection_add(
+            lock(&self.state)?.writer.as_mut().ok_or_else(closed)?,
+            name,
+            value,
+        )
+    }
+    fn named_style_metadata(&self) -> PyResult<style_owners::NamedStyleMetadata> {
+        Ok(style_owners::named_metadata(
+            lock(&self.state)?
+                .writer
+                .as_ref()
+                .ok_or_else(closed)?
+                .style_catalog(),
+        ))
+    }
+    fn prepare_named_style(&self, value: &Bound<'_, PyDict>) -> PyResult<[u32; 9]> {
+        style_owners::prepare_array(
+            lock(&self.state)?.writer.as_mut().ok_or_else(closed)?,
+            value,
+        )
+    }
+    fn prepare_cell_style(&self, value: &Bound<'_, PyDict>) -> PyResult<u32> {
+        style_owners::prepare(
+            lock(&self.state)?.writer.as_mut().ok_or_else(closed)?,
+            value,
+        )
+        .map(|style| style.get())
+    }
     #[pyo3(signature = (value, update=false))]
     fn add_named_style(&self, value: &Bound<'_, PyDict>, update: bool) -> PyResult<u32> {
         style_owners::register(
@@ -315,6 +360,27 @@ impl NativeWriteBook {
             value,
             update,
         )
+    }
+    fn named_style_snapshot<'py>(
+        &self,
+        py: Python<'py>,
+        name: &str,
+    ) -> PyResult<(u32, String, Bound<'py, PyDict>)> {
+        let mut state = lock(&self.state)?;
+        let writer = state.writer.as_mut().ok_or_else(closed)?;
+        let style = writer.named_style_format(name).map_err(failure)?;
+        style_owners::snapshot(py, writer.style_catalog(), style)
+    }
+    fn style_array(&self, style: u32) -> PyResult<[u32; 9]> {
+        let state = lock(&self.state)?;
+        state
+            .writer
+            .as_ref()
+            .ok_or_else(closed)?
+            .style_catalog()
+            .ok_or_else(closed)?
+            .style_array(StyleId::new(style))
+            .map_err(failure)
     }
     fn named_style_format(&self, name: &str) -> PyResult<u32> {
         lock(&self.state)?
@@ -373,9 +439,14 @@ impl NativeWriteBook {
             ..Default::default()
         };
         let maximum_row = options.max_row_bytes;
+        let mut writer = WorkbookWriter::new(options).map_err(failure)?;
+        writer.set_workbook_features(Some(crabxl::WorkbookFeatures {
+            calculation: Some(crate::features::default_calculation()),
+            ..Default::default()
+        }));
         Ok(Self {
             state: Arc::new(Mutex::new(WriteState {
-                writer: Some(WorkbookWriter::new(options).map_err(failure)?),
+                writer: Some(writer),
                 stats: WriteStats::default(),
             })),
             maximum_row,
@@ -414,7 +485,8 @@ impl NativeWriteBook {
             .set_temporal_options(date_1904, iso_dates)
             .map_err(failure)
     }
-    #[pyo3(signature = (id, index, values, formats=None, hyperlinks=None))]
+    #[pyo3(signature = (id, index, values, formats=None, hyperlinks=None, comments=None))]
+    #[allow(clippy::too_many_arguments)]
     fn append(
         &self,
         py: Python<'_>,
@@ -423,8 +495,10 @@ impl NativeWriteBook {
         values: Vec<TaggedValue>,
         formats: Option<Vec<(u32, Py<PyDict>)>>,
         hyperlinks: Option<Vec<(u32, u64)>>,
+        comments: Option<Vec<crate::features::CommentTuple>>,
     ) -> PyResult<()> {
         let index = RowIndex::new(index).map_err(failure)?;
+        let comments = crate::features::native_comments(comments.unwrap_or_default())?;
         if values.len() > 16_384 {
             return Err(PyValueError::new_err("Row exceeds Excel column limits"));
         }
@@ -546,10 +620,69 @@ impl NativeWriteBook {
                 }
             }
             writer
-                .write_row_with_hyperlink_groups(&row, &links)
+                .write_row_with_annotations(&row, &links, comments)
                 .map_err(failure)
         })
     }
+    #[pyo3(signature = (id, charts, properties=None))]
+    fn close_chartsheet(
+        &self,
+        py: Python<'_>,
+        id: usize,
+        charts: Vec<crate::features::ChartInput>,
+        properties: Option<Vec<u8>>,
+    ) -> PyResult<()> {
+        let state = Arc::clone(&self.state);
+        py.detach(move || {
+            let charts = crate::features::native_charts(charts).map_err(failure)?;
+            let properties = properties
+                .as_deref()
+                .map(feature_xml::chartsheet_from_xml)
+                .transpose()
+                .map_err(failure)?;
+            lock(&state)?
+                .writer
+                .as_mut()
+                .ok_or_else(closed)?
+                .close_interleaved_chartsheet_with_properties(id, charts, properties)
+                .map_err(failure)
+        })
+    }
+
+    #[pyo3(signature = (id, images, charts, pivots=None))]
+    fn set_drawings(
+        &self,
+        py: Python<'_>,
+        id: usize,
+        images: Vec<crate::features::ImageInput>,
+        charts: Vec<crate::features::ChartInput>,
+        pivots: Option<Vec<crate::features::PivotInput>>,
+    ) -> PyResult<()> {
+        let state = Arc::clone(&self.state);
+        py.detach(move || {
+            let mut images = crate::features::native_images(images).map_err(failure)?;
+            let charts = crate::features::native_charts(charts).map_err(failure)?;
+            for image in &mut images {
+                image.order = 1;
+            }
+            let pivots = pivots.map(crate::features::native_pivots).transpose()?;
+            lock(&state)?
+                .writer
+                .as_mut()
+                .ok_or_else(closed)?
+                .set_interleaved_features(
+                    id,
+                    crabxl::SheetFeatures {
+                        images: Some(images),
+                        charts: Some(charts),
+                        pivots,
+                        ..Default::default()
+                    },
+                )
+                .map_err(failure)
+        })
+    }
+
     #[pyo3(signature = (id, hyperlink_groups=None))]
     fn close_sheet(
         &self,
@@ -586,7 +719,7 @@ impl NativeWriteBook {
             .map_or(state.stats, WorkbookWriter::stats);
         Ok((stats.rows, stats.cells, stats.peak_temp_bytes))
     }
-    #[pyo3(signature = (path, active, compression_level=None, hyperlink_groups=None))]
+    #[pyo3(signature = (path, active, compression_level=None, hyperlink_groups=None, *, template=false))]
     fn save(
         &self,
         py: Python<'_>,
@@ -594,6 +727,7 @@ impl NativeWriteBook {
         active: i64,
         compression_level: Option<u8>,
         hyperlink_groups: Option<Vec<u64>>,
+        template: bool,
     ) -> PyResult<(i64, OutputIdentities)> {
         let IdentityWorkspace {
             requested,
@@ -608,6 +742,11 @@ impl NativeWriteBook {
             writer
                 .set_compression_level(compression_level)
                 .map_err(failure)?;
+            if template {
+                let mut features = writer.workbook_features().cloned().unwrap_or_default();
+                features.format = Some(crabxl::features::WorkbookFormat::Xltx);
+                writer.set_workbook_features(Some(features));
+            }
             state.stats = writer.stats();
             let writer = state.writer.take().ok_or_else(closed)?;
             let active_after = writer

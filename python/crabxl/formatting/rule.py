@@ -12,7 +12,7 @@ from crabxl.descriptors import (
     Float,
 )
 from crabxl.descriptors.excel import ExtensionList
-from crabxl.styles._x.colors import Color, ColorDescriptor
+from crabxl.styles.colors import Color, ColorDescriptor
 from crabxl.styles.differential import DifferentialStyle
 
 from crabxl.utils.cell import COORD_RE

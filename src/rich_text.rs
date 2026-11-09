@@ -8,10 +8,20 @@ use pyo3::{
 };
 
 #[pyfunction]
-pub(crate) fn rich_text_from_xml<'py>(py: Python<'py>, xml: &[u8]) -> PyResult<Bound<'py, PyDict>> {
-    let value =
+#[pyo3(signature = (xml, unprotect=true))]
+pub(crate) fn rich_text_from_xml<'py>(
+    py: Python<'py>,
+    xml: &[u8],
+    unprotect: bool,
+) -> PyResult<Bound<'py, PyDict>> {
+    let mut value =
         crabxl::read_rich_text(std::io::Cursor::new(xml), crabxl::ResourceLimits::default())
             .map_err(failure)?;
+    if unprotect {
+        for run in &mut value.runs {
+            crabxl::unprotect_rich_text_literal(&mut run.text);
+        }
+    }
     encode(py, &value)
 }
 

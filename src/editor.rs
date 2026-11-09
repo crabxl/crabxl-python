@@ -8,6 +8,48 @@ pub(crate) struct NativeEditor {
 }
 #[pymethods]
 impl NativeEditor {
+    pub(crate) fn remove_external_links(&self, py: Python<'_>, _data_only: bool) -> PyResult<()> {
+        let loaded = self.loaded.as_ref().ok_or_else(closed)?;
+        let loaded = Arc::clone(loaded);
+        py.detach(move || {
+            let mut handle = lock(&loaded)?;
+            let book = handle.as_mut().ok_or_else(closed)?;
+            if book.external_links().map_err(failure)?.is_empty() {
+                return Ok(());
+            }
+            book.remove_external_links().map_err(failure)
+        })
+    }
+
+    pub(crate) fn set_template(&self, template: bool, keep_vba: bool) -> PyResult<()> {
+        use crabxl::features::WorkbookFormat;
+        let format = match (template, keep_vba) {
+            (false, false) => WorkbookFormat::Xlsx,
+            (false, true) => WorkbookFormat::Xlsm,
+            (true, false) => WorkbookFormat::Xltx,
+            (true, true) => WorkbookFormat::Xltm,
+        };
+        let loaded = self.loaded.as_ref().ok_or_else(|| {
+            PyNotImplementedError::new_err("Template changes require a loaded workbook")
+        })?;
+        lock(loaded)?
+            .as_mut()
+            .ok_or_else(closed)?
+            .set_workbook_format(format)
+            .map_err(failure)
+    }
+
+    pub(crate) fn remove_vba(&self) -> PyResult<()> {
+        let loaded = self.loaded.as_ref().ok_or_else(|| {
+            PyNotImplementedError::new_err("VBA removal requires a loaded workbook")
+        })?;
+        lock(loaded)?
+            .as_mut()
+            .ok_or_else(closed)?
+            .set_macro_policy(crabxl::features::MacroPolicy::Remove)
+            .map_err(failure)
+    }
+
     pub(crate) fn hyperlink_output_ids(
         &self,
         py: Python<'_>,
@@ -284,17 +326,26 @@ impl NativeEditor {
         })?;
         Ok(NativeSheet::in_loaded(Arc::clone(book), id))
     }
-    pub(crate) fn create_sheet(&self, py: Python<'_>, name: String) -> PyResult<NativeSheet> {
+    #[pyo3(signature = (name, chartsheet=false))]
+    pub(crate) fn create_sheet(
+        &self,
+        py: Python<'_>,
+        name: String,
+        chartsheet: bool,
+    ) -> PyResult<NativeSheet> {
         let book = self.loaded.as_ref().ok_or_else(|| {
             PyNotImplementedError::new_err("Sheet creation requires the canonical loaded bank")
         })?;
         let worker = Arc::clone(book);
         let id = py.detach(move || {
-            lock(&worker)?
-                .as_mut()
-                .ok_or_else(closed)?
-                .create_sheet(name)
-                .map_err(failure)
+            let mut handle = lock(&worker)?;
+            let book = handle.as_mut().ok_or_else(closed)?;
+            if chartsheet {
+                book.create_empty_chartsheet(name)
+            } else {
+                book.create_sheet(name)
+            }
+            .map_err(failure)
         })?;
         Ok(NativeSheet::in_loaded(Arc::clone(book), id))
     }

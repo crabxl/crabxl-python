@@ -1,9 +1,11 @@
 """Mutable public rich-text views; canonical values and validation stay in Rust."""
+# Element validation follows openpyxl 3.1.5 (MIT); see third_party/licenses/openpyxl-MIT.txt.
 
 from copy import copy
 from weakref import WeakKeyDictionary, WeakValueDictionary
 from xml.etree.ElementTree import Element, fromstring, tostring
 
+from ..compat import NUMERIC_TYPES
 from .text import InlineFont
 
 _MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
@@ -16,6 +18,10 @@ def _tree(fields):
     for child in node.iter():
         if child.tag.startswith(f"{{{_MAIN}}}"):
             child.tag = child.tag[len(_MAIN) + 2 :]
+        if child.tag == "color" and child.get("tint") == "0":
+            child.attrib.pop("tint")
+        if child.tag == "t" and child.text == (child.text or "").strip():
+            child.attrib.pop("{http://www.w3.org/XML/1998/namespace}space", None)
     return node
 
 
@@ -44,11 +50,17 @@ def _sync(values):
     committed = []
     try:
         for value, sheet, row, column, previous, payload, assigned in updates:
-            sheet._set_tagged(row, column, ("rich", payload))
+            tagged = ("rich", payload)
+            if previous[0] == "typed":
+                tagged = ("typed", (previous[1][0], tagged))
+            sheet._set_tagged(row, column, tagged)
             committed.append((value, sheet, row, column, previous, assigned))
     except BaseException:
         for value, sheet, row, column, previous, assigned in reversed(committed):
-            sheet._set_tagged(row, column, _encode(_decode(previous)))
+            tagged = _encode(_decode(previous))
+            if previous[0] == "typed":
+                tagged = ("typed", (previous[1][0], tagged))
+            sheet._set_tagged(row, column, tagged)
             value._bind(sheet, row, column, retain=assigned)
         raise
     for value, sheet, row, column, _, _, assigned in updates:
@@ -78,6 +90,10 @@ class TextBlock:
     def __str__(self):
         return self.text
 
+    def __repr__(self):
+        font = "default" if self.font == InlineFont() else repr(self.font)
+        return f"TextBlock text={self.text}, font={font}"
+
     def __eq__(self, other):
         return (
             isinstance(other, TextBlock)
@@ -103,10 +119,17 @@ class CellRichText(list):
         super().__init__(args)
         self._observe()
 
-    @staticmethod
-    def _check(values):
-        if any(not isinstance(v, (str, int, float, TextBlock)) for v in values):
-            raise TypeError("Rich text accepts strings, numbers and TextBlock values")
+    @classmethod
+    def _check_element(cls, value):
+        if not isinstance(value, (str, TextBlock, NUMERIC_TYPES)):
+            raise TypeError(f"Illegal CellRichText element {value}")
+
+    @classmethod
+    def _check(cls, values):
+        for value in values:
+            cls._check_element(value)
+
+    _check_rich_text = _check
 
     def _observe(self):
         for item in self:

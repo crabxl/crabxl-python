@@ -48,6 +48,16 @@ class CellRange:
     def bounds(self):
         return self.min_col, self.min_row, self.max_col, self.max_row
 
+    def __iter__(self):
+        for name in ("min_col", "min_row", "max_col", "max_row"):
+            yield name, getattr(self, name)
+
+    def _check_title(self, other):
+        if not isinstance(other, CellRange):
+            raise TypeError("Expected a CellRange")
+        if other.title and self.title != other.title:
+            raise ValueError("Ranges must have the same worksheet title")
+
     def shift(self, col_shift=0, row_shift=0):
         self._replace(
             adjust_range(self.coord, col_shift, row_shift, col_shift, row_shift)

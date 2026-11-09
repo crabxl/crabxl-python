@@ -535,7 +535,8 @@ impl NativeSheet {
         self.with(|sheet| {
             Ok((
                 sheet.get(address).is_some(),
-                sheet.merged_ranges().virtual_style(address).is_some(),
+                sheet.get(address).is_none()
+                    && sheet.merged_ranges().virtual_style(address).is_some(),
             ))
         })
     }
@@ -687,15 +688,63 @@ impl NativeSheet {
             })
         })
     }
-    pub(crate) fn merge_cells(
+    pub(crate) fn prepare_merge_anchor(
         &self,
-        py: Python<'_>,
         first_row: u32,
         first_column: u32,
         last_row: u32,
         last_column: u32,
-        merge: bool,
     ) -> PyResult<()> {
+        let range = CellRange::new(
+            CellAddress::new(first_row, first_column).map_err(failure)?,
+            CellAddress::new(last_row, last_column).map_err(failure)?,
+        )
+        .map_err(failure)?;
+        let mut storage = lock(&self.storage)?;
+        match &mut *storage {
+            SheetStorage::Bank { book, id } => {
+                let mut book = lock(book)?;
+                let sheet = book.sheet(*id).map_err(failure)?;
+                let anchor = sheet.style_at(range.start);
+                let corner = sheet
+                    .get(range.end)
+                    .is_some()
+                    .then(|| sheet.style_at(range.end));
+                let (_, anchor) = book.prepare_merge(range, anchor, corner).map_err(failure)?;
+                book.sheet_mut(*id)
+                    .map_err(failure)?
+                    .set_style(range.start, anchor)
+                    .map_err(failure)
+            }
+            SheetStorage::Loaded { book, id } => lock(book)?
+                .as_mut()
+                .ok_or_else(closed)?
+                .prepare_merge_anchor(*id, range)
+                .map_err(failure),
+            SheetStorage::Standalone(sheet) => {
+                if sheet.get(range.start).is_none() {
+                    sheet
+                        .set(crabxl::Cell {
+                            address: range.start,
+                            value: crabxl::CellValue::Empty,
+                            style: crabxl::StyleId::new(0),
+                        })
+                        .map_err(failure)?;
+                }
+                Ok(())
+            }
+        }
+    }
+
+    #[pyo3(signature = (bounds, merge, declare=true))]
+    pub(crate) fn merge_cells(
+        &self,
+        py: Python<'_>,
+        bounds: (u32, u32, u32, u32),
+        merge: bool,
+        declare: bool,
+    ) -> PyResult<()> {
+        let (first_row, first_column, last_row, last_column) = bounds;
         let range = CellRange::new(
             CellAddress::new(first_row, first_column).map_err(failure)?,
             CellAddress::new(last_row, last_column).map_err(failure)?,
@@ -703,11 +752,13 @@ impl NativeSheet {
         .map_err(failure)?;
         let storage = Arc::clone(&self.storage);
         py.detach(move || {
-            let storage = lock(&storage)?;
-            match &*storage {
+            let mut storage = lock(&storage)?;
+            match &mut *storage {
                 SheetStorage::Bank { book, id } => {
                     let mut book = lock(book)?;
-                    if merge {
+                    if merge && !declare {
+                        book.format_merged_cells(*id, range)
+                    } else if merge {
                         book.merge_cells(*id, range)
                     } else {
                         book.sheet_mut(*id)
@@ -718,22 +769,102 @@ impl NativeSheet {
                 SheetStorage::Loaded { book, id } => {
                     let mut book = lock(book)?;
                     let book = book.as_mut().ok_or_else(closed)?;
-                    if merge {
+                    if merge && !declare {
+                        book.format_merged_cells(*id, range)
+                    } else if merge {
                         book.merge_cells(*id, range)
                     } else {
                         book.unmerge_cells(*id, range)
                     }
                     .map_err(failure)
                 }
-                SheetStorage::Standalone(_) => Err(PyNotImplementedError::new_err(
-                    "Detached merge style registration is not implemented",
-                )),
+                SheetStorage::Standalone(sheet) => if merge {
+                    let style = crabxl::StyleId::new(0);
+                    let prepared =
+                        crabxl::MergedCellRange::new(range, [style; 16]).map_err(failure)?;
+                    if declare {
+                        sheet.edit().merge_prepared(prepared, style)
+                    } else {
+                        sheet.edit().format_prepared_merge(prepared, style)
+                    }
+                } else {
+                    sheet.unmerge_cells(range)
+                }
+                .map_err(failure),
             }
         })
     }
     pub(crate) fn contains(&self, row: u32, column: u32) -> PyResult<bool> {
         let address = CellAddress::new(row, column).map_err(failure)?;
         self.with(|sheet| Ok(sheet.get(address).is_some()))
+    }
+    pub(crate) fn views_xml(&self) -> PyResult<Vec<u8>> {
+        let storage = lock(&self.storage)?;
+        let views = match &*storage {
+            SheetStorage::Standalone(sheet) => sheet.sheet_views().cloned().unwrap_or_default(),
+            SheetStorage::Bank { book, id } => lock(book)?
+                .sheet(*id)
+                .map_err(failure)?
+                .sheet_views()
+                .cloned()
+                .unwrap_or_default(),
+            SheetStorage::Loaded { book, id } => lock(book)?
+                .as_mut()
+                .ok_or_else(closed)?
+                .sheet_views(*id)
+                .map_err(failure)?,
+        };
+        crabxl::feature_xml::sheet_views_to_xml(&views).map_err(failure)
+    }
+    pub(crate) fn set_views_xml(&self, xml: &[u8]) -> PyResult<()> {
+        let views = crabxl::feature_xml::sheet_views_from_xml(xml).map_err(failure)?;
+        let mut storage = lock(&self.storage)?;
+        match &mut *storage {
+            SheetStorage::Standalone(sheet) => sheet.set_sheet_views(Some(views)),
+            SheetStorage::Bank { book, id } => lock(book)?
+                .sheet_mut(*id)
+                .map_err(failure)?
+                .set_sheet_views(Some(views)),
+            SheetStorage::Loaded { book, id } => lock(book)?
+                .as_mut()
+                .ok_or_else(closed)?
+                .set_sheet_views(*id, views),
+        }
+        .map_err(failure)
+    }
+    pub(crate) fn printing_xml(&self) -> PyResult<Vec<u8>> {
+        let storage = lock(&self.storage)?;
+        let views = match &*storage {
+            SheetStorage::Standalone(sheet) => sheet.print_settings().cloned().unwrap_or_default(),
+            SheetStorage::Bank { book, id } => lock(book)?
+                .sheet(*id)
+                .map_err(failure)?
+                .print_settings()
+                .cloned()
+                .unwrap_or_default(),
+            SheetStorage::Loaded { book, id } => lock(book)?
+                .as_mut()
+                .ok_or_else(closed)?
+                .print_settings(*id)
+                .map_err(failure)?,
+        };
+        crabxl::feature_xml::print_settings_to_xml(&views).map_err(failure)
+    }
+    pub(crate) fn set_printing_xml(&self, xml: &[u8]) -> PyResult<()> {
+        let views = crabxl::feature_xml::print_settings_from_xml(xml).map_err(failure)?;
+        let mut storage = lock(&self.storage)?;
+        match &mut *storage {
+            SheetStorage::Standalone(sheet) => sheet.set_print_settings(Some(views)),
+            SheetStorage::Bank { book, id } => lock(book)?
+                .sheet_mut(*id)
+                .map_err(failure)?
+                .set_print_settings(Some(views)),
+            SheetStorage::Loaded { book, id } => lock(book)?
+                .as_mut()
+                .ok_or_else(closed)?
+                .set_print_settings(*id, views),
+        }
+        .map_err(failure)
     }
     pub(crate) fn row_values(
         &self,
@@ -777,6 +908,65 @@ impl NativeSheet {
                 .get(cell.address)
                 .map_or(StyleId::new(0), |old| old.style);
             sheet.set(cell).map_err(failure)
+        })
+    }
+    pub(crate) fn set_data_type(
+        &self,
+        py: Python<'_>,
+        row: u32,
+        column: u32,
+        kind: &str,
+    ) -> PyResult<()> {
+        let address = CellAddress::new(row, column).map_err(failure)?;
+        let kind = crabxl::CellStorageType::parse(kind).map_err(failure)?;
+        let storage = Arc::clone(&self.storage);
+        py.detach(move || {
+            let retype = |sheet: &Worksheet| {
+                sheet
+                    .get(address)
+                    .map_or(CellValue::Empty, |cell| cell.value.clone())
+                    .with_storage_type(kind)
+                    .map_err(failure)
+            };
+            let mut storage = lock(&storage)?;
+            match &mut *storage {
+                SheetStorage::Standalone(sheet) => {
+                    let value = retype(sheet)?;
+                    let style = sheet
+                        .get(address)
+                        .map_or(StyleId::new(0), |cell| cell.style);
+                    sheet
+                        .edit()
+                        .set(Cell {
+                            address,
+                            value,
+                            style,
+                        })
+                        .map_err(failure)
+                }
+                SheetStorage::Bank { book, id } => {
+                    let mut book = lock(book)?;
+                    let sheet = book.sheet(*id).map_err(failure)?;
+                    let value = retype(sheet)?;
+                    let style = sheet
+                        .get(address)
+                        .map_or(StyleId::new(0), |cell| cell.style);
+                    book.sheet_mut(*id)
+                        .map_err(failure)?
+                        .set(Cell {
+                            address,
+                            value,
+                            style,
+                        })
+                        .map_err(failure)
+                }
+                SheetStorage::Loaded { book, id } => {
+                    let mut handle = lock(book)?;
+                    let book = handle.as_mut().ok_or_else(closed)?;
+                    let value = retype(book.sheet(*id).map_err(failure)?)?;
+                    book.upsert_value(*id, address, value).map_err(failure)
+                }
+            }
         })
     }
     #[pyo3(signature = (row, column, retain=false))]

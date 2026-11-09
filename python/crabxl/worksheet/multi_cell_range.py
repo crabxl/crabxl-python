@@ -74,7 +74,7 @@ class MultiCellRange:
 
     def __eq__(self, other):
         if isinstance(other, str):
-            other = type(self)(other)
+            other = MultiCellRange(other)
         if not isinstance(other, MultiCellRange):
             return False
         return self.ranges == other.ranges

@@ -10,6 +10,11 @@ accessed keep their original XML.
 from xml.etree.ElementTree import Element, fromstring, tostring
 
 from . import _native
+from .xml._preserve import (
+    inherit_namespace_context,
+    preserving_fromstring,
+    preserving_tostring,
+)
 
 MAIN_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 _ORDER = (
@@ -230,6 +235,27 @@ class SheetState:
                 warn("Column headings are missing, file may not be readable")
 
 
+def _book_views_tree(views, namespace, original=None):
+    from copy import deepcopy
+
+    from .xml._preserve import _merge_descriptor
+
+    root = deepcopy(original) if original is not None else Element(f"{{{namespace}}}bookViews")
+    known = [node for node in root if node.tag == f"{{{namespace}}}workbookView"]
+    position = list(root).index(known[0]) if known else len(root)
+    for node in known:
+        root.remove(node)
+    for view in views:
+        node = view.to_tree(namespace=namespace)
+        prior = getattr(view, "_crabxl_view_xml", None)
+        if prior is not None:
+            node = _merge_descriptor(prior[0], prior[1], node)
+            node.tag = f"{{{namespace}}}workbookView"
+        root.insert(position, node)
+        position += 1
+    return root
+
+
 class WorkbookState:
     """Defined names, protection and properties of one workbook."""
 
@@ -239,14 +265,12 @@ class WorkbookState:
         self.objs = {}
         self.kept = {}
         self.bound = False
-        owner = workbook._reader or workbook._book
-        if workbook.write_only:
-            raise NotImplementedError("Features are not available in write-only mode")
+        owner = workbook._reader or workbook._stream_writer or workbook._book
         self.raw = _native.workbook_features_read(owner)
 
     def _parts(self):
         document, core, app, custom, _ = self.raw or (None,) * 5
-        root = fromstring(document) if document else None
+        root = preserving_fromstring(document) if document else None
         return root, core, app, custom
 
     def build(self, workbook):
@@ -254,19 +278,47 @@ class WorkbookState:
         from .packaging.core import DocumentProperties
         from .packaging.custom import CustomPropertyList
         from .workbook.defined_name import DefinedNameList
+        from .workbook.properties import CalcProperties, WorkbookProperties
         from .workbook.protection import WorkbookProtection
+        from .workbook.views import BookView
         from .worksheet.print_settings import PrintArea, PrintTitles
 
         self.bound = True
         root, core, _app, custom = self._parts()
         names = security = None
+        calculation = None if workbook._reader is not None else CalcProperties()
+        views = None
+        workbook_properties = WorkbookProperties()
         if root is not None:
             for child in root:
+                if not isinstance(child.tag, str):
+                    continue
+                inherit_namespace_context(child, root)
                 if _local(child) == "definedNames":
                     names = DefinedNameList.from_tree(child)
                 elif _local(child) == "workbookProtection":
                     security = WorkbookProtection.from_tree(child)
+                elif _local(child) == "workbookPr":
+                    workbook_properties = WorkbookProperties.from_tree(child)
+                    self.kept["workbook_properties"] = (child, workbook_properties.to_tree())
+                elif _local(child) == "bookViews":
+                    namespace = child.tag[1:].split("}", 1)[0] if child.tag.startswith("{") else MAIN_NS
+                    views = []
+                    for node in child:
+                        if node.tag != f"{{{namespace}}}workbookView":
+                            continue
+                        inherit_namespace_context(node, child)
+                        view = BookView.from_tree(node)
+                        view._crabxl_view_xml = (node, view.to_tree(namespace=namespace))
+                        views.append(view)
+                    self.kept["views"] = (child, namespace)
+                elif _local(child) == "calcPr":
+                    calculation = CalcProperties.from_tree(child)
+                    self.kept["calculation"] = (child, calculation.to_tree())
         objs = self.objs
+        objs["views"] = views if views is not None else ([] if workbook._reader is not None else [BookView()])
+        objs["workbook_properties"] = workbook_properties
+        objs["calculation"] = calculation
         objs["security"] = security or WorkbookProtection()
         objs["properties"] = (
             DocumentProperties.from_tree(fromstring(core))
@@ -337,16 +389,40 @@ class WorkbookState:
                 name.value = sheet.print_area
                 names.append(name)
         root = Element("workbook", {"xmlns": MAIN_NS})
+        from .xml._preserve import _merge_descriptor
+
+        properties_node = objs["workbook_properties"].to_tree()
+        if "workbook_properties" in self.kept:
+            original, before = self.kept["workbook_properties"]
+            properties_node = _merge_descriptor(original, before, properties_node)
+        root.append(properties_node)
         security = objs["security"].to_tree("workbookProtection")
         if security.attrib or len(security):
             root.append(security)
+        if objs["views"]:
+            objs["views"][0].activeTab = _native.normalized_active_view(
+                workbook._active if workbook._active is not None else 0,
+                [sheet.sheet_state for sheet in workbook._sheets],
+            )
+        from .xml._preserve import _merge_descriptor
+
+        original, namespace = self.kept.get("views", (None, MAIN_NS))
+        root.append(_book_views_tree(objs["views"], namespace, original))
         if names:
             root.append(DefinedNameList(definedName=names).to_tree())
+        if objs["calculation"] is not None:
+            from .xml._preserve import _merge_descriptor
+
+            current = objs["calculation"].to_tree()
+            if "calculation" in self.kept:
+                original, before = self.kept["calculation"]
+                current = _merge_descriptor(original, before, current)
+            root.append(current)
         properties = objs["properties"]
         core = tostring(properties.to_tree())
         custom = objs["custom"]
         custom_xml = tostring(custom.to_tree()) if len(custom) else None
         app = self.raw[2] if self.raw else None
         _native.workbook_features_write(
-            workbook._reader or workbook._book, tostring(root), core, app, custom_xml
+            workbook._reader or workbook._stream_writer or workbook._book, preserving_tostring(root), core, app, custom_xml
         )

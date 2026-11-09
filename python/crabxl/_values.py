@@ -102,6 +102,8 @@ def _encode(value):
 
 def _decode(tagged):
     kind, value = tagged
+    if kind == "typed":
+        return _decode(value[1])
     if kind == "rich":
         from .cell.rich_text import CellRichText
 
@@ -124,6 +126,8 @@ def _decode(tagged):
 
 
 def _data_type(tag):
+    if tag[0] == "typed":
+        return tag[1][0]
     return {
         "empty": "n",
         "bool": "b",

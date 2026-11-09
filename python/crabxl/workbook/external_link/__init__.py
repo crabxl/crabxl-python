@@ -1,0 +1,1 @@
+"""External workbook link metadata."""

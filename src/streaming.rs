@@ -10,7 +10,7 @@ use std::{
     },
     thread::{self, JoinHandle},
 };
-pub(crate) use writer::NativeWriteBook;
+pub(crate) use writer::{NativeWriteBook, WriteState};
 
 /// Independent logical positions over one locked original file. Cloning a File
 /// alone shares its OS offset; seek/read must therefore be one locked operation.

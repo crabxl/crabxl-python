@@ -1,30 +1,14 @@
-"""Coordinate helpers backed by the adapter's shared validation."""
+"""Public coordinate utilities; worksheet bounds are checked by the native model."""
 
-from .. import _address, _column, _letters, _range
-
-
-def get_column_letter(idx):
-    return _letters(idx)
-
-
-def column_index_from_string(col):
-    return _column(col)
-
-
-def coordinate_to_tuple(coordinate):
-    return _address(coordinate)
-
-
-def range_boundaries(range_string):
-    row, col, end_row, end_col = _range(range_string)
-    return col, row, end_col, end_row
-
-
-from .cell import (  # noqa: E402,F401
+from .cell import (  # noqa: F401
     absolute_coordinate,
     cols_from_range,
+    column_index_from_string,
+    coordinate_to_tuple,
     get_column_interval,
+    get_column_letter,
     quote_sheetname,
+    range_boundaries,
     range_to_tuple,
     rows_from_range,
 )

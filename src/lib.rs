@@ -43,7 +43,26 @@ fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(features::sheet_features_read, module)?)?;
     module.add_function(wrap_pyfunction!(features::reader_sheet_features, module)?)?;
     module.add_function(wrap_pyfunction!(features::sheet_features_write, module)?)?;
+    module.add_function(wrap_pyfunction!(features::sheet_images_write, module)?)?;
+    module.add_function(wrap_pyfunction!(features::sheet_charts_write, module)?)?;
+    module.add_function(wrap_pyfunction!(
+        features::sheet_pivot_objects_read,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(
+        features::sheet_pivot_records_read,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(
+        features::sheet_pivot_objects_write,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(features::sheet_pivots_write, module)?)?;
+    module.add_function(wrap_pyfunction!(features::sheet_chartsheet_read, module)?)?;
+    module.add_function(wrap_pyfunction!(features::reader_chartsheet_read, module)?)?;
+    module.add_function(wrap_pyfunction!(features::sheet_chartsheet_write, module)?)?;
     module.add_function(wrap_pyfunction!(features::sheet_register_dxf, module)?)?;
+    module.add_function(wrap_pyfunction!(features::normalized_active_view, module)?)?;
     module.add_function(wrap_pyfunction!(features::workbook_features_read, module)?)?;
     module.add_function(wrap_pyfunction!(features::workbook_features_write, module)?)?;
     module.add_function(wrap_pyfunction!(
@@ -51,9 +70,12 @@ fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
         module
     )?)?;
     module.add_function(wrap_pyfunction!(resolve_model_budget, module)?)?;
+    module.add_function(wrap_pyfunction!(resolve_relationship_targets, module)?)?;
     module.add_function(wrap_pyfunction!(cell_address, module)?)?;
     module.add_function(wrap_pyfunction!(translate_formula, module)?)?;
     module.add_function(wrap_pyfunction!(tokenize_formula, module)?)?;
+    module.add_function(wrap_pyfunction!(scan_formula_fragment, module)?)?;
+    module.add_function(wrap_pyfunction!(formula_scientific_prefix, module)?)?;
     module.add_function(wrap_pyfunction!(classify_formula_operand, module)?)?;
     module.add_function(wrap_pyfunction!(formula_position, module)?)?;
     module.add_function(wrap_pyfunction!(translate_axis, module)?)?;

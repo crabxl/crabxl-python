@@ -78,6 +78,12 @@ pub(crate) fn decode(py: Python<'_>, value: TaggedValue) -> PyResult<CellValue> 
     let (kind, value) = value;
     let value = value.bind(py);
     Ok(match kind.as_str() {
+        "typed" => {
+            let (kind, raw): (String, TaggedValue) = value.extract()?;
+            decode(py, raw)?
+                .with_storage_type(crabxl::CellStorageType::parse(&kind).map_err(failure)?)
+                .map_err(failure)?
+        }
         "empty" => CellValue::Empty,
         "bool" => CellValue::Boolean(value.extract()?),
         "int" => {
@@ -161,7 +167,15 @@ pub(crate) fn decode(py: Python<'_>, value: TaggedValue) -> PyResult<CellValue> 
     })
 }
 pub(crate) fn encode(py: Python<'_>, value: &CellValue) -> PyResult<EncodedValue> {
-    let (kind, object) = match value {
+    let raw = encode_raw(py, value)?;
+    if let Some(kind) = value.storage_type() {
+        Ok(("typed", (kind.as_str(), raw).into_py_any(py)?))
+    } else {
+        Ok(raw)
+    }
+}
+fn encode_raw(py: Python<'_>, value: &CellValue) -> PyResult<EncodedValue> {
+    let (kind, object) = match value.unannotated() {
         CellValue::Empty => ("n", py.None()),
         CellValue::Number(value) => ("n", value.into_py_any(py)?),
         CellValue::Integer(value) => ("n", value.into_py_any(py)?),
@@ -258,12 +272,32 @@ pub(crate) fn decode_values(
     let mut formulas = None;
     let mut decoder = None;
     for (column, (kind, value)) in tagged.into_iter().enumerate() {
+        if bound_formulas && kind == "typed" {
+            let raw = value
+                .bind(py)
+                .get_item(1)?
+                .get_item(0)?
+                .extract::<String>()?;
+            if matches!(raw.as_str(), "array" | "table" | "rich") {
+                formulas.get_or_insert_with(Vec::new).push(column as u32);
+                values.push(py.None());
+                continue;
+            }
+        }
         if bound_formulas && matches!(kind, "array" | "table" | "rich") {
             formulas.get_or_insert_with(Vec::new).push(column as u32);
             values.push(py.None());
         } else if matches!(
             kind,
-            "bigint" | "date" | "datetime" | "time" | "duration" | "array" | "table" | "rich"
+            "typed"
+                | "bigint"
+                | "date"
+                | "datetime"
+                | "time"
+                | "duration"
+                | "array"
+                | "table"
+                | "rich"
         ) {
             if decoder.is_none() {
                 decoder = Some(py.import("crabxl")?.getattr("_decode")?);

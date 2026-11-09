@@ -10,11 +10,41 @@ from .multi_cell_range import MultiCellRange as StandaloneMultiCellRange
 _BOUNDS = ("min_row", "min_col", "max_row", "max_col")
 
 
+class MergeCell(CellRange):
+    tagname = "mergeCell"
+    ref = CellRange.coord
+
+    def __init__(self, ref=None):
+        super().__init__(ref)
+
+    def to_tree(self, tagname=None, idx=None, namespace=None):
+        from ..xml.functions import Element
+
+        tag = tagname or self.tagname
+        return Element(f"{{{namespace}}}{tag}" if namespace else tag, ref=self.ref)
+
+    @classmethod
+    def from_tree(cls, node):
+        return cls(node.attrib["ref"])
+
+    def __copy__(self):
+        return type(self)(self.ref)
+
+
 class MergedCellRange(CellRange):
     def __init__(self, worksheet, coord):
         super().__init__(coord)
         self._worksheet = ref(worksheet)
         self._identity = None
+        worksheet._model().prepare_merge_anchor(
+            self.min_row - 1, self.min_col - 1, self.max_row - 1, self.max_col - 1
+        )
+
+    def format(self):
+        worksheet = self._worksheet()
+        if worksheet is None:
+            raise ValueError("Worksheet is no longer available")
+        worksheet._merge_cells(self.coord, None, None, None, None, True, False)
 
     def _sync(self):
         identity = self.__dict__.get("_identity")

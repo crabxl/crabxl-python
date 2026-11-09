@@ -1,7 +1,9 @@
 """Workbook compatibility facade over canonical native handles."""
 
 from datetime import datetime
+from os import PathLike
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from weakref import WeakSet, WeakValueDictionary
 
 from .._native import (
@@ -24,6 +26,7 @@ class Workbook:
         "_reader",
         "_editor",
         "data_only",
+        "encoding",
         "read_only",
         "write_only",
         "_active",
@@ -35,6 +38,9 @@ class Workbook:
         "_saved",
         "_stream_links",
         "_wfeat",
+        "_template",
+        "_keep_vba",
+        "_input_spool",
     )
 
     def __init__(
@@ -55,8 +61,11 @@ class Workbook:
         )
         self._max_bytes = resolve_model_budget(max_memory_bytes, native_resources)
         self._closed = False
+        self.encoding = "utf-8"
         self._wfeat = None
+        self._template = self._keep_vba = False
         self._reader = self._editor = None
+        self._input_spool = None
         self._iso_dates = bool(iso_dates)
         self.data_only = self.read_only = False
         self.write_only = bool(write_only)
@@ -98,6 +107,38 @@ class Workbook:
         return self._names_state().objs[key]
 
     @property
+    def code_name(self):
+        return self._wobj("workbook_properties").codeName
+
+    @code_name.setter
+    def code_name(self, value):
+        self._wobj("workbook_properties").codeName = value
+
+    @property
+    def views(self):
+        return self._wobj("views")
+
+    @views.setter
+    def views(self, value):
+        from .views import BookView
+
+        if not isinstance(value, (list, tuple)) or any(not isinstance(view, BookView) for view in value):
+            raise TypeError("Expected a sequence of BookView objects")
+        self._names_state().objs["views"] = value
+
+    @property
+    def calculation(self):
+        return self._wobj("calculation")
+
+    @calculation.setter
+    def calculation(self, value):
+        from .properties import CalcProperties
+
+        if value is not None and not isinstance(value, CalcProperties):
+            raise TypeError("Expected CalcProperties or None")
+        self._names_state().objs["calculation"] = value
+
+    @property
     def defined_names(self):
         return self._wobj("names")
 
@@ -132,14 +173,18 @@ class Workbook:
     def _duplicate_name(self, name):
         """Check defined names and the tables of each worksheet (case-insensitive)."""
         name = name.lower()
-        for sheet in self._sheets:
+        for sheet in self.worksheets:
             for table in sheet.tables:
                 if name == table.lower():
                     return True
         return name in {key.lower() for key in self.defined_names}
 
     def _flush_features(self):
-        if self.write_only or self.read_only:
+        if self.read_only:
+            return
+        if self.write_only:
+            if self._wfeat is not None:
+                self._wfeat.push(self)
             return
         for sheet in self._sheets:
             sheet._flush_features()
@@ -170,6 +215,48 @@ class Workbook:
         self._style_owner().set_theme(value)
 
     @property
+    def _fonts(self):
+        from ..styles._collections import StyleCollection
+
+        return StyleCollection(self, "font")
+
+    @property
+    def _fills(self):
+        from ..styles._collections import StyleCollection
+
+        return StyleCollection(self, "fill")
+
+    @property
+    def _borders(self):
+        from ..styles._collections import StyleCollection
+
+        return StyleCollection(self, "border")
+
+    @property
+    def _alignments(self):
+        from ..styles._collections import StyleCollection
+
+        return StyleCollection(self, "alignment")
+
+    @property
+    def _protections(self):
+        from ..styles._collections import StyleCollection
+
+        return StyleCollection(self, "protection")
+
+    @property
+    def _number_formats(self):
+        from ..styles._collections import StyleCollection
+
+        return StyleCollection(self, "number_format")
+
+    @property
+    def _named_styles(self):
+        from ..styles._collections import NamedStyleCollection
+
+        return NamedStyleCollection(self)
+
+    @property
     def named_styles(self):
         return self._style_owner().named_styles()
 
@@ -189,6 +276,26 @@ class Workbook:
     def _check_open(self):
         if self._closed:
             raise ValueError("Workbook is closed")
+
+    @property
+    def template(self):
+        return self._template
+
+    @template.setter
+    def template(self, value):
+        self._check_open()
+        value = bool(value)
+        if value != self._template and self._editor is not None:
+            self._editor.set_template(value, self._keep_vba)
+        self._template = value
+
+    @property
+    def mime_type(self):
+        from ..xml.constants import XLSM, XLSX, XLTM, XLTX
+
+        if self.template:
+            return XLTM if self._keep_vba else XLTX
+        return XLSM if self._keep_vba else XLSX
 
     @property
     def iso_dates(self):
@@ -228,7 +335,15 @@ class Workbook:
 
     @property
     def worksheets(self):
-        return list(self._sheets)
+        from ..chartsheet import Chartsheet
+
+        return [sheet for sheet in self._sheets if not isinstance(sheet, Chartsheet)]
+
+    @property
+    def chartsheets(self):
+        from ..chartsheet import Chartsheet
+
+        return [sheet for sheet in self._sheets if isinstance(sheet, Chartsheet)]
 
     @property
     def sheetnames(self):
@@ -265,7 +380,7 @@ class Workbook:
         return key in self.sheetnames
 
     def __iter__(self):
-        return iter(self._sheets)
+        return iter(self.worksheets)
 
     def _unique_title(self, title, exclude=None):
         names = [sheet.title for sheet in self._sheets if sheet is not exclude]
@@ -283,6 +398,12 @@ class Workbook:
         return title
 
     def create_sheet(self, title=None, index=None):
+        return self._create_sheet(title, index, chartsheet=False)
+
+    def create_chartsheet(self, title=None, index=None):
+        return self._create_sheet(title, index, chartsheet=True)
+
+    def _create_sheet(self, title, index, *, chartsheet):
         self._check_open()
         if self.read_only:
             from ..utils.exceptions import ReadOnlyWorkbookException
@@ -290,7 +411,12 @@ class Workbook:
             raise ReadOnlyWorkbookException(
                 "Cannot create new sheet in a read-only workbook"
             )
-        title = self._unique_title(title or "Sheet")
+        sheet_type = Worksheet
+        if chartsheet:
+            from ..chartsheet import Chartsheet
+
+            sheet_type = Chartsheet
+        title = self._unique_title(title or ("Chart" if chartsheet else "Sheet"))
         Worksheet._validate_title(title)
         if index is not None and not isinstance(index, int):
             raise TypeError("Sheet position must be an integer")
@@ -306,7 +432,7 @@ class Workbook:
             )
         )
         if self.write_only:
-            from ..optimized import WriteOnlyWorksheet
+            from ..optimized import WriteOnlyChartsheet, WriteOnlyWorksheet
 
             if position != len(self._sheets):
                 raise NotImplementedError(
@@ -316,20 +442,19 @@ class Workbook:
                 from ..utils.exceptions import WorkbookAlreadySaved
 
                 raise WorkbookAlreadySaved("Workbook has already been saved")
-            sheet = WriteOnlyWorksheet(
-                self, title, self._stream_writer.create_sheet(title)
-            )
+            sheet_type = WriteOnlyChartsheet if chartsheet else WriteOnlyWorksheet
+            sheet = sheet_type(self, title, self._stream_writer.create_sheet(title))
             self._sheets.append(sheet)
             return sheet
         if self._editor is not None:
-            native = self._editor.create_sheet(title)
+            native = self._editor.create_sheet(title, chartsheet)
             if position != len(self._sheets):
                 self._editor.move_sheet(title, position)
-            sheet = Worksheet(self, title, _existing=True, _native=native)
+            sheet = sheet_type(self, title, _existing=True, _native=native)
             self._sheets.insert(position, sheet)
             return sheet
-        native = self._book.create_sheet(title)
-        sheet = Worksheet(self, title, _native=native)
+        native = self._book.create_sheet(title, chartsheet)
+        sheet = sheet_type(self, title, _native=native)
         if position != len(self._sheets):
             self._book.move_sheet(native, position)
         self._sheets.insert(position, sheet)
@@ -360,10 +485,13 @@ class Workbook:
         self._sheets.insert(position, sheet)
 
     def copy_worksheet(self, from_worksheet):
+        from ..chartsheet import Chartsheet
+
         if self.read_only or self.write_only:
             raise ValueError("Cannot copy worksheets in read-only or write-only mode")
         if (
             not isinstance(from_worksheet, Worksheet)
+            or isinstance(from_worksheet, Chartsheet)
             or from_worksheet.parent is not self
         ):
             raise ValueError("Cannot copy between workbooks")
@@ -418,10 +546,29 @@ class Workbook:
                 raise TypeError("Compression level must be an integer or None")
             if not 0 <= compression_level <= 9:
                 raise ValueError("Compression level must be between 0 and 9")
-        if not isinstance(filename, (str, Path)):
-            raise NotImplementedError("File-like binding output is not implemented")
         if self.read_only:
             raise TypeError("Workbook is read-only")
+        if not isinstance(filename, (str, PathLike)):
+            if not callable(getattr(filename, "write", None)):
+                raise TypeError("Expected a path or writable binary stream")
+            with TemporaryDirectory(prefix="crabxl-output-") as directory:
+                path = Path(directory) / "workbook.xlsx"
+                self.save(path, compression_level=compression_level)
+                with path.open("rb") as source:
+                    while chunk := source.read(1024 * 1024):
+                        written = filename.write(chunk)
+                        if written is not None and written != len(chunk):
+                            raise OSError(
+                                "Workbook stream did not accept a complete write"
+                            )
+                if getattr(filename, "seekable", lambda: False)():
+                    filename.truncate()
+                flush = getattr(filename, "flush", None)
+                if flush is not None:
+                    flush()
+            return
+        if self.write_only and not self._sheets:
+            self.create_sheet()
         self._flush_features()
         hyperlink_sheets = []
         hyperlink_ids = []
@@ -447,8 +594,6 @@ class Workbook:
 
             if self._saved:
                 raise WorkbookAlreadySaved("Workbook has already been saved")
-            if not self._sheets:
-                self.create_sheet()
             for sheet in self._sheets:
                 if not sheet.closed:
                     sheet.close()
@@ -458,6 +603,7 @@ class Workbook:
                     self._active if self._active is not None else 0,
                     compression_level,
                     list(self._stream_links),
+                    template=self.template,
                 )
                 owners = {}
                 observed = {}
@@ -478,12 +624,9 @@ class Workbook:
                 for sheet in self._sheets:
                     sheet._finished = True
         elif self._editor is not None:
-            if self.data_only:
-                raise NotImplementedError(
-                    "Saving data-only loaded workbooks is not implemented"
-                )
             self._active = self._editor.save(Path(filename), False, compression_level)
         else:
+            self._book.set_template(self.template)
             self._active = save_models(
                 Path(filename),
                 [sheet._model() for sheet in self._sheets],
@@ -510,3 +653,6 @@ class Workbook:
             if self._editor is not None:
                 self._editor.close()
             self._closed = True
+        if self._input_spool is not None:
+            self._input_spool.cleanup()
+            self._input_spool = None

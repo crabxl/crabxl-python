@@ -103,6 +103,73 @@ impl NativeReader {
         let style = book.named_style_format(name).map_err(failure)?;
         style_owners::snapshot(py, book.model().style_catalog(), style)
     }
+    fn style_collection<'py>(
+        &self,
+        py: Python<'py>,
+        name: &str,
+    ) -> PyResult<Vec<Bound<'py, PyDict>>> {
+        if let Some(loaded) = &self.loaded {
+            return style_owners::collection(
+                py,
+                lock(loaded)?
+                    .as_ref()
+                    .ok_or_else(closed)?
+                    .model()
+                    .style_catalog(),
+                name,
+            );
+        }
+        style_owners::collection(
+            py,
+            lock(&self.reader)?
+                .as_mut()
+                .ok_or_else(closed)?
+                .style_catalog()
+                .map_err(failure)?,
+            name,
+        )
+    }
+    fn style_collection_add(&self, name: &str, value: &Bound<'_, PyAny>) -> PyResult<u32> {
+        let loaded = self.loaded.as_ref().ok_or_else(|| {
+            PyNotImplementedError::new_err("Read-only style mutation is unavailable")
+        })?;
+        style_owners::collection_add(lock(loaded)?.as_mut().ok_or_else(closed)?, name, value)
+    }
+    fn named_style_metadata(&self) -> PyResult<style_owners::NamedStyleMetadata> {
+        if let Some(loaded) = &self.loaded {
+            return Ok(style_owners::named_metadata(
+                lock(loaded)?
+                    .as_ref()
+                    .ok_or_else(closed)?
+                    .model()
+                    .style_catalog(),
+            ));
+        }
+        Ok(style_owners::named_metadata(
+            lock(&self.reader)?
+                .as_mut()
+                .ok_or_else(closed)?
+                .style_catalog()
+                .map_err(failure)?,
+        ))
+    }
+    fn prepare_named_style(&self, value: &Bound<'_, PyDict>) -> PyResult<[u32; 9]> {
+        style_owners::prepare_array(
+            lock(self.loaded.as_ref().ok_or_else(|| {
+                PyNotImplementedError::new_err("Read-only named style mutation is unavailable")
+            })?)?
+            .as_mut()
+            .ok_or_else(closed)?,
+            value,
+        )
+    }
+    fn prepare_cell_style(&self, value: &Bound<'_, PyDict>) -> PyResult<u32> {
+        let loaded = self.loaded.as_ref().ok_or_else(|| {
+            PyNotImplementedError::new_err("Read-only style mutation is unavailable")
+        })?;
+        style_owners::prepare(lock(loaded)?.as_mut().ok_or_else(closed)?, value)
+            .map(|style| style.get())
+    }
     #[pyo3(signature = (value, update=false))]
     pub(crate) fn add_named_style(&self, value: &Bound<'_, PyDict>, update: bool) -> PyResult<u32> {
         let loaded = self.loaded.as_ref().ok_or_else(|| {
@@ -199,6 +266,40 @@ impl NativeReader {
             .iter()
             .map(|sheet| sheet.name().into())
             .collect())
+    }
+    pub(crate) fn chartsheet_names(&self) -> PyResult<Vec<String>> {
+        if let Some(loaded) = &self.loaded {
+            let handle = lock(loaded)?;
+            let loaded = handle.as_ref().ok_or_else(closed)?;
+            return Ok(loaded
+                .model()
+                .sheets()
+                .filter(|(id, _)| loaded.sheet_kind(*id) == Some(crabxl::SheetKind::ChartSheet))
+                .map(|(_, sheet)| sheet.name().to_owned())
+                .collect());
+        }
+        Ok(lock(&self.reader)?
+            .as_ref()
+            .ok_or_else(closed)?
+            .sheets()
+            .iter()
+            .filter(|sheet| sheet.kind() == crabxl::SheetKind::ChartSheet)
+            .map(|sheet| sheet.name().to_owned())
+            .collect())
+    }
+    pub(crate) fn workbook_format(&self) -> PyResult<(bool, bool)> {
+        let format = if let Some(loaded) = &self.loaded {
+            lock(loaded)?
+                .as_ref()
+                .ok_or_else(closed)?
+                .source_workbook_format()
+        } else {
+            lock(&self.reader)?
+                .as_ref()
+                .ok_or_else(closed)?
+                .workbook_format()
+        };
+        Ok((format.is_template(), format.allows_macros()))
     }
     pub(crate) fn date_1904(&self) -> PyResult<bool> {
         if let Some(loaded) = &self.loaded {
@@ -341,6 +442,29 @@ impl NativeReader {
                     range.end.column.get() + 1,
                 )
             }))
+    }
+    pub(crate) fn style_array(&self, style: u32) -> PyResult<[u32; 9]> {
+        let resolve = |catalog: Option<&crabxl::StyleCatalog>| match catalog {
+            Some(catalog) => catalog.style_array(StyleId::new(style)).map_err(failure),
+            None if style == 0 => Ok([0; 9]),
+            None => Err(PyValueError::new_err("Unknown cell style identity")),
+        };
+        if let Some(loaded) = &self.loaded {
+            return resolve(
+                lock(loaded)?
+                    .as_ref()
+                    .ok_or_else(closed)?
+                    .model()
+                    .style_catalog(),
+            );
+        }
+        resolve(
+            lock(&self.reader)?
+                .as_mut()
+                .ok_or_else(closed)?
+                .style_catalog()
+                .map_err(failure)?,
+        )
     }
     pub(crate) fn number_format(&self, style: u32) -> PyResult<String> {
         if let Some(loaded) = &self.loaded {
