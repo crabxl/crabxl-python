@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="890" height="340" viewBox="0 0 890 340" font-family="system-ui, sans-serif" font-size="13">
+<style>text{fill:#334}.t{font-weight:600}.crabxl{fill:#e8590c}.other{fill:#8a94a6}@media (prefers-color-scheme: dark){text{fill:#dde}.other{fill:#6b7385}}</style>
+<text class="t" x="230" y="20">Time (s, lower is better)</text>
+<text x="220" y="50" text-anchor="end">crabxl (read_only)</text>
+<rect class="crabxl" x="230" y="34" width="63.9" height="22" rx="3"/>
+<text x="299.9" y="50">0.43</text>
+<text x="220" y="80" text-anchor="end">crabxl</text>
+<rect class="crabxl" x="230" y="64" width="65.4" height="22" rx="3"/>
+<text x="301.4" y="80">0.44</text>
+<text x="220" y="110" text-anchor="end">wolfxl (read_only)</text>
+<rect class="other" x="230" y="94" width="98.6" height="22" rx="3"/>
+<text x="334.6" y="110">0.66</text>
+<text x="220" y="140" text-anchor="end">wolfxl</text>
+<rect class="other" x="230" y="124" width="101.5" height="22" rx="3"/>
+<text x="337.5" y="140">0.68</text>
+<text x="220" y="170" text-anchor="end">oxlsx</text>
+<rect class="other" x="230" y="154" width="67.4" height="22" rx="3"/>
+<text x="303.4" y="170">0.45</text>
+<text x="220" y="200" text-anchor="end">python-calamine (iter_rows)</text>
+<rect class="other" x="230" y="184" width="36.6" height="22" rx="3"/>
+<text x="272.6" y="200">0.25</text>
+<text x="220" y="230" text-anchor="end">python-calamine</text>
+<rect class="other" x="230" y="214" width="37.3" height="22" rx="3"/>
+<text x="273.3" y="230">0.25</text>
+<text x="220" y="260" text-anchor="end">fastexcel</text>
+<rect class="other" x="230" y="244" width="46.3" height="22" rx="3"/>
+<text x="282.3" y="260">0.31</text>
+<text x="220" y="290" text-anchor="end">openpyxl (read_only)</text>
+<rect class="other" x="230" y="274" width="178.9" height="22" rx="3"/>
+<text x="414.9" y="290">1.20</text>
+<text x="220" y="320" text-anchor="end">openpyxl</text>
+<rect class="other" x="230" y="304" width="230.0" height="22" rx="3"/>
+<text x="466.0" y="320">1.54</text>
+<text class="t" x="560" y="20">Peak memory (MiB, lower is better)</text>
+<rect class="crabxl" x="560" y="34" width="50.6" height="22" rx="3"/>
+<text x="616.6" y="50">30</text>
+<rect class="crabxl" x="560" y="64" width="58.1" height="22" rx="3"/>
+<text x="624.1" y="80">35</text>
+<rect class="other" x="560" y="94" width="62.7" height="22" rx="3"/>
+<text x="628.7" y="110">37</text>
+<rect class="other" x="560" y="124" width="108.1" height="22" rx="3"/>
+<text x="674.1" y="140">64</text>
+<rect class="other" x="560" y="154" width="230.0" height="22" rx="3"/>
+<text x="796.0" y="170">137</text>
+<rect class="other" x="560" y="184" width="49.3" height="22" rx="3"/>
+<text x="615.3" y="200">29</text>
+<rect class="other" x="560" y="214" width="49.2" height="22" rx="3"/>
+<text x="615.2" y="230">29</text>
+<rect class="other" x="560" y="244" width="63.7" height="22" rx="3"/>
+<text x="629.7" y="260">38</text>
+<rect class="other" x="560" y="274" width="57.4" height="22" rx="3"/>
+<text x="623.4" y="290">34</text>
+<rect class="other" x="560" y="304" width="123.4" height="22" rx="3"/>
+<text x="689.4" y="320">73</text>
+</svg>
