@@ -12,8 +12,8 @@ Follow the canonical [Alpha.6 and later release plan](https://github.com/crabxl/
 - **A8:** measured read/write/edit and Python binding performance backlog.
 - **A9/A10:** published style assignment/temporal formats and complete cell appearance components.
 - **A11:** named styles/themes, row/column styles, merges/dimensions/outlines, hyperlinks and editable rich text.
-- **A12:** all remaining M5 features; images, anchors, all baseline chart families/chartsheets and loaded drawing graph edits; pivots/cache records, external links, macro/template policies and complex metadata; complete M4/M5/M6 integration and acceptance (W14–W26).
-- **A13:** full-feature performance/RAM work and M7 compatibility/platform/release quality (W27–W28).
+- **A12:** all remaining M5 features; images, anchors, all baseline chart families/chartsheets and loaded drawing graph edits; pivots/cache records, external links, macro/template policies and complex metadata; complete M4/M5/M6 integration and acceptance; full openpyxl compatibility/platform/release-quality acceptance (W14–W26, W28).
+- **A13:** full-feature performance/RAM optimization only (W27).
 
 On 2026-11-01 former A12–A15 were combined into A12 and former A16 became
 A13. All work-package scope and acceptance gates are retained. Complete all

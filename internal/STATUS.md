@@ -1,6 +1,6 @@
 # Status
 
-Last update: 2026-10-24.
+Last update: 2026-11-09.
 
 Replace this file when the status changes. Do not append a history log.
 
@@ -12,65 +12,70 @@ Replace this file when the status changes. Do not append a history log.
 - Wheels: CPython 3.11–3.15 on Linux x86_64 and ARM64, Windows x86_64, and
   macOS Intel and Apple Silicon. Python 3.15 is tested with its release
   candidate.
-- No release is in preparation.
+- A12 (`0.1.0a12`, full openpyxl compatibility) is implemented and committed,
+  not released. It pins the core revision
+  `f994efd77c4831e65238da27f713a97637f3fc51`. Push the core before this
+  repository so that the pinned revision resolves.
 
 ## What works
 
-- `Workbook`, `load_workbook`, `Worksheet` and `Cell` with openpyxl call names.
-- Normal, `read_only` and `write_only` modes.
+- `Workbook`, `load_workbook`, `Worksheet` and `Cell` with openpyxl call names,
+  including the deprecated openpyxl 3.1 aliases (`get_sheet_by_name`,
+  `remove_sheet` and others).
+- Normal, `read_only` and `write_only` modes. Paths and file-like objects.
 - Values, dates, formulas with cached results and rich text.
-- Cell styles: `Font`, `PatternFill`, `GradientFill`, `Border`, `Alignment`,
-  `Protection` and number formats. Named styles, themes and row and column
-  styles.
+- Cell styles, named styles, themes, row and column styles, `quotePrefix` and
+  `pivotButton`.
 - Merged cells, row and column dimensions, outline groups and hyperlinks.
 - Sheet create, copy, remove, rename and move. Row and column insertion and
   deletion. Range moves.
 - Tables, auto filters, conditional formatting, data validation, comments,
-  sheet and workbook protection, headers and footers, defined names, print
-  areas and titles, and document properties in normal and `read_only` modes
-  (not in `write_only` mode). Stage 1 is on branch `stage1`, not released.
+  protection, headers and footers, print settings, `sheet_properties`,
+  `sheet_format`, scenarios, defined names and document properties. These
+  work in all three modes. In `write_only` mode, set views and sheet
+  properties before the first `append`.
+- Images, charts, chartsheets, drawings, pivot tables, external links and VBA
+  (`keep_vba`, `vba_archive`).
 - `ResourceOptions` for memory limits and shared-string storage.
   `compression_level` on save.
 
+## Acceptance (A12)
+
+| Check | Result |
+|---|---|
+| Rust core tests | 346 pass |
+| Python tests | 1,032 pass, 4 skipped, 3 expected failures |
+| Corpus round trip | 1,548 pass, 0 fail |
+| openpyxl 3.1.5 suite (`tools/run_openpyxl_suite.py`) | 2,115 pass, 329 expected failures |
+
+The upstream suite runs unchanged against crabxl. The 329 expected failures are
+listed in `tools/openpyxl_suite_expected.json`; the runner fails when the set
+changes. They are:
+
+- 325 tests of openpyxl internals: private reader and writer classes
+  (`_reader`, `_writer`, `ExcelReader`, `xmlfile`, stylesheet and drawing
+  writers), private attributes (`_style`, `_cells`, `_tables`), test doubles
+  that call private methods, and Serialisable XML plumbing (`from_tree`,
+  `to_tree`) of package parts that crabxl writes in Rust.
+- 4 deliberate differences: crabxl keeps the source names of VBA, external-link
+  and comment parts, keeps an unchanged `calcChain`, and writes the projected
+  pie chart elements in the schema order that Excel requires.
+
 ## Known limits
 
-- File-like objects are not supported for input or output. Use a path.
 - `.xlsm` and `.xltm` files require `keep_vba=True`.
-- `keep_links=False` is not supported.
-- Formulas are not calculated.
-- Features of the next core releases are not available yet: tables, data
-  validation, conditional formatting, comments, images and charts.
+- Formulas, chart caches and pivot results are not calculated.
+- Restoring a removed `vba_archive` raises `NotImplementedError`.
+- Row and column dimensions do not support `quotePrefix` and `pivotButton`.
 
 ## Next tasks
 
-### Documentation (to do)
-
-The documentation site is in [crabxl-docs](https://github.com/crabxl/crabxl-docs).
-It publishes `docs/` from this repository. Follow the content specification in
-crabxl-docs.
-
-1. Write `docs/` user pages:
-   - Installation.
-   - Migration from openpyxl. This is the most important page. List what works
-     without change, what is different and what is not supported.
-   - The three modes: normal, `read_only` and `write_only`.
-   - Styles.
-   - Memory and resource options.
-   - Compatibility table by openpyxl module.
-   - Performance: a plain summary of the benchmark results.
-2. Change the README links that point to ADRs. Link them to user pages
-   instead.
-3. Make the README shorter. Link it to the documentation site after the site
-   is published.
-4. Rewrite `internal/roadmap.md` in plain language. Use the writing rules in
-   [AGENTS.md](../AGENTS.md). Remove completed items.
-5. Consider a Python API reference generated with `fumadocs-python`.
-
-### Features
-
-Follow the core release plan. Add the Python API for each core feature group
-when the core supports it. See the core
-[status](https://github.com/crabxl/crabxl/blob/main/internal/STATUS.md).
+1. Push the core and this repository, then release A12.
+2. A13: performance and memory optimization only. Run the benchmark suite
+   against openpyxl, python-calamine and XlsxWriter.
+3. Documentation: the user pages in `docs/` are written. Shorten the README and
+   link it to the documentation site after the site is published. Consider a
+   Python API reference generated with `fumadocs-python`.
 
 ## Known problems
 

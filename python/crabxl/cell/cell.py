@@ -195,6 +195,47 @@ class Cell:
         _encode(value)
         return value
 
+    def check_error(self, value):
+        try:
+            return str(value)
+        except UnicodeDecodeError:
+            return "#N/A"
+
+    @property
+    def col_idx(self):
+        return self.column
+
+    @property
+    def base_date(self):
+        return self.parent.parent.epoch
+
+    def _style_flag(self, index):
+        if self._detached is not None:
+            return False
+        owner = self.parent.parent._style_owner()
+        return bool(owner.style_array(self.style_id)[index])
+
+    def _set_style_flag(self, name, value):
+        from .._native import make_style_component
+
+        if self._detached is not None:
+            raise NotImplementedError("Detached cells cannot change style flags")
+        self.parent._model().set_style_component(
+            self.row - 1,
+            self.column - 1,
+            name,
+            make_style_component(name, {"value": bool(value)}),
+        )
+
+    pivotButton = property(
+        lambda self: self._style_flag(6),
+        lambda self, value: self._set_style_flag("pivotButton", value),
+    )
+    quotePrefix = property(
+        lambda self: self._style_flag(7),
+        lambda self, value: self._set_style_flag("quotePrefix", value),
+    )
+
     @property
     def value(self):
         from ..worksheet.formula import ArrayFormula, DataTableFormula, bind

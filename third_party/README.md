@@ -22,6 +22,8 @@ The comment XML descriptors in `comments/{author,comment_sheet}.py` use the same
 
 Chartsheet property descriptors in `chartsheet/{custom,properties,protection,publish,views}.py` use the same pinned reference and MIT notice. The native chartsheet graph owns their package persistence.
 
+`utils/dataframe.py`, `worksheet/{cell_watch,custom,errors,picture,smart_tag}.py`, `SheetFormatProperties` in `worksheet/dimensions.py` and the scenario descriptors in `worksheet/scenario.py` are copied from the same pinned reference under the same MIT notice. `tools/run_openpyxl_suite.py` runs the unchanged upstream test suite from the reference checkout; no test file is copied.
+
 
 The style XML descriptors and StyleArray in styles/cell_style.py use the same pinned openpyxl 3.1.5 reference and MIT notice. Native StyleCatalog projects canonical format identities; Python only wraps the returned metadata.
 

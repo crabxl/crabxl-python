@@ -6,6 +6,8 @@ from copy import copy
 from weakref import WeakValueDictionary
 
 from ..compat import safe_string
+from ..descriptors import Bool, Float, Integer
+from ..descriptors.serialisable import Serialisable
 from ..styles import Alignment, Border, Font, GradientFill, PatternFill, Protection
 from ..styles._base import StyleProxy, component
 from ..utils.cell import column_index_from_string, get_column_letter
@@ -268,6 +270,10 @@ class RowDimension(Dimension):
     @property
     def s(self):
         return self.style_id
+
+    @property
+    def r(self):
+        return self.index
 
     _fields = (
         "height",
@@ -534,3 +540,39 @@ class DimensionHolder(MutableMapping):
 
     def __contains__(self, key):
         return self._call("dimension", self.rows, self._index(key)) is not None
+
+
+class SheetFormatProperties(Serialisable):
+    tagname = "sheetFormatPr"
+
+    baseColWidth = Integer(allow_none=True)
+    defaultColWidth = Float(allow_none=True)
+    defaultRowHeight = Float()
+    customHeight = Bool(allow_none=True)
+    zeroHeight = Bool(allow_none=True)
+    thickTop = Bool(allow_none=True)
+    thickBottom = Bool(allow_none=True)
+    outlineLevelRow = Integer(allow_none=True)
+    outlineLevelCol = Integer(allow_none=True)
+
+    def __init__(
+        self,
+        baseColWidth=8,  # according to spec
+        defaultColWidth=None,
+        defaultRowHeight=15,
+        customHeight=None,
+        zeroHeight=None,
+        thickTop=None,
+        thickBottom=None,
+        outlineLevelRow=None,
+        outlineLevelCol=None,
+    ):
+        self.baseColWidth = baseColWidth
+        self.defaultColWidth = defaultColWidth
+        self.defaultRowHeight = defaultRowHeight
+        self.customHeight = customHeight
+        self.zeroHeight = zeroHeight
+        self.thickTop = thickTop
+        self.thickBottom = thickBottom
+        self.outlineLevelRow = outlineLevelRow
+        self.outlineLevelCol = outlineLevelCol

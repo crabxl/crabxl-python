@@ -19,6 +19,58 @@ class Worksheet:
     SHEETSTATE_HIDDEN = "hidden"
     SHEETSTATE_VERYHIDDEN = "veryHidden"
 
+    mime_type = (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"
+    )
+    legacy_drawing = None
+
+    BREAK_NONE = 0
+    BREAK_ROW = 1
+    BREAK_COLUMN = 2
+
+    PAPERSIZE_LETTER = "1"
+    PAPERSIZE_LETTER_SMALL = "2"
+    PAPERSIZE_TABLOID = "3"
+    PAPERSIZE_LEDGER = "4"
+    PAPERSIZE_LEGAL = "5"
+    PAPERSIZE_STATEMENT = "6"
+    PAPERSIZE_EXECUTIVE = "7"
+    PAPERSIZE_A3 = "8"
+    PAPERSIZE_A4 = "9"
+    PAPERSIZE_A4_SMALL = "10"
+    PAPERSIZE_A5 = "11"
+
+    ORIENTATION_PORTRAIT = "portrait"
+    ORIENTATION_LANDSCAPE = "landscape"
+
+    @property
+    def path(self):
+        # openpyxl numbers worksheet parts in tab order when it saves.
+        return f"/xl/worksheets/sheet{self.parent.worksheets.index(self) + 1}.xml"
+
+    @property
+    def encoding(self):
+        return self.parent.encoding
+
+    @property
+    def merged_cell_ranges(self):
+        return list(self.merged_cells.ranges)
+
+    def set_printer_settings(self, paper_size, orientation):
+        self.page_setup.paperSize = paper_size
+        self.page_setup.orientation = orientation
+
+    @property
+    def array_formulae(self):
+        from .formula import ArrayFormula
+
+        return {
+            cell.coordinate: cell.value.ref
+            for row in self.iter_rows()
+            for cell in row
+            if cell.data_type == "f" and isinstance(cell.value, ArrayFormula)
+        }
+
     __slots__ = (
         "parent",
         "_title",
@@ -31,7 +83,8 @@ class Worksheet:
         "_rich_views",
         "_assigned_rich_views",
         "_hyperlink_views",
-        "_images",
+        "_image_views",
+        "_new_images",
         "_image_state",
         "_charts",
         "_chart_state",
@@ -74,7 +127,8 @@ class Worksheet:
         self._rich_views = WeakValueDictionary()
         self._assigned_rich_views = {}
         self._hyperlink_views = {}
-        self._images = []
+        self._image_views = None if _existing else []
+        self._new_images = []
         self._image_state = (None, ())
         self._charts = []
         self._chart_state = (None, ())
@@ -96,11 +150,13 @@ class Worksheet:
             return self._native
         return self.parent._editor.sheet_handle(self.title)
 
+    def _views_source(self):
+        return bytes(self._model().views_xml())
+
+    def _printing_source(self):
+        return bytes(self._model().printing_xml())
+
     def _state(self):
-        if self.parent.write_only:
-            raise NotImplementedError(
-                "Features are not available on write-only worksheets"
-            )
         state = self._feat
         if state is None:
             self.parent._check_open()
@@ -140,11 +196,12 @@ class Worksheet:
                     self._feature_handle(), base, current, sources
                 )
                 self._pivot_creation_state = (base, current)
-        if self._images or self._image_state[1]:
+        images = self._new_images if self._image_views is None else self._image_views
+        if images or self._image_state[1] or self._image_state[0] is not None:
             from .._native import sheet_images_write
 
             base, previous = self._image_state
-            current = tuple(image._native_input() for image in self._images)
+            current = tuple(image._native_input() for image in images)
             if current != previous:
                 base = sheet_images_write(self._feature_handle(), base, current)
                 self._image_state = (base, current)
@@ -247,6 +304,32 @@ class Worksheet:
             raise ValueError("A pivot table requires a cache")
         self._new_pivots.append(pivot)
 
+    @property
+    def _images(self):
+        if self._image_views is None:
+            from .._native import sheet_images_read
+            from ..drawing.image import Image
+
+            prototypes = sheet_images_read(self._feature_handle())
+            base, previous = self._image_state
+            if base is not None:
+                prototypes = prototypes[:base]
+            images = [Image._from_native(value) for value in prototypes]
+            self._image_state = (
+                0,
+                tuple(image._native_input() for image in images) + previous,
+            )
+            self._image_views = images + self._new_images
+            self._new_images = []
+        return self._image_views
+
+    @_images.setter
+    def _images(self, value):
+        if self._existing and self._image_views is None:
+            self._image_state = (0, None)
+            self._new_images = []
+        self._image_views = value
+
     def add_image(self, img, anchor=None):
         """Add an image to the worksheet, optionally changing its anchor."""
         from ..drawing.image import Image
@@ -260,7 +343,10 @@ class Worksheet:
             raise TypeError("Only Image objects can be added")
         if anchor is not None:
             img.anchor = anchor
-        self._images.append(img)
+        if self._image_views is None:
+            self._new_images.append(img)
+        else:
+            self._image_views.append(img)
 
     @property
     def tables(self):
@@ -311,6 +397,14 @@ class Worksheet:
     @protection.setter
     def protection(self, value):
         self._state().objs["protection"] = value
+
+    @property
+    def scenarios(self):
+        return self._state().get("scenarios")
+
+    @scenarios.setter
+    def scenarios(self, value):
+        self._state().objs["scenarios"] = value
 
     @property
     def HeaderFooter(self):
@@ -490,7 +584,7 @@ class Worksheet:
             from .pagebreak import ColBreak, RowBreak
             from .properties import PageSetupProperties
 
-            root = fromstring(bytes(self._model().printing_xml()))
+            root = fromstring(self._printing_source())
             classes = {
                 "pageSetup": PrintPageSetup,
                 "pageMargins": PageMargins,
@@ -510,6 +604,24 @@ class Worksheet:
                             "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
                         )
                 self._printing[tag] = obj
+            from .dimensions import SheetFormatProperties
+            from .properties import WorksheetProperties
+
+            element = root.find("{*}sheetPr")
+            properties = (
+                WorksheetProperties.from_tree(element)
+                if element is not None
+                else WorksheetProperties()
+            )
+            # page_setup.fitToPage and sheet_properties.pageSetUpPr share one object.
+            properties.pageSetUpPr = self._printing["pageSetUpPr"]
+            self._printing["sheetPr"] = properties
+            element = root.find("{*}sheetFormatPr")
+            self._printing["sheetFormatPr"] = (
+                SheetFormatProperties.from_tree(element)
+                if element is not None
+                else SheetFormatProperties()
+            )
             self._printing_previous = self._printing_xml()
         return self._printing[name]
 
@@ -520,8 +632,10 @@ class Worksheet:
             "worksheet",
             xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main",
         )
-        properties = SubElement(root, "sheetPr")
-        properties.append(self._printing["pageSetUpPr"].to_tree())
+        properties = self._printing["sheetPr"]
+        properties.pageSetUpPr = self._printing["pageSetUpPr"]
+        root.append(properties.to_tree())
+        root.append(self._printing["sheetFormatPr"].to_tree())
         SubElement(root, "sheetData")
         for tag in (
             "printOptions",
@@ -532,6 +646,29 @@ class Worksheet:
         ):
             root.append(self._printing[tag].to_tree())
         return tostring(root)
+
+    @property
+    def sheet_properties(self):
+        return self._printing_get("sheetPr")
+
+    @sheet_properties.setter
+    def sheet_properties(self, value):
+        from .properties import PageSetupProperties
+
+        self._printing_get("sheetPr")
+        if value.pageSetUpPr is None:
+            value.pageSetUpPr = PageSetupProperties()
+        self._printing["sheetPr"] = value
+        self._printing["pageSetUpPr"] = value.pageSetUpPr
+
+    @property
+    def sheet_format(self):
+        return self._printing_get("sheetFormatPr")
+
+    @sheet_format.setter
+    def sheet_format(self, value):
+        self._printing_get("sheetFormatPr")
+        self._printing["sheetFormatPr"] = value
 
     @property
     def page_setup(self):
@@ -585,9 +722,7 @@ class Worksheet:
             from ..xml.functions import fromstring, tostring
             from .views import SheetViewList
 
-            self._views = SheetViewList.from_tree(
-                fromstring(bytes(self._model().views_xml()))
-            )
+            self._views = SheetViewList.from_tree(fromstring(self._views_source()))
             self._views_previous = tostring(self._views.to_tree())
         return self._views
 

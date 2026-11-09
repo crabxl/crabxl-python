@@ -57,6 +57,12 @@ extend-exclude = [
     "python/crabxl/worksheet/related.py",
     "python/crabxl/workbook/defined_name.py",
     "python/crabxl/workbook/protection.py",
+    "python/crabxl/utils/dataframe.py",
+    "python/crabxl/worksheet/cell_watch.py",
+    "python/crabxl/worksheet/custom.py",
+    "python/crabxl/worksheet/errors.py",
+    "python/crabxl/worksheet/picture.py",
+    "python/crabxl/worksheet/smart_tag.py",
 ]
 
 [tool.ruff.lint]

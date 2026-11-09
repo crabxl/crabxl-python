@@ -6,6 +6,17 @@ use crabxl::{
 };
 use pyo3::{prelude::*, types::PyDict};
 
+/// Style directive keys that carry a `NativeStyleComponent`.
+pub(crate) const STYLE_COMPONENTS: [&str; 7] = [
+    "font",
+    "fill",
+    "border",
+    "alignment",
+    "protection",
+    "quotePrefix",
+    "pivotButton",
+];
+
 pub(crate) trait StyleOwner {
     fn catalog(&self) -> Option<&StyleCatalog>;
     fn component(&mut self, base: StyleId, component: StyleComponent) -> Result<StyleId>;
@@ -262,7 +273,7 @@ pub(crate) fn prepare(owner: &mut impl StyleOwner, value: &Bound<'_, PyDict>) ->
         .transpose()?
         .unwrap_or_else(|| "General".into());
     let mut components = Vec::with_capacity(5);
-    for name in ["font", "fill", "border", "alignment", "protection"] {
+    for name in STYLE_COMPONENTS {
         if let Some(value) = value.get_item(name)? {
             components.push(
                 value

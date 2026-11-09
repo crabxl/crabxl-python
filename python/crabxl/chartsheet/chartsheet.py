@@ -87,6 +87,18 @@ class Chartsheet(Worksheet):
 
     __slots__ = ()
 
+    tagname = "chartsheet"
+    idx_base = 0
+    namespace = None
+    mime_type = (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.chartsheet+xml"
+    )
+
+    @property
+    def path(self):
+        # openpyxl numbers chartsheet parts in tab order when it saves.
+        return f"/xl/chartsheets/sheet{self.parent.chartsheets.index(self) + 1}.xml"
+
     sheetPr = _chartsheet_property("sheetPr")
     sheetViews = _chartsheet_property("sheetViews")
     sheetProtection = _chartsheet_property("sheetProtection")

@@ -9,7 +9,7 @@ try:
 except ImportError:
     PILImage = None
 
-from .spreadsheet_drawing import _anchor_input, _client_data_input
+from .spreadsheet_drawing import _anchor_from_native, _anchor_input, _client_data_input
 
 
 class Image:
@@ -60,10 +60,19 @@ class Image:
             return self._encode_image(self.ref, getattr(self.ref, "fp", None))
         return self._payload
 
+    @classmethod
+    def _from_native(cls, prototype):
+        image = cls(BytesIO(prototype.data()))
+        image.anchor = _anchor_from_native(prototype.anchor())
+        image._prototype = prototype
+        return image
+
     def _native_input(self):
-        return (
+        value = (
             self._data(),
             f"image/{self.format}",
             _anchor_input(self.anchor, int(self.width * 9525), int(self.height * 9525)),
             _client_data_input(self.anchor),
         )
+        prototype = getattr(self, "_prototype", None)
+        return value if prototype is None else (*value, prototype)

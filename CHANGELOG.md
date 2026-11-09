@@ -18,11 +18,39 @@ Each release uses a pinned revision of the Rust core. The core has its own
 - The openpyxl import paths of these classes, for example
   `crabxl.worksheet.table`, `crabxl.formatting.rule` and `crabxl.comments`.
 - Features load on first access and only changed features are written on save.
+- Images, charts, chartsheets, drawings, pivot tables and external links.
+- `ws.sheet_properties` (tab color, outline and page setup properties) and
+  `ws.sheet_format` in all modes.
+- `ws.scenarios`.
+- `cell.quotePrefix` and `cell.pivotButton`.
+- `write_only` sheets support features, print settings, views, sheet
+  properties and merged cells. Set views and sheet properties before the first
+  `append`; a later change raises `ValueError`.
+- `wb.vba_archive`. Setting it to `None` removes the VBA project.
+- The deprecated openpyxl 3.1 calls: `get_sheet_by_name`, `get_sheet_names`,
+  `remove_sheet`, `get_index` and `create_named_range`. They emit a
+  `DeprecationWarning`.
+- Other openpyxl attributes, for example `wb.path`, `wb.excel_base_date`,
+  `wb.style_names`, `wb.is_template`, `ws.path`, `ws.merged_cell_ranges`,
+  `ws.set_printer_settings`, `ws.array_formulae`, `cell.col_idx` and
+  `cell.base_date`.
+- The modules `crabxl.utils.dataframe` and `crabxl.worksheet.cell_watch`,
+  `custom`, `errors`, `picture` and `smart_tag`.
+- `load_workbook` and `save` accept file-like objects. `keep_links=False` is
+  supported.
+- `tools/run_openpyxl_suite.py` runs the unchanged openpyxl 3.1.5 test suite
+  against crabxl and checks the result against a tracked list of expected
+  failures.
 
 ### Changed
 
 - Loaded workbooks can move, copy and remove sheets when the workbook has
   sheet-local defined names.
+
+### Fixed
+
+- A new sheet in a loaded workbook kept its views and print settings on save.
+  Before, they were lost.
 
 ## [0.1.0a11] - 2026-10-21
 

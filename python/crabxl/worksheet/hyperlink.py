@@ -11,6 +11,8 @@ _MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 
 class Hyperlink:
     tagname = "hyperlink"
+    idx_base = 0
+    namespace = None
     __attrs__ = ("ref", "location", "tooltip", "display", "id")
 
     def __init__(

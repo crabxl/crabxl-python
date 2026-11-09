@@ -40,10 +40,11 @@ class SheetState:
         self.sheet = sheet
         self.objs = {}
         workbook = sheet.parent
+        self.elements = {}
         if workbook.write_only:
-            raise NotImplementedError(
-                "Features are not available on write-only worksheets"
-            )
+            # A streamed sheet is new: there are no source features to read.
+            self.table_xml, self.raw_comments, self.dxfs = [], [], {}
+            return
         if workbook.read_only:
             raw = _native.reader_sheet_features(workbook._reader, sheet.title)
         else:
@@ -77,6 +78,12 @@ class SheetState:
         if password is not None:
             protection.set_password(password, True)
         return protection
+
+    def _build_scenarios(self):
+        from .worksheet.scenario import ScenarioList
+
+        element = self._first("scenarios")
+        return ScenarioList() if element is None else ScenarioList.from_tree(element)
 
     def _build_auto_filter(self):
         from .worksheet.filters import AutoFilter
@@ -142,8 +149,14 @@ class SheetState:
     # -- save ---------------------------------------------------------
 
     def push(self):
-        sheet = self.sheet
-        handle = sheet._feature_handle()
+        handle = self.sheet._feature_handle()
+        _native.sheet_features_write(
+            handle,
+            *self.encode(lambda dxf: _native.sheet_register_dxf(handle, dxf)),
+        )
+
+    def encode(self, register_dxf):
+        """Return the feature XML, table XML and comments; dxfs go to register_dxf."""
         root = Element("worksheet", {"xmlns": MAIN_NS})
         objs = self.objs
         dxf_ids = {}
@@ -161,6 +174,11 @@ class SheetState:
                 tree(objs["protection"])
         else:
             original("sheetProtection")
+        if "scenarios" in objs:
+            if objs["scenarios"]:
+                tree(objs["scenarios"])
+        else:
+            original("scenarios")
         if "auto_filter" in objs:
             if objs["auto_filter"]:
                 tree(objs["auto_filter"])
@@ -176,7 +194,7 @@ class SheetState:
                     if rule.dxf and rule.dxf != empty:
                         xml = tostring(rule.dxf.to_tree())
                         if xml not in dxf_ids:
-                            dxf_ids[xml] = _native.sheet_register_dxf(handle, xml)
+                            dxf_ids[xml] = register_dxf(xml)
                         rule.dxfId = dxf_ids[xml]
                 root.append(block.to_tree())
         else:
@@ -214,7 +232,7 @@ class SheetState:
             ]
         else:
             comments = list(self.raw_comments)
-        _native.sheet_features_write(handle, tostring(root), tables, comments)
+        return tostring(root), tables, comments
 
     def _prepare_table(self, table):
         from warnings import warn
@@ -231,7 +249,8 @@ class SheetState:
                             "File may not be readable: column headings must be strings."
                         )
                     column.name = str(cell.value)
-            except TypeError:
+            except (TypeError, NotImplementedError):
+                # Write-only sheets cannot read headings back, as in openpyxl.
                 warn("Column headings are missing, file may not be readable")
 
 
@@ -240,7 +259,11 @@ def _book_views_tree(views, namespace, original=None):
 
     from .xml._preserve import _merge_descriptor
 
-    root = deepcopy(original) if original is not None else Element(f"{{{namespace}}}bookViews")
+    root = (
+        deepcopy(original)
+        if original is not None
+        else Element(f"{{{namespace}}}bookViews")
+    )
     known = [node for node in root if node.tag == f"{{{namespace}}}workbookView"]
     position = list(root).index(known[0]) if known else len(root)
     for node in known:
@@ -300,23 +323,37 @@ class WorkbookState:
                     security = WorkbookProtection.from_tree(child)
                 elif _local(child) == "workbookPr":
                     workbook_properties = WorkbookProperties.from_tree(child)
-                    self.kept["workbook_properties"] = (child, workbook_properties.to_tree())
+                    self.kept["workbook_properties"] = (
+                        child,
+                        workbook_properties.to_tree(),
+                    )
                 elif _local(child) == "bookViews":
-                    namespace = child.tag[1:].split("}", 1)[0] if child.tag.startswith("{") else MAIN_NS
+                    namespace = (
+                        child.tag[1:].split("}", 1)[0]
+                        if child.tag.startswith("{")
+                        else MAIN_NS
+                    )
                     views = []
                     for node in child:
                         if node.tag != f"{{{namespace}}}workbookView":
                             continue
                         inherit_namespace_context(node, child)
                         view = BookView.from_tree(node)
-                        view._crabxl_view_xml = (node, view.to_tree(namespace=namespace))
+                        view._crabxl_view_xml = (
+                            node,
+                            view.to_tree(namespace=namespace),
+                        )
                         views.append(view)
                     self.kept["views"] = (child, namespace)
                 elif _local(child) == "calcPr":
                     calculation = CalcProperties.from_tree(child)
                     self.kept["calculation"] = (child, calculation.to_tree())
         objs = self.objs
-        objs["views"] = views if views is not None else ([] if workbook._reader is not None else [BookView()])
+        objs["views"] = (
+            views
+            if views is not None
+            else ([] if workbook._reader is not None else [BookView()])
+        )
         objs["workbook_properties"] = workbook_properties
         objs["calculation"] = calculation
         objs["security"] = security or WorkbookProtection()
@@ -424,5 +461,9 @@ class WorkbookState:
         custom_xml = tostring(custom.to_tree()) if len(custom) else None
         app = self.raw[2] if self.raw else None
         _native.workbook_features_write(
-            workbook._reader or workbook._stream_writer or workbook._book, preserving_tostring(root), core, app, custom_xml
+            workbook._reader or workbook._stream_writer or workbook._book,
+            preserving_tostring(root),
+            core,
+            app,
+            custom_xml,
         )

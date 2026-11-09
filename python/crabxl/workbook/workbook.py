@@ -12,6 +12,7 @@ from .._native import (
     resolve_model_budget,
     save_models,
 )
+from ..compat import deprecated
 from ..resources import AutoMemory, ResourceOptions
 from ..worksheet.worksheet import Worksheet
 
@@ -41,6 +42,7 @@ class Workbook:
         "_template",
         "_keep_vba",
         "_input_spool",
+        "is_template",
     )
 
     def __init__(
@@ -63,7 +65,7 @@ class Workbook:
         self._closed = False
         self.encoding = "utf-8"
         self._wfeat = None
-        self._template = self._keep_vba = False
+        self._template = self._keep_vba = self.is_template = False
         self._reader = self._editor = None
         self._input_spool = None
         self._iso_dates = bool(iso_dates)
@@ -122,7 +124,9 @@ class Workbook:
     def views(self, value):
         from .views import BookView
 
-        if not isinstance(value, (list, tuple)) or any(not isinstance(view, BookView) for view in value):
+        if not isinstance(value, (list, tuple)) or any(
+            not isinstance(view, BookView) for view in value
+        ):
             raise TypeError("Expected a sequence of BookView objects")
         self._names_state().objs["views"] = value
 
@@ -288,6 +292,23 @@ class Workbook:
         if value != self._template and self._editor is not None:
             self._editor.set_template(value, self._keep_vba)
         self._template = value
+
+    @property
+    def vba_archive(self):
+        # VBA parts stay in the Rust package model; there is no separate ZipFile.
+        return True if self._keep_vba else None
+
+    @vba_archive.setter
+    def vba_archive(self, value):
+        self._check_open()
+        keep = bool(value)
+        if keep == self._keep_vba:
+            return
+        if self._editor is not None:
+            if keep:
+                raise NotImplementedError("Removed VBA parts cannot be restored")
+            self._editor.remove_vba()
+        self._keep_vba = keep
 
     @property
     def mime_type(self):
@@ -536,6 +557,46 @@ class Workbook:
 
     def __delitem__(self, key):
         self.remove(self[key])
+
+    path = "/xl/workbook.xml"
+
+    @property
+    def excel_base_date(self):
+        return self.epoch
+
+    @property
+    def style_names(self):
+        return list(self.named_styles)
+
+    @deprecated("Use wb.remove(worksheet) or del wb[sheetname]")
+    def remove_sheet(self, worksheet):
+        self.remove(worksheet)
+
+    @deprecated("Use wb[sheetname]")
+    def get_sheet_by_name(self, name):
+        return self[name]
+
+    @deprecated("Use wb.index(worksheet)")
+    def get_index(self, worksheet):
+        return self.index(worksheet)
+
+    @deprecated("Use wb.sheetnames")
+    def get_sheet_names(self):
+        return self.sheetnames
+
+    @deprecated(
+        "Assign scoped named ranges directly to worksheets or global ones to the workbook. Deprecated in 3.1"
+    )
+    def create_named_range(self, name, worksheet=None, value=None, scope=None):
+        from ..utils import quote_sheetname
+        from .defined_name import DefinedName
+
+        defn = DefinedName(name=name)
+        if worksheet is not None:
+            defn.value = f"{quote_sheetname(worksheet.title)}!{value}"
+        else:
+            defn.value = value
+        self.defined_names[name] = defn
 
     def save(self, filename, *, compression_level=None):
         self._check_open()

@@ -351,6 +351,7 @@ fn sheet_out(
     };
     let xml = feature_xml::sheet_features_to_xml(&SheetFeatures {
         protection: features.protection.clone(),
+        scenarios: features.scenarios.clone(),
         auto_filter: features.auto_filter.clone(),
         sort_state: features.sort_state.clone(),
         conditional_formats: features.conditional_formats.clone(),
@@ -501,19 +502,61 @@ fn retain_unexposed_sheet_features(features: &mut SheetFeatures, current: Option
 }
 
 type MarkerInput = (u32, u32, i32, i32);
-pub(crate) type ImageInput = (Vec<u8>, String, AnchorInput, ClientDataInput);
+#[derive(FromPyObject)]
+pub(crate) enum ImageInput {
+    #[pyo3(transparent)]
+    New((Vec<u8>, String, AnchorInput, ClientDataInput)),
+    #[pyo3(transparent)]
+    Loaded(
+        (
+            Vec<u8>,
+            String,
+            AnchorInput,
+            ClientDataInput,
+            crate::images::NativeImage,
+        ),
+    ),
+}
 pub(crate) type ChartInput = (Vec<u8>, AnchorInput, ClientDataInput);
 
 pub(crate) fn native_images(images: Vec<ImageInput>) -> crabxl::Result<Vec<crabxl::Image>> {
     images
         .into_iter()
-        .map(|(data, format, anchor, client_data)| {
+        .map(|input| {
+            let (data, format, anchor, client_data, prototype) = match input {
+                ImageInput::New((data, format, anchor, client_data)) => {
+                    (data, format, anchor, client_data, None)
+                }
+                ImageInput::Loaded((data, format, anchor, client_data, prototype)) => {
+                    (data, format, anchor, client_data, Some(prototype.image))
+                }
+            };
             let mut image = crabxl::Image::new(
                 data,
                 crabxl::ImageFormat::from_content_type(&format)?,
                 anchor.into_native()?,
             )?;
-            image.client_data = client_data_xml(client_data);
+            if let Some(original) = prototype {
+                image.name = original.name;
+                image.description = original.description;
+                image.properties = original.properties;
+                image.drawing_parts = original.drawing_parts;
+                image.order = original.order;
+                image.client_data = original.client_data;
+            }
+            if let Some(element) = image.client_data.as_mut() {
+                for (name, value) in [
+                    ("fLocksWithSheet", client_data.0),
+                    ("fPrintsWithSheet", client_data.1),
+                ] {
+                    element.attributes.retain(|(key, _)| key.as_ref() != name);
+                    if let Some(value) = value {
+                        element.set_attribute(name, if value { "1" } else { "0" });
+                    }
+                }
+            } else {
+                image.client_data = client_data_xml(client_data);
+            }
             Ok(image)
         })
         .collect()

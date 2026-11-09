@@ -1272,12 +1272,6 @@ def test_duplicate_table_name():
         ws.add_table(Table(displayName="T", ref="C1:D2"))
 
 
-def test_write_only_features_not_supported():
-    ws = crabxl.Workbook(write_only=True).create_sheet()
-    with pytest.raises(NotImplementedError):
-        ws.tables
-
-
 @pytest.fixture(scope="module")
 def made_by_openpyxl(pair):
     return pair[0]

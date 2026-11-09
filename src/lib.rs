@@ -4,6 +4,7 @@ mod editor;
 mod features;
 mod functions;
 mod hyperlink_views;
+mod images;
 mod imports;
 mod reader;
 mod resources;
@@ -31,6 +32,8 @@ fn default_style_component<'py>(py: Python<'py>, name: &str) -> PyResult<Bound<'
 #[pymodule]
 fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<NativeSheet>()?;
+    module.add_class::<images::NativeImage>()?;
+    module.add_function(wrap_pyfunction!(images::sheet_images_read, module)?)?;
     module.add_class::<streaming::NativeReadStream>()?;
     module.add_class::<streaming::NativeWriteBook>()?;
     module.add_class::<NativeBook>()?;

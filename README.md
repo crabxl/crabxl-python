@@ -20,11 +20,10 @@ CrabXL supports reading, creating, and editing XLSX files, including streaming
 use `import crabxl as openpyxl` to migrate compatible code. Processing runs in the
 shared Rust engine; openpyxl is not a runtime dependency.
 
-**Currently alpha.** Full openpyxl compatibility remains in progress. Complete
-style and rich-text object APIs, advanced worksheet features, and some loaded
-structural edits are still unimplemented. Unsupported operations raise explicit
-errors. Formula calculation is not provided. See [project status](internal/STATUS.md)
-for remaining work.
+**Currently alpha.** The public openpyxl 3.1.5 API is supported and the
+unchanged openpyxl test suite passes for it. Unsupported operations raise
+explicit errors. Formula calculation is not provided. See the
+[migration guide](docs/migration.md) and [supported features](docs/support.md).
 
 ## Installation
 
@@ -105,11 +104,13 @@ Auto selection. `ResourceOptions` also exposes input limits, SST RAM/disk
 strategies, cache and temporary-storage limits, and edit-overlay bounds.
 Ordinary loaded workbooks share one retained allowance across source catalogs,
 models, overlays and SST/cache; I/O working space remains additional. These
-settings do not cap process RSS. See [loaded resource ownership](internal/decisions/0017-canonical-loaded-workbook-owner.md)
-and [resource configuration](internal/decisions/0016-canonical-resource-configuration.md).
+settings do not cap process RSS. See [memory limits](docs/guide/memory.md).
 
 ## Documentation
 
+- [Quick start](docs/quick-start.md)
+- [Migration from openpyxl](docs/migration.md)
+- [Workbook modes](docs/guide/modes.md)
 - [Project status](internal/STATUS.md)
 - [Changelog](CHANGELOG.md)
 - [Benchmarks](benchmarks/reports/modes-comparison.md) and [large reads](benchmarks/reports/large-reads.md)

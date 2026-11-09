@@ -94,7 +94,9 @@ def _check_anchor(obj):
     if isinstance(obj, ChartBase):
         anchor.ext = XDRPositiveSize2D(cm_to_EMU(obj.width), cm_to_EMU(obj.height))
     elif isinstance(obj, Image):
-        anchor.ext = XDRPositiveSize2D(pixels_to_EMU(obj.width), pixels_to_EMU(obj.height))
+        anchor.ext = XDRPositiveSize2D(
+            pixels_to_EMU(obj.width), pixels_to_EMU(obj.height)
+        )
     return anchor
 
 
@@ -111,3 +113,18 @@ def _client_data_input(anchor):
     if isinstance(anchor, str):
         return None, None
     return anchor.clientData.fLocksWithSheet, anchor.clientData.fPrintsWithSheet
+
+
+def _anchor_from_native(value):
+    kind, first, last, extent, position, edit_as, flags = value
+    client = AnchorClientData(*flags)
+
+    def marker(value):
+        row, col, row_off, col_off = value
+        return AnchorMarker(row=row, col=col, rowOff=row_off, colOff=col_off)
+
+    if kind == 0:
+        return OneCellAnchor(marker(first), XDRPositiveSize2D(*extent), client)
+    if kind == 1:
+        return TwoCellAnchor(edit_as, marker(first), marker(last), client)
+    return AbsoluteAnchor(XDRPoint2D(*position), XDRPositiveSize2D(*extent), client)

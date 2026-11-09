@@ -546,7 +546,7 @@ impl NativeWriteBook {
                 .transpose()?;
             format_bytes = format_bytes.saturating_add(number.as_ref().map_or(0, String::len));
             let mut components = Vec::new();
-            for name in ["font", "fill", "border", "alignment", "protection"] {
+            for name in crate::style_owners::STYLE_COMPONENTS {
                 if let Some(item) = value.get_item(name)? {
                     let native = item.extract::<PyRef<'_, styles::NativeStyleComponent>>()?;
                     format_bytes = format_bytes.saturating_add(native.retained_bytes());
@@ -649,7 +649,49 @@ impl NativeWriteBook {
         })
     }
 
-    #[pyo3(signature = (id, images, charts, pivots=None))]
+    /// Default views and printing XML of a new sheet, matching normal worksheets.
+    fn defaults(&self) -> PyResult<(Vec<u8>, Vec<u8>)> {
+        Ok((
+            feature_xml::sheet_views_to_xml(&Default::default()).map_err(failure)?,
+            feature_xml::print_settings_to_xml(&Default::default()).map_err(failure)?,
+        ))
+    }
+    fn register_dxf(&self, dxf: Vec<u8>) -> PyResult<u32> {
+        let style = feature_xml::differential_style_from_xml(&dxf).map_err(failure)?;
+        lock(&self.state)?
+            .writer
+            .as_mut()
+            .ok_or_else(closed)?
+            .register_differential_style(style)
+            .map_err(failure)
+    }
+    #[pyo3(signature = (id, views=None, printing=None))]
+    fn set_header(
+        &self,
+        id: usize,
+        views: Option<Vec<u8>>,
+        printing: Option<Vec<u8>>,
+    ) -> PyResult<()> {
+        let views = views
+            .as_deref()
+            .map(feature_xml::sheet_views_from_xml)
+            .transpose()
+            .map_err(failure)?;
+        let printing = printing
+            .as_deref()
+            .map(feature_xml::print_settings_from_xml)
+            .transpose()
+            .map_err(failure)?;
+        lock(&self.state)?
+            .writer
+            .as_mut()
+            .ok_or_else(closed)?
+            .set_interleaved_header(id, views.as_ref(), printing.as_ref())
+            .map_err(failure)
+    }
+
+    #[pyo3(signature = (id, images, charts, pivots=None, features=None, printing=None, merges=None))]
+    #[allow(clippy::too_many_arguments)]
     fn set_drawings(
         &self,
         py: Python<'_>,
@@ -657,6 +699,9 @@ impl NativeWriteBook {
         images: Vec<crate::features::ImageInput>,
         charts: Vec<crate::features::ChartInput>,
         pivots: Option<Vec<crate::features::PivotInput>>,
+        features: Option<(Vec<u8>, Vec<Vec<u8>>)>,
+        printing: Option<Vec<u8>>,
+        merges: Option<Vec<String>>,
     ) -> PyResult<()> {
         let state = Arc::clone(&self.state);
         py.detach(move || {
@@ -666,19 +711,32 @@ impl NativeWriteBook {
                 image.order = 1;
             }
             let pivots = pivots.map(crate::features::native_pivots).transpose()?;
+            let mut sheet = match &features {
+                Some((worksheet, tables)) => {
+                    let refs = tables.iter().map(Vec::as_slice).collect::<Vec<_>>();
+                    feature_xml::sheet_features_from_xml(worksheet, &refs).map_err(failure)?
+                }
+                None => crabxl::SheetFeatures::default(),
+            };
+            sheet.images = Some(images);
+            sheet.charts = Some(charts);
+            sheet.pivots = pivots;
+            let printing = printing
+                .as_deref()
+                .map(feature_xml::print_settings_from_xml)
+                .transpose()
+                .map_err(failure)?;
+            let merges = merges
+                .unwrap_or_default()
+                .iter()
+                .map(|range| range.parse::<crabxl::CellRange>())
+                .collect::<crabxl::Result<Vec<_>>>()
+                .map_err(failure)?;
             lock(&state)?
                 .writer
                 .as_mut()
                 .ok_or_else(closed)?
-                .set_interleaved_features(
-                    id,
-                    crabxl::SheetFeatures {
-                        images: Some(images),
-                        charts: Some(charts),
-                        pivots,
-                        ..Default::default()
-                    },
-                )
+                .set_interleaved_tail(id, sheet, printing.as_ref(), &merges)
                 .map_err(failure)
         })
     }

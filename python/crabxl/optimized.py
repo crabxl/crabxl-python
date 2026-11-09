@@ -3,6 +3,7 @@
 from weakref import WeakValueDictionary
 
 from . import Worksheet, _decode, _encode, _letters
+from .cell.cell import Cell
 from .chartsheet import Chartsheet
 from .styles import Alignment, Border, Font, GradientFill, PatternFill, Protection
 from .styles._base import StyleProxy
@@ -338,6 +339,20 @@ class ReadOnlyWorksheet(Worksheet):
     insert_cols = delete_rows = delete_cols = move_range = insert_rows
 
 
+class _StyleFlag:
+    """A boolean xf marker in the same directive form as appearance components."""
+
+    __slots__ = ("name", "value")
+
+    def __init__(self, name, value):
+        self.name, self.value = name, bool(value)
+
+    def _native(self):
+        from ._native import make_style_component
+
+        return make_style_component(self.name, {"value": self.value})
+
+
 class WriteOnlyCell:
     __slots__ = (
         "parent",
@@ -412,6 +427,42 @@ class WriteOnlyCell:
     @property
     def column_letter(self):
         return _letters(self.column)
+
+    @property
+    def col_idx(self):
+        return self.column
+
+    @property
+    def base_date(self):
+        return self.parent.parent.epoch
+
+    check_string = Cell.check_string
+    check_error = Cell.check_error
+
+    def offset(self, row=0, column=0):
+        return self.parent.cell(row=self.row + row, column=self.column + column)
+
+    def _style_flag(self, name, index):
+        flag = self._components.get(name)
+        if flag is not None:
+            return flag.value
+        if self._named_style is not None:
+            writer = self.parent.parent._stream_writer
+            return bool(writer.style_array(self._named_style[1])[index])
+        return False
+
+    pivotButton = property(
+        lambda self: self._style_flag("pivotButton", 6),
+        lambda self, value: self._components.__setitem__(
+            "pivotButton", _StyleFlag("pivotButton", value)
+        ),
+    )
+    quotePrefix = property(
+        lambda self: self._style_flag("quotePrefix", 7),
+        lambda self, value: self._components.__setitem__(
+            "quotePrefix", _StyleFlag("quotePrefix", value)
+        ),
+    )
 
     @property
     def is_date(self):
@@ -538,11 +589,21 @@ class WriteOnlyCell:
 
 
 class WriteOnlyWorksheet(Worksheet):
-    __slots__ = ("_id", "_row", "_finished", "_sheet_state", "_drawings_prepared")
+    __slots__ = (
+        "_id",
+        "_row",
+        "_finished",
+        "_sheet_state",
+        "_drawings_prepared",
+        "_header",
+    )
 
     def __init__(self, workbook, title, identifier):
         self.parent, self._title, self._id = workbook, title, identifier
         self._existing, self._native = False, None
+        self._printing = self._printing_previous = None
+        self._views = self._views_previous = None
+        self._merged_cells = self._header = None
         self._cells = WeakValueDictionary()
         self._row_dimensions = self._column_dimensions = None
         self._row, self._finished = 0, False
@@ -582,6 +643,57 @@ class WriteOnlyWorksheet(Worksheet):
     def _model(self):
         raise NotImplementedError("Write-only worksheets do not have editable models")
 
+    def _views_source(self):
+        return bytes(self.parent._stream_writer.defaults()[0])
+
+    def _printing_source(self):
+        return bytes(self.parent._stream_writer.defaults()[1])
+
+    @property
+    def merged_cells(self):
+        from .worksheet.cell_range import MultiCellRange
+
+        if self._merged_cells is None:
+            self._merged_cells = MultiCellRange()
+        return self._merged_cells
+
+    @merged_cells.setter
+    def merged_cells(self, value):
+        from .worksheet.cell_range import MultiCellRange
+
+        self._merged_cells = MultiCellRange(
+            value.ranges if hasattr(value, "ranges") else value
+        )
+
+    def _header_xml(self):
+        """Views, sheetPr and sheetFormatPr: the parts written before the rows."""
+        from .xml.functions import fromstring, tostring
+
+        views = tostring(self.views.to_tree())
+        self._printing_get("sheetPr")
+        printing = self._printing_xml()
+        properties = b"".join(
+            tostring(element)
+            for element in fromstring(printing)
+            if element.tag.rsplit("}", 1)[-1] in ("sheetPr", "sheetFormatPr")
+        )
+        return views + properties
+
+    def _send_header(self):
+        from .xml.functions import tostring
+
+        self._header = self._header_xml()
+        views = tostring(self.views.to_tree())
+        printing = self._printing_xml()
+        changed_views = views != self._views_previous
+        changed_printing = printing != self._printing_previous
+        if changed_views or changed_printing:
+            self.parent._stream_writer.set_header(
+                self._id,
+                views if changed_views else None,
+                printing if changed_printing else None,
+            )
+
     def cell(self, *args, **kwargs):
         raise NotImplementedError(
             "Random access is unavailable on write-only worksheets"
@@ -598,6 +710,8 @@ class WriteOnlyWorksheet(Worksheet):
             raise WorkbookAlreadySaved("You cannot add cells to a closed worksheet")
         if isinstance(iterable, (str, bytes, dict)):
             raise TypeError("Write-only append requires a row iterable")
+        if self._header is None:
+            self._send_header()
         tagged = []
         formats = None
         hyperlinks = None
@@ -692,14 +806,42 @@ class WriteOnlyWorksheet(Worksheet):
     def close(self):
         if not self._finished:
             self.parent._check_open()
+            writer = self.parent._stream_writer
+            if self._header is None:
+                self._send_header()
+            elif self._header_xml() != self._header:
+                raise ValueError(
+                    "Worksheet views and properties must be set before rows are appended"
+                )
+            features = (
+                self._feat.encode(writer.register_dxf)[:2]
+                if self._feat is not None
+                else None
+            )
+            printing = self._printing_xml()
+            if printing == self._printing_previous:
+                printing = None
+            merges = (
+                [str(cell_range) for cell_range in self._merged_cells.ranges]
+                if self._merged_cells
+                else None
+            )
             if not self._drawings_prepared and (
-                self._images or self._charts or self._new_pivots
+                self._images
+                or self._charts
+                or self._new_pivots
+                or features
+                or printing
+                or merges
             ):
-                self.parent._stream_writer.set_drawings(
+                writer.set_drawings(
                     self._id,
                     [image._native_input() for image in self._images],
                     [chart._native_input() for chart in self._charts],
                     self._pivot_inputs(),
+                    features,
+                    printing,
+                    merges,
                 )
                 self._drawings_prepared = True
             for index in self.parent._stream_writer.dimension_keys(self._id, True):

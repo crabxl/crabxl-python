@@ -183,6 +183,8 @@ pub(crate) fn decode(name: &str, value: &Bound<'_, PyDict>) -> PyResult<StyleCom
             };
             StyleComponent::Fill(Box::new(fill))
         }
+        "quotePrefix" => StyleComponent::QuotePrefix(field(value, "value")?),
+        "pivotButton" => StyleComponent::PivotButton(field(value, "value")?),
         _ => return Err(PyValueError::new_err("Unknown style component")),
     };
     Ok(result)
@@ -363,7 +365,9 @@ impl NativeStyleComponent {
                 StyleComponent::Alignment(v) => {
                     v.as_ref().map_or(0, |_| std::mem::size_of::<Alignment>())
                 }
-                StyleComponent::Protection(_) => 0,
+                StyleComponent::Protection(_)
+                | StyleComponent::QuotePrefix(_)
+                | StyleComponent::PivotButton(_) => 0,
             }
     }
 }
