@@ -24,12 +24,39 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 RESULTS = ROOT / "results"
-SIZES = {"small": 10_000, "medium": 100_000, "large": 1_000_000}
+# Size name: (rows, columns). The xl and xxl files (about 370 MB and 1 GB) are
+# read only. They come from the Rust suite (see --fixtures): XlsxWriter can only
+# write files that large in constant-memory mode, which stores text inline.
+SIZES = {
+    "small": (10_000, 10),
+    "medium": (100_000, 10),
+    "large": (1_000_000, 10),
+    "xl": (1_000_000, 100),
+    "xxl": (1_000_000, 280),
+    # The NYC 311 sample that the calamine README uses (see the Rust suite).
+    "nyc311": (1_000_001, 41),
+}
+# Readers of the xl and xxl files. At xxl, readers that build Python objects for
+# the whole sheet would need more than 28 GB, so only streaming readers run.
+STREAMING_READERS = [
+    "crabxl (read_only)",
+    "wolfxl (read_only)",
+    "python-calamine (iter_rows)",
+    "fastexcel",
+]
+HUGE_READERS = {
+    "xl": STREAMING_READERS + ["crabxl", "python-calamine"],
+    "xxl": STREAMING_READERS,
+    "nyc311": STREAMING_READERS + ["crabxl", "python-calamine"],
+}
+HUGE = set(HUGE_READERS)
+PINNED_CPU = 2  # Not CPU 0, which handles most interrupts.
 COLUMNS = 10
 SHEET = "Data"
 EDIT_STEP = 100
 EDIT_APPEND = 100
-TIMEOUT = 900
+TIMEOUT = 300
+SLOW_CASE = 10  # seconds; slower cases get one measured run
 SMALL_ONLY = ("openpyxl",)
 
 SCENARIOS = {
@@ -77,7 +104,9 @@ def value(row, column):
         )
     if column == 5:
         return row % 2 == 0
-    return row * column / 7
+    if column < 10:
+        return row * column / 7
+    return value(row, column % 10)  # Wider sheets repeat the 10-column pattern.
 
 
 def rows(start, stop):
@@ -90,38 +119,63 @@ def rows(start, stop):
 
 
 def read_values(rows_iter):
+    """Count non-empty cells. Readers differ in how they return empty cells."""
     cells = 0
     for row in rows_iter:
-        cells += len(row)
+        cells += sum(value is not None and value != "" for value in row)
     return cells
 
 
+def no_limits(module):
+    """Safety limits that would reject the large files are not part of a speed test."""
+    if module.__name__ == "wolfxl":
+        big = 1 << 40
+        return {
+            "limits": module.Limits(
+                max_package_bytes=big,
+                max_part_bytes=big,
+                max_cells=big,
+                max_shared_string_bytes=big,
+                max_materialized_string_bytes=big,
+            )
+        }
+    return {}
+
+
 def read(library, path):
+    """Read the first worksheet, whatever its name."""
+    if library.startswith("wolfxl"):
+        # wolfxl's native ZIP guard reads these before the package is opened.
+        for name in ("ENTRY_BYTES", "TOTAL_BYTES", "ENTRIES", "COMPRESSION_RATIO"):
+            os.environ[f"WOLFXL_MAX_ZIP_{name}"] = str(1 << 40)
     if library.startswith(("crabxl", "wolfxl", "openpyxl")):
         module = __import__(library.split()[0])
-        book = module.load_workbook(path, read_only="read_only" in library)
-        cells = read_values(book[SHEET].iter_rows(values_only=True))
+        book = module.load_workbook(
+            path, read_only="read_only" in library, **no_limits(module)
+        )
+        cells = read_values(book.worksheets[0].iter_rows(values_only=True))
         book.close()
         return cells
     if library == "oxlsx":
         import oxlsx
 
         return read_values(
-            oxlsx.load_workbook(str(path))[SHEET].iter_rows(values_only=True)
+            oxlsx.load_workbook(str(path)).worksheets[0].iter_rows(values_only=True)
         )
     if library.startswith("python-calamine"):
         from python_calamine import CalamineWorkbook
 
-        sheet = CalamineWorkbook.from_path(str(path)).get_sheet_by_name(SHEET)
+        sheet = CalamineWorkbook.from_path(str(path)).get_sheet_by_index(0)
         return read_values(
             sheet.iter_rows() if "iter_rows" in library else sheet.to_python()
         )
     if library == "fastexcel":
         import fastexcel
 
-        sheet = fastexcel.read_excel(str(path)).load_sheet(SHEET, header_row=None)
+        sheet = fastexcel.read_excel(str(path)).load_sheet(0, header_row=None)
         table = sheet.to_arrow()
-        return table.num_rows * table.num_columns
+        empty = sum(column.null_count for column in table.columns)
+        return table.num_rows * table.num_columns - empty
     raise ValueError(library)
 
 
@@ -167,7 +221,7 @@ def edit(library, source, path, count):
     if name in ("crabxl", "openpyxl", "wolfxl"):
         module = __import__(name)
         options = {"modify": True} if name == "wolfxl" else {}
-        book = module.load_workbook(source, **options)
+        book = module.load_workbook(source, **options, **no_limits(module))
     elif name == "oxlsx":
         import oxlsx
 
@@ -219,9 +273,13 @@ def slow(previous, scenario, library):
 
 def check(record):
     """Mark a case that did not handle every expected cell as incomplete."""
-    rows = record["rows"]
-    expected = {"read": rows * 10, "write": rows * 10, "edit": -(-rows // 100) + 1000}
-    want = expected[record["scenario"]]
+    rows, columns = record["rows"], record.get("columns", 10)
+    expected = {
+        "read": rows * columns,
+        "write": rows * columns,
+        "edit": -(-rows // 100) + 1000,
+    }
+    want = record.get("expected_cells") or expected[record["scenario"]]
     if "cells" in record and record["cells"] != want:
         record["error"] = f"incomplete: handled {record['cells']:,} of {want:,} cells"
         for key in ("seconds", "peak_mib"):
@@ -264,12 +322,40 @@ def interpreter():
     return [base], {**os.environ, "PYTHONPATH": os.pathsep.join(dict.fromkeys(paths))}
 
 
-def run(command, env=None):
-    """Run one case. Return (seconds, peak bytes, stdout) or None on timeout."""
+def cpu_time(process):
+    """User plus kernel CPU time of a finished child on Windows, in seconds."""
+    times = [ctypes.c_ulonglong() for _ in range(4)]
+    if not ctypes.windll.kernel32.GetProcessTimes(
+        ctypes.c_void_p(int(process._handle)), *map(ctypes.byref, times)
+    ):
+        raise ctypes.WinError()
+    return (times[2].value + times[3].value) / 1e7
+
+
+def run(command, cpus, env=None):
+    """Run one case on one pinned CPU or on all CPUs.
+
+    Return (seconds, peak bytes, CPU seconds, stdout), or None on a timeout. A
+    pinned child starts suspended and gets its CPU before it runs any code, so
+    it cannot size thread pools for more CPUs.
+    """
+    pinned = cpus == "1"
+    options = {"stdout": subprocess.PIPE, "stderr": subprocess.PIPE, "env": env}
+    if pinned and os.name == "nt":
+        options["creationflags"] = 0x4  # CREATE_SUSPENDED
+    elif pinned and hasattr(os, "sched_setaffinity"):
+        options["preexec_fn"] = lambda: os.sched_setaffinity(0, {PINNED_CPU})
+    elif pinned:
+        raise SystemExit("This platform cannot pin a process to one CPU.")
+    process = subprocess.Popen(command, **options)
+    if pinned and os.name == "nt":
+        handle = ctypes.c_void_p(int(process._handle))
+        mask = ctypes.c_size_t(1 << PINNED_CPU)
+        if not ctypes.windll.kernel32.SetProcessAffinityMask(handle, mask):
+            process.kill()
+            raise ctypes.WinError()
+        ctypes.windll.ntdll.NtResumeProcess(handle)
     start = time.perf_counter()
-    process = subprocess.Popen(
-        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env
-    )
     if os.name == "nt":
         try:
             out, err = process.communicate(timeout=TIMEOUT)
@@ -279,6 +365,7 @@ def run(command, env=None):
             return None
         seconds = time.perf_counter() - start
         code = process.returncode
+        used = cpu_time(process)
     else:
         # shortcut: no timeout on POSIX; wait4 is the only way to read child peak RSS.
         out, err = process.stdout.read(), process.stderr.read()
@@ -287,9 +374,10 @@ def run(command, env=None):
         code = os.waitstatus_to_exitcode(status)
         scale = 1 if sys.platform == "darwin" else 1024
         process.peak = usage.ru_maxrss * scale
+        used = usage.ru_utime + usage.ru_stime
     if code != 0:
         raise RuntimeError(f"{command} failed: {err.decode(errors='replace')}")
-    return seconds, peak_memory(process), out.decode().strip()
+    return seconds, peak_memory(process), used, out.decode().strip()
 
 
 def versions():
@@ -317,6 +405,18 @@ def main():
         help="rewrite results.md from results.json",
     )
     parser.add_argument("--libraries", nargs="+", help="run only these libraries")
+    parser.add_argument(
+        "--cpus",
+        nargs="+",
+        choices=["all", "1"],
+        default=["all", "1"],
+        help="run each case on all CPUs, on one pinned CPU, or both",
+    )
+    parser.add_argument(
+        "--fixtures",
+        type=Path,
+        help="folder with xl.xlsx and xxl.xlsx from the crabxl benchmark suite",
+    )
     args = parser.parse_args()
     if args.report_only:
         report = json.loads((RESULTS / "results.json").read_text())
@@ -330,12 +430,20 @@ def main():
     work = ROOT / "data"
     work.mkdir(exist_ok=True)
     results = []
-    for size in args.sizes:
-        count = SIZES[size]
+    for cpus, size in [(c, s) for c in args.cpus for s in args.sizes]:
+        count, columns = SIZES[size]
         source = work / f"{size}.xlsx"
-        if not source.exists():
+        if size in HUGE:
+            source = (args.fixtures or work) / f"{size}.xlsx"
+            if not source.exists():
+                raise SystemExit(
+                    f"{source} is missing. Run benchmarks/run.py --sizes {size} in"
+                    " crabxl, then pass --fixtures <crabxl>/benchmarks/data."
+                )
+        elif not source.exists():
             fixture(count, source)
-        for scenario, libraries in SCENARIOS.items():
+        scenarios = {"read": HUGE_READERS[size]} if size in HUGE else SCENARIOS
+        for scenario, libraries in scenarios.items():
             for library in libraries:
                 if size != "small" and library.startswith(SMALL_ONLY):
                     continue
@@ -359,16 +467,25 @@ def main():
                 record = {
                     "size": size,
                     "rows": count,
+                    "columns": columns,
+                    "file_mib": source.stat().st_size / 2**20,
                     "scenario": scenario,
                     "library": library,
+                    "cpus": cpus,
                 }
-                if slow(previous, scenario, library):
+                if size == "nyc311":
+                    # The CSV has empty fields; readers count non-empty cells.
+                    counted = source.with_name("nyc311.cells").read_text()
+                    record["expected_cells"] = int(counted)
+                if slow(previous, (cpus, scenario), library):
                     record["timeout"] = TIMEOUT
                     record["estimated"] = True
-                # One extra first run warms the file cache; it is not counted.
-                for attempt in range(0 if "timeout" in record else args.runs + 1):
+                # One extra first run warms the file cache; it is not counted. A
+                # case slower than SLOW_CASE seconds gets one measured run.
+                wanted, attempt = args.runs, 0
+                while "timeout" not in record and attempt <= wanted:
                     try:
-                        result = run(command, env)
+                        result = run(command, cpus, env)
                     except RuntimeError as error:
                         record["error"] = str(error).strip().splitlines()[-1]
                         break
@@ -377,14 +494,19 @@ def main():
                         break
                     if attempt:
                         measured.append(result)
-                if len(measured) == args.runs:
+                    elif result[0] > SLOW_CASE:
+                        wanted = 1
+                    attempt += 1
+                if measured and len(measured) == wanted:
+                    record["runs"] = wanted
                     record["seconds"] = statistics.median(m[0] for m in measured)
                     record["peak_mib"] = (
                         statistics.median(m[1] for m in measured) / 2**20
                     )
-                    record["cells"] = int(measured[0][2])
+                    record["cpu_seconds"] = statistics.median(m[2] for m in measured)
+                    record["cells"] = int(measured[0][3])
                 results.append(check(record))
-                previous[(scenario, library)] = record
+                previous[((cpus, scenario), library)] = record
                 print(json.dumps(record), flush=True)
                 output.unlink(missing_ok=True)
 
@@ -397,7 +519,21 @@ def main():
         "results": results,
     }
     RESULTS.mkdir(exist_ok=True)
-    (RESULTS / "results.json").write_text(json.dumps(report, indent=1) + "\n")
+    # Keep earlier results for the sizes and CPU modes that this run did not measure.
+    saved = RESULTS / "results.json"
+    if saved.exists():
+        done = {(size, cpus) for size in args.sizes for cpus in args.cpus}
+        kept = [
+            r
+            for r in json.loads(saved.read_text())["results"]
+            if (r["size"], r.get("cpus", "all")) not in done
+        ]
+        order = list(SIZES)
+        report["results"] = sorted(
+            kept + results,
+            key=lambda r: (r.get("cpus", "all") == "1", order.index(r["size"])),
+        )
+    saved.write_text(json.dumps(report, indent=1) + "\n")
     write_report(report, "Python")
 
 
@@ -423,35 +559,55 @@ def write_report(report, title):
         ]
     groups = {}
     for record in report["results"]:
-        groups.setdefault((record["scenario"], record["size"]), []).append(record)
-    for (scenario, size), records in groups.items():
-        count = records[0]["rows"]
+        key = (record.get("cpus", "all"), record["scenario"], record["size"])
+        groups.setdefault(key, []).append(record)
+    for cpus in ("all", "1"):
+        if not any(key[0] == cpus for key in groups):
+            continue
         lines += [
-            f"## {scenario.capitalize()}, {size} ({count:,} rows × 10 columns)",
+            "# All CPUs" if cpus == "all" else "# One CPU",
             "",
-            f"![{scenario} {size}]({scenario}-{size}.svg)",
+            "Every library can use all logical CPUs."
+            if cpus == "all"
+            else "Every library is pinned to the same single logical CPU.",
             "",
-            "| Library | Time (s) | Peak memory (MiB) |",
-            "|---|---:|---:|",
         ]
-        for record in records:
-            if "timeout" in record:
-                note = (
-                    " (estimated from the smaller size)"
-                    if record.get("estimated")
-                    else ""
-                )
-                lines.append(
-                    f"| {record['library']} | > {record['timeout']}{note} | – |"
-                )
-            elif "error" in record:
-                lines.append(f"| {record['library']} | failed: {record['error']} | – |")
-            else:
-                lines.append(
-                    f"| {record['library']} | {record['seconds']:.3f} | {record['peak_mib']:.1f} |"
-                )
-        lines.append("")
-        (RESULTS / f"{scenario}-{size}.svg").write_text(chart(records))
+        for (mode, scenario, size), records in groups.items():
+            if mode != cpus:
+                continue
+            first = records[0]
+            shape = f"{first['rows']:,} rows × {first.get('columns', 10)} columns"
+            if scenario != "write" and "file_mib" in first:
+                shape += f", {first['file_mib']:,.0f} MiB file"
+            name = f"{scenario}-{size}" + ("" if cpus == "all" else "-1cpu")
+            lines += [
+                f"## {scenario.capitalize()}, {size} ({shape})",
+                "",
+                f"![{scenario} {size}]({name}.svg)",
+                "",
+                "| Library | Time (s) | CPU time (s) | Peak memory (MiB) |",
+                "|---|---:|---:|---:|",
+            ]
+            for record in records:
+                library = record["library"]
+                if "timeout" in record:
+                    note = (
+                        " (estimated from the smaller size)"
+                        if record.get("estimated")
+                        else ""
+                    )
+                    lines.append(f"| {library} | > {record['timeout']}{note} | – | – |")
+                elif "error" in record:
+                    lines.append(f"| {library} | failed: {record['error']} | – | – |")
+                else:
+                    used = record.get("cpu_seconds")
+                    used = "–" if used is None else f"{used:.3f}"
+                    lines.append(
+                        f"| {library} | {record['seconds']:.3f} | {used} "
+                        f"| {record['peak_mib']:.1f} |"
+                    )
+            lines.append("")
+            (RESULTS / f"{name}.svg").write_text(chart(records))
     (RESULTS / "results.md").write_text("\n".join(lines))
 
 
