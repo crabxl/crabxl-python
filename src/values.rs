@@ -8,16 +8,24 @@ pub(crate) type SharedLoaded = Arc<Mutex<Option<LoadedWorkbook<streaming::Shared
 pub(crate) fn failure(error: Error) -> PyErr {
     let mut text = error.to_string();
     let mut source = std::error::Error::source(&error);
+    let mut io_kind = None;
     while let Some(cause) = source {
         text.push_str(": ");
         text.push_str(&cause.to_string());
+        io_kind = io_kind.or(cause
+            .downcast_ref::<std::io::Error>()
+            .map(std::io::Error::kind));
         source = cause.source();
     }
     match error.kind() {
         ErrorKind::Unsupported => PyNotImplementedError::new_err(text),
         ErrorKind::MemoryBudgetExceeded => PyMemoryError::new_err(text),
         ErrorKind::SheetNotFound => PyKeyError::new_err(text),
-        ErrorKind::Io => PyOSError::new_err(text),
+        // PyO3 maps io kinds to FileNotFoundError, PermissionError and so on.
+        ErrorKind::Io => io_kind.map_or_else(
+            || PyOSError::new_err(text.clone()),
+            |kind| PyErr::from(std::io::Error::new(kind, text.clone())),
+        ),
         ErrorKind::InvalidState => PyRuntimeError::new_err(text),
         ErrorKind::NoVisibleSheet => PyIndexError::new_err(text),
         _ => PyValueError::new_err(text),

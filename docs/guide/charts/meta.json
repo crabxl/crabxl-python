@@ -1,0 +1,24 @@
+{
+  "title": "Charts",
+  "pages": [
+    "index",
+    "area",
+    "bar",
+    "bubble",
+    "line",
+    "scatter",
+    "pie",
+    "doughnut",
+    "radar",
+    "stock",
+    "surface",
+    "chart-layout",
+    "limits-and-scaling",
+    "secondary",
+    "chartsheet",
+    "graphical",
+    "pattern",
+    "gauge",
+    "anchors"
+  ]
+}

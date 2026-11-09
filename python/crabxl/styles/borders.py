@@ -3,6 +3,22 @@
 from ._base import StyleValue
 from .colors import color as to_color
 
+# Border style names, from openpyxl 3.1.5 (MIT), Copyright (c) 2010-2024 openpyxl.
+BORDER_NONE = None
+BORDER_DASHDOT = "dashDot"
+BORDER_DASHDOTDOT = "dashDotDot"
+BORDER_DASHED = "dashed"
+BORDER_DOTTED = "dotted"
+BORDER_DOUBLE = "double"
+BORDER_HAIR = "hair"
+BORDER_MEDIUM = "medium"
+BORDER_MEDIUMDASHDOT = "mediumDashDot"
+BORDER_MEDIUMDASHDOTDOT = "mediumDashDotDot"
+BORDER_MEDIUMDASHED = "mediumDashed"
+BORDER_SLANTDASHDOT = "slantDashDot"
+BORDER_THICK = "thick"
+BORDER_THIN = "thin"
+
 
 class Side(StyleValue):
     _children = ("color",)
@@ -58,11 +74,12 @@ class Border(StyleValue):
         start=None,
         end=None,
     ):
-        if diagonal_direction is not None:
-            raise NotImplementedError("Legacy diagonal_direction has no XLSX encoding")
+        # openpyxl also accepts and ignores diagonal_direction; XLSX has no such field.
         values = locals()
         for field in self._fields:
             setattr(self, field, values[field])
 
 
-DEFAULT_BORDER = Border(left=Side(), right=Side(), top=Side(), bottom=Side(), diagonal=Side())
+DEFAULT_BORDER = Border(
+    left=Side(), right=Side(), top=Side(), bottom=Side(), diagonal=Side()
+)

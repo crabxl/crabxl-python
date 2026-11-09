@@ -86,7 +86,7 @@ impl NativeEditor {
         });
         let options = config.editor_options(max_bytes);
         let editor = py.detach(move || {
-            let file = File::open(path).map_err(|error| PyOSError::new_err(error.to_string()))?;
+            let file = File::open(path).map_err(PyErr::from)?;
             WorkbookEditor::with_options(file, options).map_err(failure)
         })?;
         Ok(Self {

@@ -130,7 +130,9 @@ class StyleProxy:
         return getattr(self._target, name)
 
     def __setattr__(self, name, value):
-        raise AttributeError("Style objects are immutable; copy and reassign the style")
+        raise AttributeError(
+            "Style objects are immutable and cannot be changed.Reassign the style with a copy"
+        )
 
     def __copy__(self):
         return copy(self._target)

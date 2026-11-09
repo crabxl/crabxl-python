@@ -26,7 +26,8 @@ description: The openpyxl features that CrabXL for Python can read, create and e
 | Scenarios | Yes | Yes | Yes |
 | Templates (`.xltx`, `.xltm`) | Yes | Yes | Yes |
 
-All features are available in the three [workbook modes](guide/modes.md).
+All features are available in normal, read-only and write-only mode. See
+[optimized modes](guide/optimized.md).
 You cannot save a workbook in read-only mode.
 
 CrabXL does not calculate formulas, chart data or pivot table results.

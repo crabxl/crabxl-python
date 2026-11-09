@@ -4,6 +4,56 @@ from ._base import StyleValue
 from .colors import Color
 from .colors import color as to_color
 
+# Fill pattern names, from openpyxl 3.1.5 (MIT), Copyright (c) 2010-2024 openpyxl.
+FILL_NONE = "none"
+FILL_SOLID = "solid"
+FILL_PATTERN_DARKDOWN = "darkDown"
+FILL_PATTERN_DARKGRAY = "darkGray"
+FILL_PATTERN_DARKGRID = "darkGrid"
+FILL_PATTERN_DARKHORIZONTAL = "darkHorizontal"
+FILL_PATTERN_DARKTRELLIS = "darkTrellis"
+FILL_PATTERN_DARKUP = "darkUp"
+FILL_PATTERN_DARKVERTICAL = "darkVertical"
+FILL_PATTERN_GRAY0625 = "gray0625"
+FILL_PATTERN_GRAY125 = "gray125"
+FILL_PATTERN_LIGHTDOWN = "lightDown"
+FILL_PATTERN_LIGHTGRAY = "lightGray"
+FILL_PATTERN_LIGHTGRID = "lightGrid"
+FILL_PATTERN_LIGHTHORIZONTAL = "lightHorizontal"
+FILL_PATTERN_LIGHTTRELLIS = "lightTrellis"
+FILL_PATTERN_LIGHTUP = "lightUp"
+FILL_PATTERN_LIGHTVERTICAL = "lightVertical"
+FILL_PATTERN_MEDIUMGRAY = "mediumGray"
+
+fills = (
+    FILL_SOLID,
+    FILL_PATTERN_DARKDOWN,
+    FILL_PATTERN_DARKGRAY,
+    FILL_PATTERN_DARKGRID,
+    FILL_PATTERN_DARKHORIZONTAL,
+    FILL_PATTERN_DARKTRELLIS,
+    FILL_PATTERN_DARKUP,
+    FILL_PATTERN_DARKVERTICAL,
+    FILL_PATTERN_GRAY0625,
+    FILL_PATTERN_GRAY125,
+    FILL_PATTERN_LIGHTDOWN,
+    FILL_PATTERN_LIGHTGRAY,
+    FILL_PATTERN_LIGHTGRID,
+    FILL_PATTERN_LIGHTHORIZONTAL,
+    FILL_PATTERN_LIGHTTRELLIS,
+    FILL_PATTERN_LIGHTUP,
+    FILL_PATTERN_LIGHTVERTICAL,
+    FILL_PATTERN_MEDIUMGRAY,
+)
+
+
+def __getattr__(name):
+    if name == "StopList":
+        from ._x.fills import StopList
+
+        return StopList
+    raise AttributeError(name)
+
 
 class Fill(StyleValue):
     @classmethod

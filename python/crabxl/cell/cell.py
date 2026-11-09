@@ -1,5 +1,6 @@
 """Cell compatibility facade over canonical native handles."""
 
+import re
 from datetime import date, datetime, time, timedelta
 from typing import TYPE_CHECKING
 
@@ -11,6 +12,28 @@ if TYPE_CHECKING:
     from ..optimized import WriteOnlyCell
 
 ERROR_CODES = ("#NULL!", "#DIV/0!", "#VALUE!", "#REF!", "#NAME?", "#NUM!", "#N/A")
+
+# Type constants, from openpyxl 3.1.5 (MIT), Copyright (c) 2010-2024 openpyxl.
+TIME_TYPES = (datetime, date, time, timedelta)
+TYPE_STRING = "s"
+TYPE_FORMULA = "f"
+TYPE_NUMERIC = "n"
+TYPE_BOOL = "b"
+TYPE_NULL = "n"
+TYPE_INLINE = "inlineStr"
+TYPE_ERROR = "e"
+TYPE_FORMULA_CACHE_STRING = "str"
+VALID_TYPES = (
+    TYPE_STRING,
+    TYPE_FORMULA,
+    TYPE_NUMERIC,
+    TYPE_BOOL,
+    TYPE_NULL,
+    TYPE_INLINE,
+    TYPE_ERROR,
+    TYPE_FORMULA_CACHE_STRING,
+)
+ILLEGAL_CHARACTERS_RE = re.compile(r"[\000-\010]|[\013-\014]|[\016-\037]")
 TIME_FORMATS = {
     datetime: "yyyy-mm-dd h:mm:ss",
     date: "yyyy-mm-dd",
@@ -396,4 +419,31 @@ def __getattr__(name):
         from ..optimized import WriteOnlyCell
 
         return WriteOnlyCell
+    # These depend on the rich text module, which imports this one.
+    if name in ("STRING_TYPES", "KNOWN_TYPES"):
+        from ..cell.rich_text import CellRichText
+        from ..compat import NUMERIC_TYPES
+
+        strings = (str, bytes, CellRichText)
+        return (
+            strings
+            if name == "STRING_TYPES"
+            else NUMERIC_TYPES + TIME_TYPES + strings + (bool, type(None))
+        )
     raise AttributeError(name)
+
+
+def get_type(t, value):
+    """Return the openpyxl data type letter for a value type (openpyxl 3.1.5)."""
+    from ..compat import NUMERIC_TYPES
+    from ..worksheet.formula import ArrayFormula, DataTableFormula
+
+    if isinstance(value, NUMERIC_TYPES):
+        return "n"
+    if isinstance(value, __getattr__("STRING_TYPES")):
+        return "s"
+    if isinstance(value, TIME_TYPES):
+        return "d"
+    if isinstance(value, (DataTableFormula, ArrayFormula)):
+        return "f"
+    return None

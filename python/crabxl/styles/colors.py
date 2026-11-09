@@ -5,6 +5,7 @@ import re
 from ..descriptors import Typed
 from ..xml.functions import Element
 from ._base import StyleValue
+from ._x.colors import RGB  # noqa: F401
 
 aRGB_REGEX = re.compile(r"^([A-Fa-f0-9]{8}|[A-Fa-f0-9]{6})$")
 BLACK = "00000000"

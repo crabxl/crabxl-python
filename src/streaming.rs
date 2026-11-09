@@ -22,9 +22,7 @@ pub(crate) struct SharedFile {
 impl SharedFile {
     pub(crate) fn open(path: PathBuf) -> PyResult<Self> {
         Ok(Self {
-            file: Arc::new(Mutex::new(Some(
-                File::open(path).map_err(|error| PyOSError::new_err(error.to_string()))?,
-            ))),
+            file: Arc::new(Mutex::new(Some(File::open(path).map_err(PyErr::from)?))),
             position: 0,
         })
     }
@@ -195,7 +193,7 @@ impl NativeReadStream {
                     let _ = sender.send(Err(error));
                 }
             })
-            .map_err(|error| PyOSError::new_err(error.to_string()))?;
+            .map_err(PyErr::from)?;
         Ok(Self {
             state: Arc::new(Mutex::new(ReadState {
                 receiver: Some(receiver),

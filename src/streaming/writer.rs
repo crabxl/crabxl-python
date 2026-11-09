@@ -818,7 +818,7 @@ impl NativeWriteBook {
             let mut temporary = tempfile::Builder::new()
                 .prefix("crabxl-stream-save-")
                 .tempfile_in(parent)
-                .map_err(|error| PyOSError::new_err(error.to_string()))?;
+                .map_err(PyErr::from)?;
             writer
                 .finish_with_hyperlink_ids(&mut temporary, scratch, |group, id| {
                     if let Ok(index) = requested.binary_search(&group) {
@@ -828,8 +828,7 @@ impl NativeWriteBook {
                 })
                 .map_err(failure)?;
             let temporary = temporary.into_temp_path();
-            std::fs::rename(&temporary, path)
-                .map_err(|error| PyOSError::new_err(error.to_string()))?;
+            std::fs::rename(&temporary, path).map_err(PyErr::from)?;
             Ok((active_after, identities))
         })
     }

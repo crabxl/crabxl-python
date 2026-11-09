@@ -12,3 +12,4 @@ from .cell import (  # noqa: F401
     range_to_tuple,
     rows_from_range,
 )
+from .formulas import FORMULAE  # noqa: F401

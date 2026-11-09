@@ -16,6 +16,8 @@ from ..compat import deprecated
 from ..resources import AutoMemory, ResourceOptions
 from ..worksheet.worksheet import Worksheet
 
+INTEGER_TYPES = (int,)
+
 
 class Workbook:
     """Workbook-compatible entry point; models and package editing remain Rust-owned."""
@@ -395,7 +397,7 @@ class Workbook:
         for sheet in self._sheets:
             if sheet.title == key:
                 return sheet
-        raise KeyError(f"Worksheet {key} does not exist")
+        raise KeyError(f"Worksheet {key} does not exist.")
 
     def __contains__(self, key):
         return key in self.sheetnames

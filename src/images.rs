@@ -28,7 +28,7 @@ impl NativeImage {
             .ok_or_else(|| pyo3::exceptions::PyMemoryError::new_err("Image is too large"))?;
         PyBytes::new_with(py, length, |bytes| {
             py.detach(|| self.image.data.reader().read_exact(bytes))
-                .map_err(|error| PyOSError::new_err(error.to_string()))
+                .map_err(PyErr::from)
         })
     }
 

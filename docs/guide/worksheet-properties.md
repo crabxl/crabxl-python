@@ -1,0 +1,90 @@
+---
+title: Worksheet properties
+description: Tab color, outline and page setup properties.
+---
+
+This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
+
+These are advanced properties for particular behaviours, the most used ones
+are the "fitTopage" page setup property and the tabColor that define the
+background color of the worksheet tab.
+
+## Available properties for worksheets
+
+* "enableFormatConditionsCalculation"
+* "filterMode"
+* "published"
+* "syncHorizontal"
+* "syncRef"
+* "syncVertical"
+* "transitionEvaluation"
+* "transitionEntry"
+* "tabColor"
+
+## Available fields for page setup properties
+
+"autoPageBreaks"
+"fitToPage"
+
+## Available fields for outlines
+
+* "applyStyles"
+* "summaryBelow"
+* "summaryRight"
+* "showOutlineSymbols"
+
+Search `ECMA-376 pageSetup` for more details.
+
+> **Note:** 
+> By default, outline properties are intitialized so you can directly modify each of their 4 attributes, while page setup properties don't.
+> If you want modify the latter, you should first initialize a `PageSetupProperties` object with the required parameters.
+> Once done, they can be directly modified by the routine later if needed.
+
+```python
+>>> from crabxl.workbook import Workbook
+>>> from crabxl.worksheet.properties import WorksheetProperties, PageSetupProperties
+>>>
+>>> wb = Workbook()
+>>> ws = wb.active
+>>>
+>>> wsprops = ws.sheet_properties
+>>> wsprops.tabColor = "1072BA"
+>>> wsprops.filterMode = False
+>>> wsprops.pageSetUpPr = PageSetupProperties(fitToPage=True, autoPageBreaks=False)
+>>> wsprops.outlinePr.summaryBelow = False
+>>> wsprops.outlinePr.applyStyles = True
+>>> wsprops.pageSetUpPr.autoPageBreaks = True
+```
+
+## Worksheet Views
+
+There are also several convenient properties defined as worksheet views.
+
+You can use `sheet_view` to set sheet attributes such as zoom, show formulas or if the tab is selected. `ws.sheet_view` returns the first view.
+
+```python
+>>> from crabxl.workbook import Workbook
+>>>
+>>> wb = Workbook()
+>>> ws = wb.active
+>>>
+>>> ws.sheet_view.zoomScale = 85 # Sets 85% zoom
+>>> ws.sheet_view.showFormulas = True
+>>> ws.sheet_view.tabSelected = True
+```
+
+Worksheets can have multiple views which are rendered in Excel as "views.xlsx:1", "views.xlsx:2".
+These correspond to `ws.views.sheetView[0]` and `ws.views.sheetView[1]`, because they are zero-indexed.
+
+Custom Sheetviews can also be defined.
+
+## Fold (outline)
+
+```python
+>>> import crabxl
+>>> wb = crabxl.Workbook()
+>>> ws = wb.create_sheet()
+>>> ws.column_dimensions.group('A','D', hidden=True)
+>>> ws.row_dimensions.group(1,10, hidden=True)
+>>> wb.save('group.xlsx')
+```

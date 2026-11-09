@@ -67,27 +67,110 @@ class _Finder(importlib.abc.MetaPathFinder):
         )
 
 
-def _failures(junit):
-    """Return the node IDs of failed or errored tests in a JUnit XML report."""
-    found = set()
+def _cases(junit):
+    """Yield (node ID, outcome) for each test in a JUnit XML report."""
     for case in ET.parse(junit).getroot().iter("testcase"):
-        if case.find("failure") is None and case.find("error") is None:
-            continue
+        if case.find("failure") is not None or case.find("error") is not None:
+            outcome = "failed"
+        elif case.find("skipped") is not None:
+            outcome = "skipped"
+        else:
+            outcome = "passed"
         module, _, owner = case.get("classname", "").rpartition(".")
         if not owner.startswith("Test"):
             module, owner = case.get("classname", ""), ""
         if not module:  # Collection error: the name is the module.
-            found.add(case.get("name"))
+            yield case.get("name"), outcome
             continue
         parts = [module.replace(".", "/") + ".py", owner, case.get("name")]
-        found.add("::".join(p for p in parts if p))
-    return found
+        yield "::".join(p for p in parts if p), outcome
+
+
+def _failures(junit):
+    """Return the node IDs of failed or errored tests in a JUnit XML report."""
+    return {node for node, outcome in _cases(junit) if outcome == "failed"}
+
+
+def _package(node):
+    parts = node.replace(".", "/").split("/")
+    return parts[1] if parts[1:] and parts[1] not in ("tests", "py") else "(top level)"
+
+
+def _report(junit, reasons, path):
+    """Write the public compatibility page: results by openpyxl package."""
+    rows = {}
+    for node, outcome in _cases(junit):
+        if outcome == "failed":
+            outcome = (
+                "deliberate"
+                if reasons.get(node, "").startswith("deliberate")
+                else "internal"
+            )
+        counts = rows.setdefault(
+            _package(node),
+            dict.fromkeys(("passed", "internal", "deliberate", "skipped"), 0),
+        )
+        counts[outcome] += 1
+    total = {
+        key: sum(r[key] for r in rows.values())
+        for key in ("passed", "internal", "deliberate", "skipped")
+    }
+    public = total["passed"] + total["deliberate"]
+    lines = [
+        "---",
+        "title: Compatibility",
+        "description: Results of the openpyxl 3.1.5 test suite run against CrabXL.",
+        "---",
+        "",
+        "CrabXL runs the test suite of openpyxl 3.1.5 without changes. Each",
+        "`openpyxl` module that the tests use resolves to the matching `crabxl`",
+        "module.",
+        "",
+        "## Summary",
+        "",
+        f"- {total['passed']:,} tests pass. This is "
+        f"{total['passed'] / public:.1%} of the tests of the public API.",
+        f"- {total['deliberate']} tests fail because CrabXL is different on",
+        "  purpose. The next section lists them.",
+        f"- {total['internal']} tests use private parts of openpyxl, for example the",
+        "  `_reader` and `_writer` classes or the `_style` attribute. CrabXL does",
+        "  this work in Rust, so these tests do not apply.",
+        f"- {total['skipped']} tests are skipped or expected to fail in openpyxl itself.",
+        "",
+        "## Deliberate differences",
+        "",
+        "- CrabXL keeps the source names of VBA, external link and comment parts.",
+        "  openpyxl renames them.",
+        "- CrabXL keeps an unchanged calculation chain. openpyxl removes it.",
+        "- CrabXL writes the elements of a projected pie chart in the order that the",
+        "  file format specifies, because Excel requires it.",
+        "",
+        "## Results by package",
+        "",
+        "| openpyxl package | Pass | Private API | Different on purpose | Skipped |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for name, counts in sorted(rows.items()):
+        lines.append(
+            f"| `{name}` | {counts['passed']} | {counts['internal']} | {counts['deliberate']} | {counts['skipped']} |"
+        )
+    lines.append(
+        f"| **Total** | **{total['passed']:,}** | **{total['internal']}** | **{total['deliberate']}** | **{total['skipped']}** |"
+    )
+    lines += [
+        "",
+        "To run the suite, see `tools/run_openpyxl_suite.py` in the",
+        "[repository](https://github.com/crabxl/crabxl-python/blob/main/tools/run_openpyxl_suite.py).",
+        "",
+    ]
+    path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reference-checkout", type=Path, required=True)
     parser.add_argument("--expected", type=Path, help="JSON file of expected failures")
+    parser.add_argument("--report", type=Path, help="write the compatibility page here")
     parser.add_argument("pytest_args", nargs="*")
     args = parser.parse_args()
     root = args.reference_checkout.resolve()
@@ -97,7 +180,7 @@ def main():
     import pytest
 
     junit = Path(tempfile.mkdtemp()) / "suite.xml"
-    extra = [f"--junitxml={junit}"] if args.expected else []
+    extra = [f"--junitxml={junit}"] if args.expected or args.report else []
     code = pytest.main(
         [
             str(root / "openpyxl"),
@@ -113,11 +196,12 @@ def main():
             *args.pytest_args,
         ]
     )
+    groups = json.loads(args.expected.read_text()) if args.expected else {}
+    if args.report:
+        _report(junit, {i: k for k, ids in groups.items() for i in ids}, args.report)
     if not args.expected:
         return code
-    expected = {
-        i for ids in json.loads(args.expected.read_text()).values() for i in ids
-    }
+    expected = {i for ids in groups.values() for i in ids}
     failed = _failures(junit)
     for label, ids in (
         ("Unexpected failure", failed - expected),

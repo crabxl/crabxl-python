@@ -110,10 +110,11 @@ settings do not cap process RSS. See [memory limits](docs/guide/memory.md).
 
 - [Quick start](docs/quick-start.md)
 - [Migration from openpyxl](docs/migration.md)
-- [Workbook modes](docs/guide/modes.md)
+- [Guide](docs/guide/tutorial.md), adapted from the openpyxl documentation
+- [Compatibility](docs/compatibility.md): the openpyxl test suite results
 - [Project status](internal/STATUS.md)
 - [Changelog](CHANGELOG.md)
-- [Benchmarks](benchmarks/reports/modes-comparison.md) and [large reads](benchmarks/reports/large-reads.md)
+- [Benchmarks](benchmarks/results/results.md)
 
 ## Contributing
 

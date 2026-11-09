@@ -1,4 +1,29 @@
 {
   "title": "Guide",
-  "pages": ["modes", "memory"]
+  "pages": [
+    "tutorial",
+    "simple-usage",
+    "optimized",
+    "memory",
+    "dates",
+    "formulas",
+    "formula-parsing",
+    "editing-worksheets",
+    "styles",
+    "rich-text",
+    "conditional-formatting",
+    "tables",
+    "filters",
+    "validation",
+    "defined-names",
+    "comments",
+    "print-settings",
+    "worksheet-properties",
+    "protection",
+    "document-properties",
+    "images",
+    "charts",
+    "pivot-tables",
+    "pandas"
+  ]
 }

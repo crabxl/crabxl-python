@@ -258,7 +258,7 @@ pub(crate) fn save_models(
         let mut temporary = tempfile::Builder::new()
             .prefix("crabxl-python-")
             .tempfile_in(parent)
-            .map_err(|error| PyOSError::new_err(error.to_string()))?;
+            .map_err(PyErr::from)?;
         writer.finish(&mut temporary).map_err(failure)?;
         temporary
             .persist(path)

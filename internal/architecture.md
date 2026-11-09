@@ -1,167 +1,54 @@
-# Python adapter architecture
+# Architecture
 
-The Rust core at https://github.com/crabxl/crabxl is canonical. This standalone repository contains PyO3 ownership/conversion adapters and an openpyxl-compatible Python object surface. It must not implement a second spreadsheet engine or silently fall back to openpyxl.
+Update this file only when the architecture changes.
 
-Cargo.toml pins the core Git revision. Compatibility tests and legal provenance live in tests and third_party. Rust models, validation, formulas, resources and XLSX codecs remain in core. Python view/cache and language argument/error mapping live here.
+The Rust core (https://github.com/crabxl/crabxl) is the only spreadsheet
+engine. This package adapts it to the openpyxl 3.1.5 API. `Cargo.toml` pins
+the core to an exact Git revision.
 
-Registered new workbooks share the native aggregate sheet bank. Ordinary loaded
-workbooks share a canonical source-backed bank with stable sheet handles, one
-preserving editor/source and joint model/catalog/overlay/SST allowances; see
-[ADR 0017](decisions/0017-canonical-loaded-workbook-owner.md). Compatibility and
-idiomatic extensions remain clearly distinguishable.
+## Layers
 
-Loaded `Worksheet.append` delegates to the canonical preserving coordinator,
-which updates the model and package overlay atomically. Python normalizes row
-iterables and column dictionaries, converts values, and releases the GIL for
-the native operation. Empty rows advance the source-aware append cursor.
-Unsupported source graphs/values remain explicit errors before mutation.
+| Layer | Responsibility |
+|---|---|
+| `python/crabxl` | Public package. Its modules follow the openpyxl module layout. Compatible objects are views over native handles. |
+| `src/` (`crabxl._native`) | PyO3 handles for the owned bank, the loaded reader and editor, the streaming reader and the streaming writer. Converts values in batches and releases the GIL for native work. |
+| Rust core | Models, validation, resources and every XLSX codec. |
 
-Loaded title changes use the same canonical preserving coordinator without
-materializing cells or replacing native identities; see
-[ADR 0019](decisions/0019-source-backed-sheet-title.md).
+## Workbook modes
 
-Loaded display reordering commits the canonical source-index permutation before
-changing Python worksheet views. Signed active display indexes remain deferred;
-affected local defined-name graphs reject atomically pending M5. See
-[ADR 0020](decisions/0020-source-sheet-display-order.md).
-The pinned packed model's numeric Python cost is recorded in
-[paired measurements](../benchmarks/reports/alpha7-packed-reading.md).
+| Python mode | Native owner |
+|---|---|
+| `Workbook()` | Registered owned workbook bank. |
+| `load_workbook(path)` | `NativeReader` plus `NativeEditor` over one loaded source. Saves preserve unchanged parts. |
+| `load_workbook(path, read_only=True)` | `NativeReader` row streams. |
+| `Workbook(write_only=True)` | Native interleaved streaming writer. |
 
-Loaded row/column insertion/deletion and range moves now use the canonical
-preserving coordinator; Python updates existing Cell aliases only after success.
-Later edits/append and repeat saves share that bank. Affected unsupported feature
-graphs reject atomically; see [ADR 0021](decisions/0021-loaded-cell-structure.md).
+File-like objects are spooled to a temporary file and use the path code.
 
-Ordinary scalar values iteration now projects canonical ordered row cursors
-directly into Python values, retaining live structured-formula objects. Cached
-read-only rows avoid a GIL detach/attach cycle; blocking receives still release
-the GIL. Both use one adapter conversion helper and unchanged bounded buffers.
-The [calamine comparison](../benchmarks/reports/alpha7-direct-values.md) records remaining
-parser/model and conversion costs; neither mode meets the speed target yet.
-Output tags borrow fixed native literals, while input tags retain owned caller
-validation. The [paired adapter measurement](../benchmarks/reports/alpha7-static-tags.md)
-records small ordinary gains and no clear streaming gain, independently of core
-namespace representation changes.
+## Features
 
-Worksheet visibility and deferred signed active-view selection use the canonical
-core coordinator in ordinary loaded mode, the registered bank in owned mode, and
-the streaming writer in write-only mode; see
-[ADR 0018](decisions/0018-canonical-visibility-and-active-views.md). Metadata-only
-loaded changes do not materialize cell models. Read-only visibility is a snapshot
-view and cannot be serialized. Python maps the core's no-visible-sheet error to
-`IndexError`; a single hidden sheet maps to `ValueError`.
+Feature classes (tables, rules, validation, comments, charts, drawings, pivots,
+print settings and similar) are openpyxl Serialisable descriptors. They convert
+to and from SpreadsheetML; the core parses that XML into its typed or
+tree-based models (`_features.py` and `src/features.rs`). Features load on first
+access, and only changed features are pushed back before save.
 
-The core roadmap and feature inventory are authoritative: https://github.com/crabxl/crabxl/blob/main/internal/roadmap.md and https://github.com/crabxl/crabxl/blob/main/internal/features.json. See internal/binding-contract.md for all adapter priorities.
+## Rules
 
-Optimized streams and ownership are described in [ADR 0014](decisions/0014-optimized-stream-ownership.md). The pinned canonical core uses quick-xml 0.42; the binding contains no duplicated codecs.
+- Never fall back to openpyxl at run time.
+- An unsupported property or call raises an explicit error; nothing is lost on
+  save.
+- Do not create one Python object per cell unless the openpyxl API returns one.
 
-The canonical default-namespace cache is verified through ordinary and read-only
-Python values iteration; see [paired performance evidence](../benchmarks/reports/alpha7-namespace-reading.md).
+## Source modules
 
-Resource extensions map immutable Python configuration to canonical Rust limits,
-SST options and Auto controls. Both ordinary and optimized readers inherit the
-same settings; no resource strategy is implemented in Python. Mode applicability,
-original component allowances are documented in ADR 0016; ordinary loaded-bank
-ownership and joint retained accounting now follow ADR 0017.
+- `python/crabxl/__init__.py` only composes exports.
+- `cell/cell.py`, `worksheet/worksheet.py` and `workbook/workbook.py` hold the
+  compatible objects. `workbook/loader.py` selects the loading mode.
+  `optimized.py` holds the read-only and write-only views.
+- `src/lib.rs` registers classes. `workbook.rs`, `worksheet.rs`, `reader.rs`,
+  `editor.rs` and `streaming/` implement the handles. `values.rs` shares value
+  conversion and error mapping.
 
-Loaded `create_sheet()` registers a model in the existing source owner and keeps
-its stable handle in a Python worksheet view. New and original sheets share the
-preserving save transaction; see [ADR 0022](decisions/0022-source-backed-sheet-creation.md).
-
-Loaded `copy_worksheet()` delegates requested duplication and source-template
-preservation to core and maps compatible visible-copy behavior in the adapter;
-see [ADR 0023](decisions/0023-source-backed-worksheet-copy.md).
-
-Loaded removal transfers the shared worksheet handle to its detached canonical
-model after checked core disposal. Python dispatch changes only after success,
-so title reuse cannot reconnect old cell aliases; see
-[ADR 0024](decisions/0024-source-backed-worksheet-removal.md).
-
-Physical-cell deletion on ordinary loaded worksheets calls the canonical guarded
-Rust removal operation. Existing Python cell aliases retain the removed value,
-while subsequent coordinate access creates an independent cell view. Aliases are
-updated only after native success, so rejected affected graphs retain the original
-view and value. Missing-cell removal leaves source XML and formula caches intact.
-
-Linux Auto availability now follows canonical core ADR 0076: clean inactive
-cgroup file cache contributes to estimated available capacity, while dirty,
-writeback, active cache and shared-memory pages do not. The adapter adds no
-separate detector. Explicit budgets and caller-supplied Auto availability keep
-their existing behavior. A fresh wheel pinned to core
-`f0c8fdba794f059c376ab26c311fffc9f102c09e` passes all 547 compatibility cases.
-
-The adapter now pins core `30ea8c47e61eaad724839aece8a2ff4d6de8d778` for
-bounded buffered scalar decoding (core ADR 0077). Python uses the same native
-stream and loaded model; no separate scalar parser or compatibility fallback is
-added. All 547 compatibility cases and Ruff/Clippy pass with a freshly rebuilt
-wheel. Complete Python-operation measurements and remaining performance gaps
-are recorded in [the A8 report](../benchmarks/reports/alpha8-buffered-scalars.md).
-
-Core `aaeed63bbc1f5997bd7514295977c26c174ed5e0` additionally prepares simple
-SST entries from bounded buffered XML (core ADR 0078), with direct canonical
-shared ownership. Fresh-wheel compatibility remains 547 passing cases. Both
-ordinary and read-only Python unique-text operations improve against A7 in
-complete conversion-inclusive measurements; the report retains their scope.
-
-Core `1bcb47ffc99a8f414f9bfdbab6bc289456956c5e` adds byte-oriented XML
-escaping (core ADR 0079) without changing the binding's value model. Fresh-wheel
-compatibility remains 547 passing cases; Python write-only regression measurements
-include conversion/save and independent full-value readback. Their small numeric
-differences are not described as a broad writer speed improvement.
-
-Core `24e2ec4e1b467cec03518eef803d5907f44495a6` removes arbitrary default
-model cardinality caps (core ADR 0080). Coordinate bounds, byte budgets and
-explicit caller count limits remain enforced. A freshly rebuilt wheel passes
-all 547 compatibility cases, Ruff formatting/checks and strict Clippy. The
-reported NYC workbook is unavailable locally, so this is not a measured claim
-that its complete model fits a particular memory budget.
-
-Released core `d27b06990e8c272aabb345e57390ee41fd24c357` additionally integrates
-descending block packing and capacity-aware model/growth reservations (core ADRs
-0081-0082). Partial deletion shrinks only within operation headroom; explicitly
-bounded banks retain capacity honestly when shrinking must be skipped. Native
-functional probes support one million numeric cells under 64 MiB and row insertion
-under 384 MiB. Python uses the canonical resource accounting directly.
-
-The final `0.1.0a8` wheel passes 547 compatibility cases, Ruff and strict Clippy.
-Two existing resource fixtures retain their atomic failure, retry, alias and source
-checks with capacities appropriate to the new ledger. Complete numeric/unique-text
-Python measurements, exact preview-wheel identities and remaining limits are in
-[the A8 verification report](../benchmarks/reports/alpha8-python-acceptance.md).
-
-## Source module boundaries
-
-The public `python/crabxl/__init__.py` only composes exports. Compatible objects
-live in `cell/cell.py`, `worksheet/worksheet.py` and `workbook/workbook.py`;
-`workbook/loader.py` selects loading modes and owns loading cleanup. `_values.py`
-shares scalar conversion and coordinate adapters. Existing public import paths
-remain available, including `WriteOnlyCell` in both cell modules.
-
-The native `src/lib.rs` registers Python classes and functions. `workbook.rs`,
-`worksheet.rs`, `reader.rs` and `editor.rs` implement the respective handle
-contracts. `values.rs` shares conversion, synchronization and error mapping;
-`functions.rs` adapts formula/address/resource/save entry points. `rich_text.rs`
-adapts canonical runs and pronunciation records; `worksheet/rows.rs` owns borrowed
-row projection and deferred live-value conversion. Existing
-`streaming.rs`, `resources.rs`, `dimensions.rs`, `styles.rs` and `style_owners.rs`
-remain dedicated adapters. `imports.rs` contains adapter imports only. No module
-implements a second spreadsheet engine.
-
-Dependencies flow from Python views to native handles and then to the pinned
-Rust core. Module registration is composition; workbook ownership, model data,
-resource accounting and codecs remain canonical in Rust. Shared Python helpers
-import neither workbook nor worksheet objects, avoiding initialization cycles.
-
-Use 300–600 lines as a practical review target and inspect files exceeding
-800–1,000 lines for mixed responsibilities. These are guidelines, not hard
-limits or a reason to introduce numbered fragments or extra runtime wrappers.
-
-Point hyperlink views adapt canonical native metadata and preserving source edits.
-Sparse public object retention preserves live identity; XML/relationship edits
-stay in core. See [ADR 0031](decisions/0031-canonical-point-hyperlink-views.md) for
-resource costs and unresolved full compatibility gates.
-
-Live hyperlink references and shared public aliases now synchronize canonical
-declarations while retaining physical owner coordinates. Matching ordinary
-references avoid duplicate native text. [ADR 0032](decisions/0032-shared-hyperlink-reference-views.md)
-records transactions, alias scaling and remaining compatibility dependencies.
+Compatibility is checked by `tests/` and by the unchanged openpyxl 3.1.5 suite
+(`tools/run_openpyxl_suite.py`).

@@ -1,0 +1,70 @@
+---
+title: Protection
+description: Workbook and worksheet protection.
+---
+
+This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
+
+> **Warning:** 
+> Password protecting a workbook or worksheet only provides a quite basic level of security.
+> The data is not encrypted, so can be modified by any number of freely available tools. In
+> fact the specification states: "Worksheet or workbook element protection should not be
+> confused with file security. It is meant to make your workbook safe from unintentional
+> modification, and cannot protect it from malicious modification."
+
+Openpyxl provides support for protecting a workbook and worksheet from modification. The Open XML
+"Legacy Password Hash Algorithm" is used to generate hashed password values unless another
+algorithm is explicitly configured.
+
+## Workbook Protection
+
+To prevent other users from viewing hidden worksheets, adding, moving, deleting, or hiding worksheets, and
+renaming worksheets, you can protect the structure of your workbook with a password. The password can be
+set using the `workbookPassword` property
+
+```python
+>>> wb.security.workbookPassword = '...'
+>>> wb.security.lockStructure = True
+```
+
+Similarly removing change tracking and change history from a shared workbook can be prevented by setting
+another password. This password can be set using the
+`revisionsPassword` property
+
+```python
+>>> wb.security.revisionsPassword = '...'
+```
+
+Other properties on the `WorkbookProtection` object control exactly what
+restrictions are in place, but these will only be enforced if the appropriate password is set.
+
+Specific setter functions are provided if you need to set the raw password value without using the
+default hashing algorithm - e.g.
+
+```python
+hashed_password = ...
+wb.security.set_workbook_password(hashed_password, already_hashed=True)
+```
+
+## Worksheet Protection
+
+Various aspects of a worksheet can also be locked by setting attributes on the
+`SheetProtection` object. Unlike workbook protection, sheet
+protection may be enabled with or without using a password. Sheet protection is enabled using the
+`sheet` attribute or calling `enable()` or `disable()`:
+
+```python
+>>> ws = wb.active
+>>> ws.protection.sheet = True
+>>> ws.protection.enable()
+>>> ws.protection.disable()
+```
+
+If no password is specified, users can disable configured sheet protection without specifying a password.
+Otherwise they must supply a password to change configured protections. The password is set using
+the `password` property
+
+```python
+>>> ws = wb.active
+>>> ws.protection.password = '...'
+```

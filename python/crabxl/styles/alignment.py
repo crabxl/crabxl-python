@@ -2,6 +2,19 @@
 
 from ._base import StyleValue
 
+# From openpyxl 3.1.5 (MIT), Copyright (c) 2010-2024 openpyxl. The spelling is openpyxl's.
+horizontal_alignments = (
+    "general",
+    "left",
+    "center",
+    "right",
+    "fill",
+    "justify",
+    "centerContinuous",
+    "distributed",
+)
+vertical_aligments = ("top", "center", "bottom", "justify", "distributed")
+
 
 class Alignment(StyleValue):
     _component = "alignment"

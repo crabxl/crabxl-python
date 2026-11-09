@@ -11,4 +11,8 @@ def __getattr__(name):
         from ..optimized import WriteOnlyCell
 
         return WriteOnlyCell
+    if name == "ReadOnlyCell":
+        from ..optimized import ReadOnlyCell
+
+        return ReadOnlyCell
     raise AttributeError(name)

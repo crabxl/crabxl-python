@@ -235,3 +235,75 @@ def test_scenarios_are_read_kept_edited_and_written(tmp_path):
     sheet.append([1])
     stream.save(tmp_path / "stream.xlsx")
     assert names(tmp_path / "stream.xlsx") == ["New"]
+
+
+PUBLIC_NAMES = {
+    "cell": ["ReadOnlyCell"],
+    "cell.cell": [
+        "ILLEGAL_CHARACTERS_RE",
+        "KNOWN_TYPES",
+        "STRING_TYPES",
+        "TIME_TYPES",
+        "TYPE_BOOL",
+        "TYPE_ERROR",
+        "TYPE_FORMULA",
+        "TYPE_FORMULA_CACHE_STRING",
+        "TYPE_INLINE",
+        "TYPE_NULL",
+        "TYPE_NUMERIC",
+        "TYPE_STRING",
+        "VALID_TYPES",
+    ],
+    "drawing": ["Drawing"],
+    "styles": [
+        "DEFAULT_FONT",
+        "Fill",
+        "NumberFormatDescriptor",
+        "is_builtin",
+        "is_date_format",
+    ],
+    "styles.alignment": ["horizontal_alignments", "vertical_aligments"],
+    "styles.borders": ["BORDER_NONE", "BORDER_THIN", "BORDER_MEDIUMDASHDOTDOT"],
+    "styles.fills": [
+        "FILL_NONE",
+        "FILL_SOLID",
+        "FILL_PATTERN_GRAY125",
+        "fills",
+        "StopList",
+    ],
+    "styles.colors": ["RGB"],
+    "utils": ["FORMULAE"],
+    "workbook.external_link": ["ExternalLink"],
+    "workbook.workbook": ["INTEGER_TYPES"],
+}
+
+
+@pytest.mark.parametrize("module", sorted(PUBLIC_NAMES))
+def test_public_module_names_match_openpyxl(module):
+    ours = importlib.import_module(f"crabxl.{module}")
+    reference = importlib.import_module(f"openpyxl.{module}")
+    for name in PUBLIC_NAMES[module]:
+        value = getattr(ours, name)
+        expected = getattr(reference, name)
+        if (
+            isinstance(expected, (str, tuple, frozenset, int, type(None)))
+            and name != "KNOWN_TYPES"
+        ):
+            if name != "STRING_TYPES":
+                assert value == expected, name
+        if name == "ILLEGAL_CHARACTERS_RE":
+            assert value.pattern == expected.pattern
+
+
+def test_missing_file_raises_file_not_found(tmp_path):
+    for module in (crabxl, openpyxl):
+        with pytest.raises(FileNotFoundError):
+            module.load_workbook(tmp_path / "missing.xlsx")
+    with pytest.raises(FileNotFoundError):
+        crabxl.load_workbook(tmp_path / "missing.xlsx", read_only=True)
+
+
+def test_border_accepts_legacy_diagonal_direction():
+    from crabxl.styles import Border
+
+    assert Border(diagonal_direction=0) == Border()

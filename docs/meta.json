@@ -1,4 +1,4 @@
 {
   "title": "Python",
-  "pages": ["index", "quick-start", "guide", "support", "migration", "changelog"]
+  "pages": ["index", "quick-start", "guide", "support", "compatibility", "migration", "changelog"]
 }

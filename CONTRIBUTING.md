@@ -37,7 +37,7 @@ the core to the openpyxl API.
 | `third_party/` | Provenance and licenses of the selected openpyxl tests. |
 | `docs/` | Public user documentation. |
 | `internal/` | Maintainer records: [status](internal/STATUS.md), roadmap, architecture, design decisions and release evidence. |
-| `benchmarks/` | Benchmark scripts. Reports are in `reports/`. Raw data is in `results/`. |
+| `benchmarks/` | The benchmark suite. The latest results are in `results/`. |
 | `tools/` | Release, wheel and provenance scripts. |
 
 ## Development setup

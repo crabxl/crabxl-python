@@ -40,7 +40,12 @@ Each release uses a pinned revision of the Rust core. The core has its own
   supported.
 - `tools/run_openpyxl_suite.py` runs the unchanged openpyxl 3.1.5 test suite
   against crabxl and checks the result against a tracked list of expected
-  failures.
+  failures. `--report` writes the compatibility page of the documentation.
+- The user guide, adapted from the openpyxl documentation, and pages for
+  memory limits, migration, supported features and compatibility.
+- One benchmark suite (`benchmarks/run.py`) compares read, write and edit with
+  wolfxl, oxlsx, python-calamine, fastexcel, XlsxWriter and openpyxl. It
+  replaces the earlier benchmark scripts.
 
 ### Changed
 
