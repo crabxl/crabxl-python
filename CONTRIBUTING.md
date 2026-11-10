@@ -37,7 +37,6 @@ the core to the openpyxl API.
 | `third_party/` | Provenance and licenses of the selected openpyxl tests. |
 | `docs/` | Public user documentation. |
 | `internal/` | Maintainer records: [status](internal/STATUS.md), roadmap, architecture, design decisions and release evidence. |
-| `benchmarks/` | The benchmark suite. The latest results are in `results/`. |
 | `tools/` | Release, wheel and provenance scripts. |
 
 ## Development setup
@@ -100,7 +99,7 @@ Windows and macOS.
   `python tools/verify_python_test_provenance.py --reference-checkout <path>`
   with a checkout of openpyxl 3.1.5.
 - Mark expected failures explicitly. Do not count them as passes.
-- Do not put timing limits in tests. Measure performance in `benchmarks/`.
+- Do not put timing limits in tests. Measure performance with [crabxl-benchmarks](https://github.com/crabxl/crabxl-benchmarks).
 
 ### Performance changes
 

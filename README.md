@@ -114,7 +114,6 @@ settings do not cap process RSS. See [memory limits](docs/guide/memory.md).
 - [Compatibility](docs/compatibility.md): the openpyxl test suite results
 - [Project status](internal/STATUS.md)
 - [Changelog](CHANGELOG.md)
-- [Benchmarks](benchmarks/results/results.md)
 
 ## Contributing
 

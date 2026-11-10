@@ -43,7 +43,5 @@ First release. It uses the Rust core 0.1.0.
   failures. `--report` writes the compatibility page of the documentation.
 - The user guide, adapted from the openpyxl documentation, and pages for
   memory limits, migration, supported features and compatibility.
-- One benchmark suite (`benchmarks/run.py`) that compares crabxl with wolfxl,
-  oxlsx, python-calamine, fastexcel, XlsxWriter and openpyxl.
 
 [0.1.0]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.0

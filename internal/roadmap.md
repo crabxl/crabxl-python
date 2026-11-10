@@ -18,7 +18,8 @@ pinned revision resolves.
 
 ## Optional: benchmark results
 
-Rerun `benchmarks/run.py` on an idle computer and commit the results. This is
+Run the Python suite in crabxl-benchmarks on an idle computer and commit the
+results there. This is
 not needed for 0.1.0.
 
 ## 0.1.0
