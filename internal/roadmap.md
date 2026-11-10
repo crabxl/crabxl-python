@@ -1,19 +1,25 @@
 # Roadmap
 
-A12 completed openpyxl 3.1.5 compatibility. The only stage before the beta is
-A13: performance and memory. The core
-[roadmap](https://github.com/crabxl/crabxl/blob/main/internal/roadmap.md) has
-the plan and targets.
+A12 completed openpyxl 3.1.5 compatibility. A13 (performance and memory) is
+done; the core [roadmap](https://github.com/crabxl/crabxl/blob/main/internal/roadmap.md)
+has the targets and results. The beta is next.
 
-## A13 work in this repository
+## A13 in this repository (done)
 
-1. Run `benchmarks/run.py` against wolfxl, oxlsx, python-calamine, fastexcel,
-   XlsxWriter and openpyxl.
-2. Remove binding costs: batch value conversion, avoid per-cell Python objects
-   where openpyxl does not return them, release the GIL for native work.
-3. Pin the optimized core revision.
-4. Check that the Python tests and `tools/run_openpyxl_suite.py --expected
-   tools/openpyxl_suite_expected.json` still pass.
+- Rows of plain values (`None`, `bool`, `int`, `float`, `str` and naive date
+  and time values) are converted in Rust when appended. Other values use the
+  Python conversion, so errors are unchanged.
+- Appending to a loaded sheet that Python has not read yet does not load the
+  sheet; the core streams the rows on save.
+- 100,000-row write: 1.79 s to 0.89 s. Edit of 1,000,000 rows: 34 s to 16.6 s.
+
+Before the beta, pin the optimized core revision. The core must be pushed
+first so that the pinned revision resolves.
+
+## Optional: benchmark results
+
+Rerun `benchmarks/run.py` on an idle computer and commit the results. This is
+not needed for the beta.
 
 ## Beta
 
