@@ -323,3 +323,130 @@ pub(crate) fn decode_values(
     }
     Ok((values, formulas))
 }
+const ERROR_LITERALS: [&str; 8] = [
+    "#NULL!",
+    "#DIV/0!",
+    "#VALUE!",
+    "#REF!",
+    "#NAME?",
+    "#NUM!",
+    "#N/A",
+    "#GETTING_DATA",
+];
+/// Convert a list or tuple of plain values as `_values._encode` does, with the
+/// bytes the Python write-only path charges for each. Returns None when any
+/// value needs the Python path (other or subclassed types, aware datetimes,
+/// illegal text, integers beyond i64), so its errors stay in one place.
+pub(crate) fn plain_row(row: &Bound<'_, PyAny>) -> PyResult<Option<(Vec<CellValue>, usize)>> {
+    use pyo3::types::PyTuple;
+    if !(row.is_exact_instance_of::<PyList>() || row.is_exact_instance_of::<PyTuple>()) {
+        return Ok(None);
+    }
+    let mut values = Vec::with_capacity(row.len()?);
+    let mut bytes = 0usize;
+    for item in row.try_iter()? {
+        let Some((value, payload)) = plain_value(&item?)? else {
+            return Ok(None);
+        };
+        // The Python path charges 128 bytes per value plus its payload.
+        bytes = bytes.saturating_add(128 + payload);
+        values.push(value);
+    }
+    Ok(Some((values, bytes)))
+}
+fn plain_value(value: &Bound<'_, PyAny>) -> PyResult<Option<(CellValue, usize)>> {
+    use pyo3::types::{
+        PyBool, PyDate, PyDateAccess, PyDateTime, PyDelta, PyDeltaAccess, PyFloat, PyInt, PyString,
+        PyTime, PyTimeAccess, PyTzInfoAccess,
+    };
+    if value.is_none() {
+        return Ok(Some((CellValue::Empty, 0)));
+    }
+    if value.is_exact_instance_of::<PyBool>() {
+        return Ok(Some((CellValue::Boolean(value.extract()?), 0)));
+    }
+    if value.is_exact_instance_of::<PyInt>() {
+        return Ok(value
+            .extract::<i64>()
+            .ok()
+            .map(|number| (CellValue::Integer(number), number.to_string().len())));
+    }
+    if value.is_exact_instance_of::<PyFloat>() {
+        return Ok(Some((CellValue::Number(value.extract()?), 0)));
+    }
+    if value.is_exact_instance_of::<PyString>() {
+        let text = value.cast::<PyString>()?.to_cow()?;
+        let text = match text.char_indices().nth(32_767) {
+            Some((end, _)) => &text[..end],
+            None => &text[..],
+        };
+        if text
+            .chars()
+            .any(|c| (c as u32) < 32 && !matches!(c, '\t' | '\n' | '\r'))
+        {
+            return Ok(None);
+        }
+        return Ok(Some(if text.len() > 1 && text.starts_with('=') {
+            let formula =
+                Formula::from_source(text[1..].to_owned(), None, None).map_err(failure)?;
+            (CellValue::Formula(Box::new(formula)), text.len() - 1)
+        } else if ERROR_LITERALS.contains(&text) {
+            (CellValue::error(text.to_owned()), text.len())
+        } else {
+            (CellValue::text(text.to_owned()), text.len())
+        }));
+    }
+    // Tuple payload charges: 64 plus 32 per field.
+    if value.is_exact_instance_of::<PyDateTime>() {
+        let value = value.cast::<PyDateTime>()?;
+        if value.get_tzinfo().is_some() {
+            return Ok(None);
+        }
+        let date = ExcelDateTime::from_ymd_hms_micro(
+            value.get_year(),
+            value.get_month().into(),
+            value.get_day().into(),
+            value.get_hour().into(),
+            value.get_minute().into(),
+            value.get_second().into(),
+            value.get_microsecond(),
+        )
+        .map_err(failure)?;
+        return Ok(Some((CellValue::DateTime(Box::new(date)), 64 + 32 * 7)));
+    }
+    if value.is_exact_instance_of::<PyDate>() {
+        let value = value.cast::<PyDate>()?;
+        let date = ExcelDateTime::from_ymd(
+            value.get_year(),
+            value.get_month().into(),
+            value.get_day().into(),
+        )
+        .map_err(failure)?;
+        return Ok(Some((CellValue::DateTime(Box::new(date)), 64 + 32 * 3)));
+    }
+    if value.is_exact_instance_of::<PyTime>() {
+        let value = value.cast::<PyTime>()?;
+        if value.get_tzinfo().is_some() {
+            return Ok(None);
+        }
+        let time = ExcelDateTime::from_hms_micro(
+            value.get_hour().into(),
+            value.get_minute().into(),
+            value.get_second().into(),
+            value.get_microsecond(),
+        )
+        .map_err(failure)?;
+        return Ok(Some((CellValue::DateTime(Box::new(time)), 64 + 32 * 4)));
+    }
+    if value.is_exact_instance_of::<PyDelta>() {
+        let value = value.cast::<PyDelta>()?;
+        let duration = ExcelDateTime::from_duration_parts(
+            value.get_days().into(),
+            value.get_seconds() as u32,
+            value.get_microseconds() as u32,
+        )
+        .map_err(failure)?;
+        return Ok(Some((CellValue::DateTime(Box::new(duration)), 64 + 32 * 3)));
+    }
+    Ok(None)
+}

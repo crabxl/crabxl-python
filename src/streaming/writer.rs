@@ -485,6 +485,49 @@ impl NativeWriteBook {
             .set_temporal_options(date_1904, iso_dates)
             .map_err(failure)
     }
+    /// Append a list or tuple of plain values without the tagged encoding.
+    /// Returns false, having written nothing, when Python must take the row.
+    fn append_plain(
+        &self,
+        py: Python<'_>,
+        id: usize,
+        index: u32,
+        values: &Bound<'_, PyAny>,
+        allowance: usize,
+    ) -> PyResult<bool> {
+        let Some((values, charged)) = plain_row(values)? else {
+            return Ok(false);
+        };
+        if values.len() > 16_384 || charged > allowance {
+            return Ok(false);
+        }
+        let index = RowIndex::new(index).map_err(failure)?;
+        let mut row = Row::new(index);
+        let mut bytes = values.len() * std::mem::size_of::<Cell>();
+        for (column, value) in values.into_iter().enumerate() {
+            bytes = bytes.saturating_add(value.heap_bytes());
+            if bytes > self.maximum_row {
+                return Ok(false);
+            }
+            if !matches!(value, CellValue::Empty) {
+                row.cells.push(Cell {
+                    address: CellAddress::new(index.get(), column as u32).map_err(failure)?,
+                    value,
+                    style: StyleId::new(0),
+                });
+            }
+        }
+        let state = Arc::clone(&self.state);
+        py.detach(move || {
+            let mut state = lock(&state)?;
+            let writer = state.writer.as_mut().ok_or_else(closed)?;
+            writer.activate_sheet(id).map_err(failure)?;
+            writer
+                .write_row_with_annotations(&row, &[], Vec::new())
+                .map_err(failure)
+        })?;
+        Ok(true)
+    }
     #[pyo3(signature = (id, index, values, formats=None, hyperlinks=None, comments=None))]
     #[allow(clippy::too_many_arguments)]
     fn append(

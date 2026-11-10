@@ -1172,6 +1172,14 @@ class Worksheet:
     def append(self, iterable):
         if isinstance(iterable, (str, bytes)):
             raise TypeError("Append requires a row iterable or column dictionary")
+        # Rows of plain values convert natively; anything else falls through.
+        # A loaded sheet not yet read in Python appends without loading it.
+        if self._existing and self._native is None and self.parent._editor is not None:
+            row = self.parent._editor.append_plain(self.title, iterable)
+        else:
+            row = self._model().append_plain(iterable)
+        if row is not None:
+            return
         if isinstance(iterable, dict):
             positions = [(_column(column), value) for column, value in iterable.items()]
             values = [None] * max((column for column, _ in positions), default=0)

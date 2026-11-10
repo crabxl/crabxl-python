@@ -712,6 +712,12 @@ class WriteOnlyWorksheet(Worksheet):
             raise TypeError("Write-only append requires a row iterable")
         if self._header is None:
             self._send_header()
+        # Rows of plain values convert natively; anything else falls through.
+        if self.parent._stream_writer.append_plain(
+            self._id, self._row, iterable, min(self.parent._max_bytes, 1024 * 1024)
+        ):
+            self._row += 1
+            return
         tagged = []
         formats = None
         hyperlinks = None

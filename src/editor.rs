@@ -123,6 +123,35 @@ impl NativeEditor {
             )
             .map_err(failure)
     }
+    /// Append a list or tuple of plain values to a loaded sheet without loading
+    /// its model. Returns None when Python must take the row.
+    pub(crate) fn append_plain(
+        &self,
+        py: Python<'_>,
+        name: &str,
+        values: &Bound<'_, PyAny>,
+    ) -> PyResult<Option<u32>> {
+        let Some(loaded) = &self.loaded else {
+            return Ok(None);
+        };
+        let values = match plain_row(values)? {
+            Some((values, _)) if values.len() <= 16_384 => values,
+            _ => return Ok(None),
+        };
+        let loaded = Arc::clone(loaded);
+        let name = name.to_owned();
+        py.detach(move || {
+            let mut handle = lock(&loaded)?;
+            let loaded = handle.as_mut().ok_or_else(closed)?;
+            let id = loaded
+                .sheet_id(&name)
+                .ok_or_else(|| PyKeyError::new_err(name.clone()))?;
+            loaded
+                .append(id, values)
+                .map(|row| Some(row.get()))
+                .map_err(failure)
+        })
+    }
     pub(crate) fn pending(
         &self,
         py: Python<'_>,

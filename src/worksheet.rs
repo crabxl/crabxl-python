@@ -1009,23 +1009,19 @@ impl NativeSheet {
             .into_iter()
             .map(|value| decode(py, value))
             .collect::<PyResult<Vec<_>>>()?;
-        {
-            let storage = lock(&self.storage)?;
-            if let SheetStorage::Loaded { book, id } = &*storage {
-                let book = Arc::clone(book);
-                let id = *id;
-                drop(storage);
-                return py.detach(move || {
-                    lock(&book)?
-                        .as_mut()
-                        .ok_or_else(closed)?
-                        .append(id, values)
-                        .map(|row| row.get())
-                        .map_err(failure)
-                });
-            }
+        self.append_values(py, values)
+    }
+    /// Append a list or tuple of plain values without the tagged encoding.
+    /// Returns None, having changed nothing, when Python must take the row.
+    pub(crate) fn append_plain(
+        &self,
+        py: Python<'_>,
+        values: &Bound<'_, PyAny>,
+    ) -> PyResult<Option<u32>> {
+        match plain_row(values)? {
+            Some((values, _)) if values.len() <= 16_384 => self.append_values(py, values).map(Some),
+            _ => Ok(None),
         }
-        self.with_mut(|sheet| sheet.append(values).map(|row| row.get()).map_err(failure))
     }
     pub(crate) fn bounds(&self) -> PyResult<(u32, u32, u32, u32)> {
         self.with(|sheet| {
@@ -1176,5 +1172,26 @@ impl NativeSheet {
                 .map_err(failure)
             })
         })
+    }
+}
+impl NativeSheet {
+    fn append_values(&self, py: Python<'_>, values: Vec<CellValue>) -> PyResult<u32> {
+        {
+            let storage = lock(&self.storage)?;
+            if let SheetStorage::Loaded { book, id } = &*storage {
+                let book = Arc::clone(book);
+                let id = *id;
+                drop(storage);
+                return py.detach(move || {
+                    lock(&book)?
+                        .as_mut()
+                        .ok_or_else(closed)?
+                        .append(id, values)
+                        .map(|row| row.get())
+                        .map_err(failure)
+                });
+            }
+        }
+        self.with_mut(|sheet| sheet.append(values).map(|row| row.get()).map_err(failure))
     }
 }
