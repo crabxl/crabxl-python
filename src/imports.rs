@@ -10,8 +10,7 @@ pub(crate) use crabxl::{
 pub(crate) use pyo3::{
     IntoPyObjectExt,
     exceptions::{
-        PyIndexError, PyKeyError, PyMemoryError, PyOSError, PyRuntimeError,
-        PyValueError,
+        PyIndexError, PyKeyError, PyMemoryError, PyOSError, PyRuntimeError, PyValueError,
     },
     prelude::*,
     types::{PyBytes, PyDict, PyList},
