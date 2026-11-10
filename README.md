@@ -4,7 +4,7 @@
 
 **A Rust-powered XLSX library with an openpyxl-compatible interface.**
 
-[![PyPI](https://img.shields.io/pypi/v/crabxl?include_prereleases)](https://pypi.org/project/crabxl/)
+[![PyPI](https://img.shields.io/pypi/v/crabxl)](https://pypi.org/project/crabxl/)
 [![Python](https://img.shields.io/badge/Python-3.11–3.15-blue?logo=python&logoColor=white)](https://pypi.org/project/crabxl/#files)
 [![CI](https://github.com/crabxl/crabxl-python/actions/workflows/python.yml/badge.svg)](https://github.com/crabxl/crabxl-python/actions/workflows/python.yml)
 [![License](https://img.shields.io/github/license/crabxl/crabxl-python)](LICENSE)
@@ -20,15 +20,15 @@ CrabXL supports reading, creating, and editing XLSX files, including streaming
 use `import crabxl as openpyxl` to migrate compatible code. Processing runs in the
 shared Rust engine; openpyxl is not a runtime dependency.
 
-**Currently alpha.** The public openpyxl 3.1.5 API is supported and the
-unchanged openpyxl test suite passes for it. Unsupported operations raise
+The public openpyxl 3.1.5 API is supported and the unchanged openpyxl test
+suite passes for it. Before version 1.0, a minor version can change the API. Unsupported operations raise
 explicit errors. Formula calculation is not provided. See the
 [migration guide](docs/migration.md) and [supported features](docs/support.md).
 
 ## Installation
 
 ```sh
-python -m pip install --pre crabxl
+python -m pip install crabxl
 ```
 
 Wheels are available for **CPython 3.11–3.15** on Linux x86_64/ARM64, Windows

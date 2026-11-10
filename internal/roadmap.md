@@ -2,7 +2,7 @@
 
 A12 completed openpyxl 3.1.5 compatibility. A13 (performance and memory) is
 done; the core [roadmap](https://github.com/crabxl/crabxl/blob/main/internal/roadmap.md)
-has the targets and results. The beta is next.
+has the targets and results. Release 0.1.0 is next.
 
 ## A13 in this repository (done)
 
@@ -13,14 +13,14 @@ has the targets and results. The beta is next.
   sheet; the core streams the rows on save.
 - 100,000-row write: 1.79 s to 0.89 s. Edit of 1,000,000 rows: 34 s to 16.6 s.
 
-Before the beta, pin the optimized core revision. The core must be pushed
-first so that the pinned revision resolves.
+The package pins the core `0.1.0` revision. Push the core first so that the
+pinned revision resolves.
 
 ## Optional: benchmark results
 
 Rerun `benchmarks/run.py` on an idle computer and commit the results. This is
-not needed for the beta.
+not needed for 0.1.0.
 
-## Beta
+## 0.1.0
 
-Release `0.1.0b1` with the core beta.
+Release `0.1.0` with the core `0.1.0`. See `internal/releases.md`.

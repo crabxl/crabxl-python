@@ -1,24 +1,26 @@
-# Python alpha releases
+# Python releases
 
-Only newly usable, tested functionality warrants the next manually chosen alpha
-number. Do not backfill historical tags or increment versions on ordinary pushes.
-The adapter numbers its releases independently from the Rust repository and pins
-the verified canonical engine revision in Cargo.toml.
+Versions are `X.Y.Z`, the same string for Cargo, PyPI and the Git tag. Before
+1.0, a minor version can change the API. Only tested, usable changes get a
+release. The package numbers its releases independently from the Rust core and
+pins a verified core commit in Cargo.toml.
 
 ## Prepare the committed version
 
+Push the core commit first, so that the pinned revision resolves. Then run:
+
 ```sh
-python tools/release.py prepare 0.1.0-alpha.1
+python tools/release.py prepare 0.1.0
 ```
 
-The helper synchronizes Cargo's `0.1.0-alpha.N`, Python metadata and public
-`__version__` as `0.1.0aN`, and Cargo.lock. It does not commit, tag or publish.
-Review and commit the version with the usable feature checkpoint. The first release uses Git tag `0.1.0-alpha.1` and Python version `0.1.0a1`.
+The helper sets the Cargo version, the Python version, `__version__` and
+Cargo.lock. It does not commit, tag or publish. Review and commit the version
+with a changelog entry for it.
 
 ## PyPI Trusted Publisher configuration
 
-Create a pending publisher for the first package upload, or add a publisher to
-the existing project's publishing settings:
+Create a pending publisher for the first upload, or add a publisher to the
+existing project's publishing settings:
 
 | PyPI field | Value |
 | --- | --- |
@@ -28,17 +30,17 @@ the existing project's publishing settings:
 | Workflow name (filename) | `release.yml` |
 | Environment name | `pypi` |
 
-PyPI's workflow field is the filename, **not** the GitHub display name.
-Create/use the GitHub environment `pypi`; any configured environment protections
-apply to the publication job. OIDC uses `id-token: write` only in that job. No PyPI
-API token is needed. See https://docs.pypi.org/trusted-publishers/ .
+PyPI's workflow field is the filename, **not** the GitHub display name. The
+GitHub environment `pypi` applies its protections to the publication job. OIDC
+uses `id-token: write` only in that job. No PyPI API token is needed. See
+https://docs.pypi.org/trusted-publishers/ .
 
 ## Run and outputs
 
-- GitHub Workflow name: **Release Python alpha**.
+- GitHub workflow name: **Release Python**.
 - Workflow file: `.github/workflows/release.yml`.
-- Run on the default branch with the committed tag version, new-feature notes and
-  `usable_feature` selected.
+- Run it on the default branch with the committed version, notes that name the
+  new capabilities, and `usable_feature` selected.
 
 All five CPython versions (3.11 through 3.15) build native wheels on each of:
 
@@ -48,58 +50,38 @@ All five CPython versions (3.11 through 3.15) build native wheels on each of:
 | Windows | x86_64 |
 | macOS | Intel x86_64, Apple Silicon ARM64 |
 
-Five platform/architecture build jobs each build all five CPython wheels in one
-runner, sharing the Cargo target directory. Ordinary Rust dependencies are reused;
-PyO3 and the adapter are rebuilt for each Python ABI. Linux builds use one
-manylinux container per platform. Ordinary Linux CI uses the same multi-interpreter
-builder. A failed platform job reruns that platform's five versions.
+Each platform job builds all five CPython wheels on one runner and shares the
+Cargo target directory. Linux builds use one manylinux container per platform.
+A failed platform job reruns that platform's five versions.
 
-Each of the 25 combinations runs the complete selected compatibility suite after
-installation into a clean, platform-native virtual environment. Only 3.15 permits
-a release candidate until stable is available. The sdist is also built, installed
-and tested independently. Alpine/musllinux, Windows ARM64, PyPy, GraalPy and
-free-threaded Python are not included.
+Each of the 25 combinations runs the complete compatibility suite after
+installation into a clean virtual environment. Only 3.15 may be a release
+candidate until it is stable. The sdist is also built, installed and tested.
+Alpine/musllinux, Windows ARM64, PyPy, GraalPy and free-threaded Python are not
+included.
 
-After every build/test job passes, the workflow checks all 26 artifacts, their
-package versions and any existing PyPI file hashes, then publishes through
-`pypa/gh-action-pypi-publish` using OIDC. PEP 740 attestations use the action's
-default behavior. It then creates `0.1.0-alpha.N` as a GitHub prerelease with all
-26 files attached, targeting the checked-out commit.
+After every build and test job passes, the workflow checks all 26 artifacts,
+their versions and any existing PyPI file hashes, then publishes with
+`pypa/gh-action-pypi-publish` through OIDC. It then creates the `X.Y.Z` tag and a
+GitHub release with all 26 files, at the checked-out commit.
 
-If an upload or GitHub release step fails, rerun the same workflow commit/version.
-Identical existing PyPI files are skipped; conflicting file hashes and tags
-pointing at a different commit are rejected. PyPI publication is irreversible
-and can partially succeed before a later step fails. Do not overwrite tags or
-increase the number merely to hide an interrupted release.
+If an upload or the GitHub release step fails, rerun the same workflow commit
+and version. Identical PyPI files are skipped; different file hashes and tags
+at another commit are rejected. PyPI publication cannot be undone and can
+partly succeed before a later step fails. Do not move tags or raise the version
+only to hide an interrupted release.
 
 ## Python quality checks
 
-Ordinary CI and release validation require `ruff format --check .` and
-`ruff check .`. Install the declared `dev` extra for Ruff. The configuration
-targets Python 3.11 and checks syntax, errors, undefined/unused names and import
-ordering. The three provenance-tracked upstream test files are excluded from
-Ruff transformations to retain their unchanged reference bodies. They still run
-in every compatibility test job. Original adapter tests, package code, tools and
-benchmarks are formatted and checked.
+CI and release validation require `ruff format --check .` and `ruff check .`.
+Install the `dev` extra for Ruff. The configuration targets Python 3.11. The
+three provenance-tracked upstream test files are excluded from Ruff so that
+their reference bodies stay unchanged; they still run in every test job.
 
-Python wheels are compiled using the latest stable Rust toolchain (currently
-1.99). Prebuilt wheel installation does not require Rust. Source builds require
-Rust 1.99 or newer under the adapter manifest, independently of the core crate
-MSRV. Alpha.4 pins canonical Rust alpha.4 commit
-`20020d33478017c897119787a3b9f4431343816f`, including quick-xml 0.42, streaming APIs,
-Windows same-path save replacement, bounded editor compression buffering and
-configurable ZIP compression.
-The core crate MSRV is Rust 1.88.
+Wheels are built with the latest stable Rust toolchain (currently 1.99).
+Installing a wheel does not need Rust. Source builds need Rust 1.99 or newer.
+The core crate's minimum Rust version is 1.88.
 
-A committed `.github/release-request.json` can also initiate publication on push
-to the default branch, using the same manual-version, feature and test gates.
-
-## Alpha 6 archive compatibility fix
-
-Default compressed archive, aggregate uncompressed and worksheet byte caps are
-removed. Explicit finite limits remain configurable through `ResourceOptions`.
-Valid ZIP/ZIP64 data descriptors no longer cause a false size-limit error.
-For incorrect source dimensions such as `A1:A1`, call `ws.reset_dimensions()`
-before read-only iteration. A forced dimension calculation performs another scan
-and is unnecessary when only consuming rows. Original M4/performance/M5 release
-stages move to Alpha 7/8/9. No million-row NYC benchmark is claimed here.
+A committed `.github/release-request.json` also starts publication on push to
+the default branch, with the same checks. Pushing a changed request file starts
+a release, so change it only when you mean to release.

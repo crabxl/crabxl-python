@@ -4,10 +4,25 @@ build-backend = "maturin"
 
 [project]
 name = "crabxl"
-version = "0.1.0a11"
+version = "0.1.0"
 requires-python = ">=3.11"
-description = "Rust spreadsheet processing with an openpyxl-compatible Python surface"
+description = "Fast, low-memory Python library for reading, writing and editing Excel XLSX files, with the openpyxl API."
+readme = "README.md"
 license = "MIT"
+keywords = ["xlsx", "excel", "spreadsheet", "openpyxl"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Rust",
+    "Topic :: Office/Business :: Financial :: Spreadsheet",
+]
+
+[project.urls]
+Homepage = "https://crabxl.com"
+Repository = "https://github.com/crabxl/crabxl-python"
+Changelog = "https://github.com/crabxl/crabxl-python/blob/main/CHANGELOG.md"
+Issues = "https://github.com/crabxl/crabxl-python/issues"
 
 [project.optional-dependencies]
 test = ["pytest>=9.1.1,<10", "openpyxl==3.1.5", "Pillow>=12.3", "lxml>=6.1.3"]

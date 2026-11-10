@@ -27,6 +27,6 @@ body:
     id: version
     attributes:
       label: CrabXL version
-      placeholder: 0.1.0a11
+      placeholder: 0.1.0
     validations:
       required: true

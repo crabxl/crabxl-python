@@ -1,164 +1,49 @@
 # Changelog
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Before version 1.0, any release can change the API.
+Before version 1.0, a minor version can change the API.
 
 Each release uses a pinned revision of the Rust core. The core has its own
 [changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).
 
-## [Unreleased]
+## [0.1.0]
+
+First release. It uses the Rust core 0.1.0.
 
 ### Added
 
-- `ws.tables` and `ws.add_table`, `ws.auto_filter`, `ws.conditional_formatting`,
-  `ws.data_validations` and `ws.add_data_validation`, `cell.comment`,
-  `ws.protection`, headers and footers, `ws.print_area`, `ws.print_title_rows`,
-  `ws.print_title_cols` and `ws.defined_names`.
-- `wb.defined_names`, `wb.security`, `wb.properties` and `wb.custom_doc_props`.
-- The openpyxl import paths of these classes, for example
-  `crabxl.worksheet.table`, `crabxl.formatting.rule` and `crabxl.comments`.
-- Features load on first access and only changed features are written on save.
-- Images, charts, chartsheets, drawings, pivot tables and external links.
-- `ws.sheet_properties` (tab color, outline and page setup properties) and
-  `ws.sheet_format` in all modes.
-- `ws.scenarios`.
-- `cell.quotePrefix` and `cell.pivotButton`.
-- `write_only` sheets support features, print settings, views, sheet
-  properties and merged cells. Set views and sheet properties before the first
-  `append`; a later change raises `ValueError`.
-- `wb.vba_archive`. Setting it to `None` removes the VBA project.
-- The deprecated openpyxl 3.1 calls: `get_sheet_by_name`, `get_sheet_names`,
-  `remove_sheet`, `get_index` and `create_named_range`. They emit a
-  `DeprecationWarning`.
-- Other openpyxl attributes, for example `wb.path`, `wb.excel_base_date`,
-  `wb.style_names`, `wb.is_template`, `ws.path`, `ws.merged_cell_ranges`,
-  `ws.set_printer_settings`, `ws.array_formulae`, `cell.col_idx` and
-  `cell.base_date`.
-- The modules `crabxl.utils.dataframe` and `crabxl.worksheet.cell_watch`,
-  `custom`, `errors`, `picture` and `smart_tag`.
-- `load_workbook` and `save` accept file-like objects. `keep_links=False` is
-  supported.
+- `Workbook`, `load_workbook`, `Worksheet` and `Cell` with openpyxl call names,
+  in normal, `read_only` and `write_only` modes. Paths and file-like objects.
+- Values, dates, formulas with cached results and rich text.
+- Cell styles (`Font`, `PatternFill`, `GradientFill`, `Border`, `Alignment`,
+  `Protection`, number formats), named styles, themes, row and column styles,
+  `cell.quotePrefix` and `cell.pivotButton`.
+- Merged cells, row and column dimensions, outline groups and hyperlinks,
+  including in `write_only` mode.
+- Sheet create, copy, remove, rename and move; `append`, `insert_rows`,
+  `delete_rows`, `insert_cols`, `delete_cols` and `move_range`.
+- Tables, auto filters, conditional formatting, data validation, comments,
+  sheet protection, headers and footers, print areas and titles, defined
+  names, scenarios, workbook protection and document properties.
+- Images, charts, chartsheets, drawings, pivot tables, external links and
+  `wb.vba_archive`.
+- `ws.sheet_properties` and `ws.sheet_format` in all modes.
+- The openpyxl import paths, for example `crabxl.worksheet.table`,
+  `crabxl.formatting.rule` and `crabxl.comments`, and the deprecated openpyxl
+  3.1 calls such as `get_sheet_by_name`, which emit a `DeprecationWarning`.
+- `max_memory_bytes`, `ResourceOptions`, `ResourceLimits`,
+  `SharedStringOptions` and `AutoMemory` to control memory, temporary storage
+  and shared strings.
+- `save(path, compression_level=...)`. Level 0 stores without compression;
+  levels 1–9 use Deflate; the default is 6.
+- Rows of plain values (`None`, `bool`, `int`, `float`, `str` and dates and
+  times) are converted in Rust when appended.
 - `tools/run_openpyxl_suite.py` runs the unchanged openpyxl 3.1.5 test suite
   against crabxl and checks the result against a tracked list of expected
   failures. `--report` writes the compatibility page of the documentation.
 - The user guide, adapted from the openpyxl documentation, and pages for
   memory limits, migration, supported features and compatibility.
-- One benchmark suite (`benchmarks/run.py`) compares read, write and edit with
-  wolfxl, oxlsx, python-calamine, fastexcel, XlsxWriter and openpyxl. It
-  replaces the earlier benchmark scripts.
+- One benchmark suite (`benchmarks/run.py`) that compares crabxl with wolfxl,
+  oxlsx, python-calamine, fastexcel, XlsxWriter and openpyxl.
 
-### Changed
-
-- Loaded workbooks can move, copy and remove sheets when the workbook has
-  sheet-local defined names.
-
-### Fixed
-
-- A new sheet in a loaded workbook kept its views and print settings on save.
-  Before, they were lost.
-
-## [0.1.0a11] - 2026-10-21
-
-### Added
-
-- Named styles, themes and row and column styles.
-- Merged cells that you can edit, including `merged_cells` updates.
-- Row and column dimensions and outline groups.
-- Hyperlinks, including in `write_only` mode.
-- Rich text that you can edit.
-- `MultiCellRange` and range utilities.
-
-## [0.1.0a10] - 2026-10-07
-
-### Added
-
-- `Font`, `Color`, `PatternFill`, `GradientFill`, `Side`, `Border`,
-  `Alignment` and `Protection`, with openpyxl copy and assignment behavior.
-
-## [0.1.0a9] - 2026-10-07
-
-### Added
-
-- `Cell.number_format`, `Cell.style_id`, `Cell.has_style` and a
-  format-aware `Cell.is_date`.
-- `WriteOnlyCell.number_format`.
-
-### Fixed
-
-- Repeated validation of loaded sheets.
-
-## [0.1.0a8] - 2026-10-06
-
-### Changed
-
-- Faster reads of numbers and shared strings.
-- Lower memory use for large loaded workbooks.
-
-## [0.1.0a7] - 2026-10-06
-
-### Added
-
-- Loaded workbooks: create, copy, remove, rename and move sheets.
-- `append`, `insert_rows`, `delete_rows`, `insert_cols`, `delete_cols` and
-  `move_range`.
-
-## [0.1.0a6] - 2026-10-05
-
-### Fixed
-
-- Valid ZIP and ZIP64 files made by streaming tools no longer cause a false
-  size-limit error.
-
-### Removed
-
-- Default size limits on archives and worksheets.
-
-## [0.1.0a5] - 2026-10-05
-
-### Added
-
-- `ResourceOptions`, `ResourceLimits`, `SharedStringOptions` and `AutoMemory`
-  to control memory, temporary storage and shared strings.
-- `load_workbook(resource_options=...)`.
-
-## [0.1.0a4] - 2026-10-05
-
-### Added
-
-- `save(path, compression_level=...)`. Level 0 stores without compression.
-  Levels 1–9 use Deflate. The default is 6.
-
-## [0.1.0a3] - 2026-10-05
-
-### Changed
-
-- Faster writes in `write_only` mode, approximately 22% less time.
-
-## [0.1.0a2] - 2026-10-05
-
-### Added
-
-- `read_only` and `write_only` modes.
-
-### Changed
-
-- Faster `iter_rows(values_only=True)`.
-
-## [0.1.0a1] - 2026-10-05
-
-### Added
-
-- First release: `Workbook`, `Worksheet` and `Cell` with openpyxl call names,
-  values, dates, formulas and edits of existing files.
-
-[0.1.0a11]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.0-alpha.11
-[0.1.0a10]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.0-alpha.10
-[0.1.0a9]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.0-alpha.9
-[0.1.0a8]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.0-alpha.8
-[0.1.0a7]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.0-alpha.7
-[0.1.0a6]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.0-alpha.6
-[0.1.0a5]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.0-alpha.5
-[0.1.0a4]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.0-alpha.4
-[0.1.0a3]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.0-alpha.3
-[0.1.0a2]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.0-alpha.2
-[0.1.0a1]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.0-alpha.1
+[0.1.0]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.0

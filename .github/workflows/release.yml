@@ -1,4 +1,4 @@
-name: Release Python alpha
+name: Release Python
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Committed Git tag version, e.g. 0.1.0-alpha.1
+        description: Committed version, e.g. 0.1.0
         required: true
         type: string
       feature_notes:
@@ -24,7 +24,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: python-alpha-release
+  group: python-release
   cancel-in-progress: false
 
 jobs:
@@ -181,7 +181,7 @@ jobs:
           pattern: release-*
           path: dist
           merge-multiple: true
-      - name: Recheck version and create the tag and prerelease
+      - name: Recheck version and create the tag and release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -194,6 +194,6 @@ jobs:
             gh release upload "$RELEASE_VERSION" dist/* --clobber
           else
             gh release create "$RELEASE_VERSION" dist/* \
-              --target "$GITHUB_SHA" --title "$RELEASE_VERSION" --prerelease \
+              --target "$GITHUB_SHA" --title "$RELEASE_VERSION" \
               --notes-file "$RUNNER_TEMP/release-notes.md"
           fi

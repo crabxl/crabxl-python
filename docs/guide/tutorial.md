@@ -10,7 +10,7 @@ This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.re
 Install CrabXL with pip. Use a virtual environment:
 
 ```sh
-python -m pip install --pre crabxl
+python -m pip install crabxl
 ```
 
 To add images to a worksheet, also install [Pillow](https://pypi.org/project/pillow/):
@@ -241,8 +241,8 @@ This iterates over all the rows in a worksheet but returns just the cell values:
 
 ```python
 for row in ws.values:
-   for value in row:
-     print(value)
+    for value in row:
+        print(value)
 ```
 
 Both `iter_rows` and `iter_cols` can

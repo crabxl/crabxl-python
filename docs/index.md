@@ -9,7 +9,7 @@ and edits the XLSX files. It is faster and uses less memory than openpyxl.
 ## Install
 
 ```sh
-python -m pip install --pre crabxl
+python -m pip install crabxl
 ```
 
 Wheels are available for CPython 3.11–3.15 on Linux, Windows and macOS.
