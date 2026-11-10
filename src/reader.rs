@@ -5,16 +5,37 @@ use crate::*;
 pub(crate) struct NativeReader {
     pub(crate) reader: Arc<Mutex<Option<WorkbookReader<streaming::SharedFile>>>>,
     pub(crate) loaded: Option<SharedLoaded>,
+    /// Read-only workbooks open a cell-free loaded model on their first style change.
+    styles: std::sync::OnceLock<SharedLoaded>,
     pub(crate) source: streaming::SharedFile,
     pub(crate) alive: Arc<std::sync::atomic::AtomicBool>,
     pub(crate) max_bytes: usize,
     pub(crate) config: resources::ResourceConfig,
     rich_text: bool,
 }
+impl NativeReader {
+    /// The loaded model, or for a read-only workbook a style model opened now.
+    pub(crate) fn style_book(&self) -> PyResult<&SharedLoaded> {
+        if let Some(loaded) = self.style_view() {
+            return Ok(loaded);
+        }
+        let book = open_loaded(
+            self.source.clone(),
+            self.max_bytes,
+            &self.config,
+            false,
+            self.rich_text,
+        )?;
+        Ok(self.styles.get_or_init(|| Arc::new(Mutex::new(Some(book)))))
+    }
+    fn style_view(&self) -> Option<&SharedLoaded> {
+        self.loaded.as_ref().or_else(|| self.styles.get())
+    }
+}
 #[pymethods]
 impl NativeReader {
     pub(crate) fn theme<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyBytes>>> {
-        if let Some(loaded) = &self.loaded {
+        if let Some(loaded) = self.style_view() {
             return Ok(lock(loaded)?
                 .as_mut()
                 .ok_or_else(closed)?
@@ -30,9 +51,7 @@ impl NativeReader {
             .map(|theme| PyBytes::new(py, theme.bytes())))
     }
     pub(crate) fn set_theme(&self, value: Option<Vec<u8>>) -> PyResult<()> {
-        let loaded = self.loaded.as_ref().ok_or_else(|| {
-            PyNotImplementedError::new_err("Read-only theme mutation is unavailable")
-        })?;
+        let loaded = self.style_book()?;
         lock(loaded)?
             .as_mut()
             .ok_or_else(closed)?
@@ -47,9 +66,7 @@ impl NativeReader {
         builtin_id: Option<u32>,
         hidden: bool,
     ) -> PyResult<()> {
-        let loaded = self.loaded.as_ref().ok_or_else(|| {
-            PyNotImplementedError::new_err("Read-only style mutation is unavailable")
-        })?;
+        let loaded = self.style_book()?;
         style_owners::metadata(
             lock(loaded)?.as_mut().ok_or_else(closed)?,
             name,
@@ -59,7 +76,7 @@ impl NativeReader {
         )
     }
     pub(crate) fn named_styles(&self) -> PyResult<Vec<String>> {
-        if let Some(loaded) = &self.loaded {
+        if let Some(loaded) = self.style_view() {
             return Ok(style_owners::names(
                 lock(loaded)?
                     .as_ref()
@@ -78,9 +95,7 @@ impl NativeReader {
         ))
     }
     pub(crate) fn style_name(&self, style: u32) -> PyResult<String> {
-        let loaded = self.loaded.as_ref().ok_or_else(|| {
-            PyNotImplementedError::new_err("Detached read-only cells are unavailable")
-        })?;
+        let loaded = self.style_book()?;
         Ok(style_owners::style_name(
             lock(loaded)?
                 .as_ref()
@@ -95,9 +110,7 @@ impl NativeReader {
         py: Python<'py>,
         name: &str,
     ) -> PyResult<(u32, String, Bound<'py, PyDict>)> {
-        let loaded = self.loaded.as_ref().ok_or_else(|| {
-            PyNotImplementedError::new_err("Read-only named style mutation is unavailable")
-        })?;
+        let loaded = self.style_book()?;
         let mut loaded = lock(loaded)?;
         let book = loaded.as_mut().ok_or_else(closed)?;
         let style = book.named_style_format(name).map_err(failure)?;
@@ -108,7 +121,7 @@ impl NativeReader {
         py: Python<'py>,
         name: &str,
     ) -> PyResult<Vec<Bound<'py, PyDict>>> {
-        if let Some(loaded) = &self.loaded {
+        if let Some(loaded) = self.style_view() {
             return style_owners::collection(
                 py,
                 lock(loaded)?
@@ -130,13 +143,11 @@ impl NativeReader {
         )
     }
     fn style_collection_add(&self, name: &str, value: &Bound<'_, PyAny>) -> PyResult<u32> {
-        let loaded = self.loaded.as_ref().ok_or_else(|| {
-            PyNotImplementedError::new_err("Read-only style mutation is unavailable")
-        })?;
+        let loaded = self.style_book()?;
         style_owners::collection_add(lock(loaded)?.as_mut().ok_or_else(closed)?, name, value)
     }
     fn named_style_metadata(&self) -> PyResult<style_owners::NamedStyleMetadata> {
-        if let Some(loaded) = &self.loaded {
+        if let Some(loaded) = self.style_view() {
             return Ok(style_owners::named_metadata(
                 lock(loaded)?
                     .as_ref()
@@ -155,26 +166,18 @@ impl NativeReader {
     }
     fn prepare_named_style(&self, value: &Bound<'_, PyDict>) -> PyResult<[u32; 9]> {
         style_owners::prepare_array(
-            lock(self.loaded.as_ref().ok_or_else(|| {
-                PyNotImplementedError::new_err("Read-only named style mutation is unavailable")
-            })?)?
-            .as_mut()
-            .ok_or_else(closed)?,
+            lock(self.style_book()?)?.as_mut().ok_or_else(closed)?,
             value,
         )
     }
     fn prepare_cell_style(&self, value: &Bound<'_, PyDict>) -> PyResult<u32> {
-        let loaded = self.loaded.as_ref().ok_or_else(|| {
-            PyNotImplementedError::new_err("Read-only style mutation is unavailable")
-        })?;
+        let loaded = self.style_book()?;
         style_owners::prepare(lock(loaded)?.as_mut().ok_or_else(closed)?, value)
             .map(|style| style.get())
     }
     #[pyo3(signature = (value, update=false))]
     pub(crate) fn add_named_style(&self, value: &Bound<'_, PyDict>, update: bool) -> PyResult<u32> {
-        let loaded = self.loaded.as_ref().ok_or_else(|| {
-            PyNotImplementedError::new_err("Read-only named style mutation is unavailable")
-        })?;
+        let loaded = self.style_book()?;
         style_owners::register(lock(loaded)?.as_mut().ok_or_else(closed)?, value, update)
     }
     #[new]
@@ -195,46 +198,14 @@ impl NativeReader {
         let input = source.clone();
         let worker_config = config.clone();
         let (reader, loaded) = py.detach(move || {
+            if editable {
+                let loaded = open_loaded(input, max_bytes, &worker_config, data_only, rich_text)?;
+                return Ok::<_, PyErr>((None, Some(loaded)));
+            }
             let limits = worker_config.reader_limits(max_bytes, false);
             let options = worker_config
                 .string_options(max_bytes, limits)
                 .map_err(failure)?;
-            if editable {
-                // max_bytes is the already resolved retained-model allowance.
-                // Add back only the canonical working reserve so resolving the
-                // joint loaded budget does not subtract it a second time.
-                let working = crabxl::memory_allowance(MemoryPolicy::Budget(usize::MAX), limits)
-                    .map_err(failure)?
-                    .working_reserve_bytes;
-                let operation = max_bytes
-                    .checked_add(working)
-                    .ok_or_else(|| PyValueError::new_err("Loaded operation allowance overflows"))?;
-                let loaded = LoadedWorkbook::with_options(
-                    input,
-                    LoadOptions {
-                        resources: limits,
-                        memory_policy: MemoryPolicy::Budget(operation),
-                        shared_strings: options,
-                        workbook: WorkbookLimits {
-                            max_bytes,
-                            sheet: EditLimits {
-                                max_bytes: limits.max_materialized_bytes,
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        },
-                        read: ReadOptions {
-                            data_only,
-                            rich_text,
-                            ..Default::default()
-                        },
-                        editor: worker_config.editor_options(Some(operation)),
-                        bind_hyperlink_values: true,
-                    },
-                )
-                .map_err(failure)?;
-                return Ok::<_, PyErr>((None, Some(loaded)));
-            }
             let mut reader = WorkbookReader::with_limits(input, limits).map_err(failure)?;
             reader.set_shared_string_options(options);
             Ok::<_, PyErr>((Some(reader), None))
@@ -242,6 +213,7 @@ impl NativeReader {
         Ok(Self {
             reader: Arc::new(Mutex::new(reader)),
             loaded: loaded.map(|book| Arc::new(Mutex::new(Some(book)))),
+            styles: std::sync::OnceLock::new(),
             source,
             alive: Arc::new(std::sync::atomic::AtomicBool::new(true)),
             max_bytes,
@@ -308,6 +280,13 @@ impl NativeReader {
             );
         }
         Ok(lock(&self.reader)?.as_ref().ok_or_else(closed)?.date_1904())
+    }
+    pub(crate) fn set_date_1904(&self, value: bool) -> PyResult<()> {
+        lock(&self.reader)?
+            .as_mut()
+            .ok_or_else(closed)?
+            .set_date_1904(value);
+        Ok(())
     }
     pub(crate) fn active_index(&self) -> PyResult<Option<usize>> {
         if let Some(loaded) = &self.loaded {
@@ -422,7 +401,7 @@ impl NativeReader {
         self.alive
             .store(false, std::sync::atomic::Ordering::Relaxed);
         lock(&self.reader)?.take();
-        if let Some(loaded) = &self.loaded {
+        for loaded in self.loaded.iter().chain(self.styles.get()) {
             lock(loaded)?.take();
         }
         self.source.close()?;
@@ -548,10 +527,57 @@ impl NativeReader {
             name,
             data_only,
             self.rich_text,
+            // An epoch set on the workbook applies to later reads.
+            lock(&self.reader)?.as_ref().map(WorkbookReader::date_1904),
             first_row,
             last_row,
             first_column,
             last_column,
         )
     }
+}
+
+/// Open the source as a loaded workbook. No worksheet cells are decoded.
+fn open_loaded(
+    input: streaming::SharedFile,
+    max_bytes: usize,
+    config: &resources::ResourceConfig,
+    data_only: bool,
+    rich_text: bool,
+) -> PyResult<LoadedWorkbook<streaming::SharedFile>> {
+    let limits = config.reader_limits(max_bytes, false);
+    let options = config.string_options(max_bytes, limits).map_err(failure)?;
+    // max_bytes is the already resolved retained-model allowance.
+    // Add back only the canonical working reserve so resolving the
+    // joint loaded budget does not subtract it a second time.
+    let working = crabxl::memory_allowance(MemoryPolicy::Budget(usize::MAX), limits)
+        .map_err(failure)?
+        .working_reserve_bytes;
+    let operation = max_bytes
+        .checked_add(working)
+        .ok_or_else(|| PyValueError::new_err("Loaded operation allowance overflows"))?;
+    LoadedWorkbook::with_options(
+        input,
+        LoadOptions {
+            resources: limits,
+            memory_policy: MemoryPolicy::Budget(operation),
+            shared_strings: options,
+            workbook: WorkbookLimits {
+                max_bytes,
+                sheet: EditLimits {
+                    max_bytes: limits.max_materialized_bytes,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            read: ReadOptions {
+                data_only,
+                rich_text,
+                ..Default::default()
+            },
+            editor: config.editor_options(Some(operation)),
+            bind_hyperlink_values: true,
+        },
+    )
+    .map_err(failure)
 }

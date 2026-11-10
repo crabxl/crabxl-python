@@ -232,9 +232,10 @@ class Cell:
     def base_date(self):
         return self.parent.parent.epoch
 
-    def _style_flag(self, index):
+    def _style_flag(self, index, name):
         if self._detached is not None:
-            return False
+            # Detached flags live with the style components; append applies them.
+            return bool(self._detached[4].get(name, False))
         owner = self.parent.parent._style_owner()
         return bool(owner.style_array(self.style_id)[index])
 
@@ -242,7 +243,10 @@ class Cell:
         from .._native import make_style_component
 
         if self._detached is not None:
-            raise NotImplementedError("Detached cells cannot change style flags")
+            values = dict(self._detached[4])
+            values[name] = bool(value)
+            self._detached = (*self._detached[:4], values)
+            return
         self.parent._model().set_style_component(
             self.row - 1,
             self.column - 1,
@@ -251,11 +255,11 @@ class Cell:
         )
 
     pivotButton = property(
-        lambda self: self._style_flag(6),
+        lambda self: self._style_flag(6, "pivotButton"),
         lambda self, value: self._set_style_flag("pivotButton", value),
     )
     quotePrefix = property(
-        lambda self: self._style_flag(7),
+        lambda self: self._style_flag(7, "quotePrefix"),
         lambda self, value: self._set_style_flag("quotePrefix", value),
     )
 

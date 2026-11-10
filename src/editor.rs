@@ -29,9 +29,10 @@ impl NativeEditor {
             (true, false) => WorkbookFormat::Xltx,
             (true, true) => WorkbookFormat::Xltm,
         };
-        let loaded = self.loaded.as_ref().ok_or_else(|| {
-            PyNotImplementedError::new_err("Template changes require a loaded workbook")
-        })?;
+        let loaded = self
+            .loaded
+            .as_ref()
+            .ok_or_else(|| PyValueError::new_err("Template changes require a loaded workbook"))?;
         lock(loaded)?
             .as_mut()
             .ok_or_else(closed)?
@@ -39,14 +40,39 @@ impl NativeEditor {
             .map_err(failure)
     }
 
-    pub(crate) fn remove_vba(&self) -> PyResult<()> {
-        let loaded = self.loaded.as_ref().ok_or_else(|| {
-            PyNotImplementedError::new_err("VBA removal requires a loaded workbook")
-        })?;
+    pub(crate) fn set_vba(&self, keep: bool) -> PyResult<()> {
+        use crabxl::features::MacroPolicy;
+        let loaded = self
+            .loaded
+            .as_ref()
+            .ok_or_else(|| PyValueError::new_err("VBA removal requires a loaded workbook"))?;
         lock(loaded)?
             .as_mut()
             .ok_or_else(closed)?
-            .set_macro_policy(crabxl::features::MacroPolicy::Remove)
+            .set_macro_policy(if keep {
+                MacroPolicy::Preserve
+            } else {
+                MacroPolicy::Remove
+            })
+            .map_err(failure)
+    }
+
+    pub(crate) fn set_date_options(&self, date_1904: bool, iso_dates: bool) -> PyResult<()> {
+        let loaded = self
+            .loaded
+            .as_ref()
+            .ok_or_else(|| PyValueError::new_err("Date options require a loaded workbook"))?;
+        lock(loaded)?
+            .as_mut()
+            .ok_or_else(closed)?
+            .set_date_options(
+                if date_1904 {
+                    crabxl::DateEpoch::Mac1904
+                } else {
+                    crabxl::DateEpoch::Windows1900
+                },
+                iso_dates,
+            )
             .map_err(failure)
     }
 
@@ -56,9 +82,7 @@ impl NativeEditor {
         requests: hyperlink_views::Requests,
     ) -> PyResult<hyperlink_views::Output> {
         let loaded = self.loaded.as_ref().ok_or_else(|| {
-            PyNotImplementedError::new_err(
-                "Hyperlink output identities require a canonical loaded workbook",
-            )
+            PyValueError::new_err("Hyperlink output identities require a canonical loaded workbook")
         })?;
         hyperlink_views::loaded(py, loaded, requests)
     }
@@ -283,7 +307,7 @@ impl NativeEditor {
                 .map_err(failure);
         }
         if view_index.is_some() {
-            return Err(PyNotImplementedError::new_err(
+            return Err(PyValueError::new_err(
                 "Combined visibility/view changes require the shared loaded coordinator",
             ));
         }
@@ -295,7 +319,7 @@ impl NativeEditor {
     }
     pub(crate) fn sheet_handle(&self, name: &str) -> PyResult<NativeSheet> {
         let book = self.loaded.as_ref().ok_or_else(|| {
-            PyNotImplementedError::new_err("Lazy handles require the canonical loaded bank")
+            PyValueError::new_err("Lazy handles require the canonical loaded bank")
         })?;
         let id = lock(book)?
             .as_ref()
@@ -306,7 +330,7 @@ impl NativeEditor {
     }
     pub(crate) fn remove_sheet(&self, py: Python<'_>, sheet: &NativeSheet) -> PyResult<()> {
         let book = self.loaded.as_ref().ok_or_else(|| {
-            PyNotImplementedError::new_err("Sheet removal requires the canonical loaded bank")
+            PyValueError::new_err("Sheet removal requires the canonical loaded bank")
         })?;
         let book = Arc::clone(book);
         let storage = Arc::clone(&sheet.storage);
@@ -322,12 +346,10 @@ impl NativeEditor {
                     "Sheet belongs to a different workbook",
                 ));
             }
-            let removed = lock(&book)?
-                .as_mut()
-                .ok_or_else(closed)?
-                .remove_sheet(*id)
-                .map_err(failure)?;
-            *storage = SheetStorage::Standalone(Box::new(removed));
+            let mut handle = lock(&book)?;
+            let loaded = handle.as_mut().ok_or_else(closed)?;
+            let removed = loaded.remove_sheet(*id).map_err(failure)?;
+            *storage = SheetStorage::adopt(removed, Some(loaded.model()))?;
             Ok(())
         })
     }
@@ -338,7 +360,7 @@ impl NativeEditor {
         name: String,
     ) -> PyResult<NativeSheet> {
         let book = self.loaded.as_ref().ok_or_else(|| {
-            PyNotImplementedError::new_err("Sheet copy requires the canonical loaded bank")
+            PyValueError::new_err("Sheet copy requires the canonical loaded bank")
         })?;
         let worker = Arc::clone(book);
         let id = py.detach(move || {
@@ -363,7 +385,7 @@ impl NativeEditor {
         chartsheet: bool,
     ) -> PyResult<NativeSheet> {
         let book = self.loaded.as_ref().ok_or_else(|| {
-            PyNotImplementedError::new_err("Sheet creation requires the canonical loaded bank")
+            PyValueError::new_err("Sheet creation requires the canonical loaded bank")
         })?;
         let worker = Arc::clone(book);
         let id = py.detach(move || {

@@ -41,7 +41,7 @@ class Serialisable(metaclass=MetaSerialisable):
 
     @property
     def tagname(self):
-        raise (NotImplementedError)
+        raise AttributeError(f"{type(self).__name__} has no tagname")
 
     namespace = None
 

@@ -263,7 +263,7 @@ fn encode_raw(py: Python<'_>, value: &CellValue) -> PyResult<EncodedValue> {
             "rich",
             crate::rich_text::encode(py, value)?.into_any().unbind(),
         ),
-        _ => return Err(PyNotImplementedError::new_err("Unsupported native value")),
+        _ => return Err(PyRuntimeError::new_err("Unknown native value")),
     };
     Ok((kind, object))
 }

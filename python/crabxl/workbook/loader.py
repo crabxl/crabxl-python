@@ -78,7 +78,7 @@ def load_workbook(
         workbook._template, macro_enabled = workbook._reader.workbook_format()
         workbook._keep_vba = bool(keep_vba and macro_enabled)
         if workbook._editor is not None and macro_enabled and not workbook._keep_vba:
-            workbook._editor.remove_vba()
+            workbook._editor.set_vba(False)
         if workbook._editor is not None and not keep_links:
             workbook._editor.remove_external_links(bool(data_only))
         workbook.data_only = data_only

@@ -874,7 +874,7 @@ def test_adapter_limits_exact_integers_closed_sources_and_unsupported_operations
     sheet.freeze_panes = "A1"
     assert sheet.freeze_panes is None
     streaming = crabxl.Workbook(write_only=True)
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(AttributeError):
         streaming.create_sheet().cell(1, 1)
     streaming.close()
     source = tmp_path / "source.xlsx"
@@ -1522,23 +1522,6 @@ def test_date_only_iso_creation_epoch_and_loaded_types(engine, tmp_path, iso, ma
     assert type(loaded.active["A1"].value) is (date if iso else datetime)
     loaded.close()
     book.close()
-
-
-def test_loaded_date_policy_changes_are_explicit_until_bank_integration(tmp_path):
-    path = tmp_path / "loaded-policy.xlsx"
-    book = openpyxl.Workbook()
-    book.active["A1"] = datetime(2024, 1, 1)
-    book.save(path)
-    book.close()
-    loaded = crabxl.load_workbook(path)
-    try:
-        with pytest.raises(NotImplementedError):
-            loaded.iso_dates = True
-        with pytest.raises(NotImplementedError):
-            loaded.epoch = datetime(1904, 1, 1)
-        assert loaded.iso_dates is False and loaded.epoch == datetime(1899, 12, 30)
-    finally:
-        loaded.close()
 
 
 @pytest.mark.parametrize(

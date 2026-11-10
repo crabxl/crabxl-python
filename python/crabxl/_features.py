@@ -249,7 +249,7 @@ class SheetState:
                             "File may not be readable: column headings must be strings."
                         )
                     column.name = str(cell.value)
-            except (TypeError, NotImplementedError):
+            except (TypeError, AttributeError):
                 # Write-only sheets cannot read headings back, as in openpyxl.
                 warn("Column headings are missing, file may not be readable")
 
@@ -388,7 +388,7 @@ class WorkbookState:
                     elif reserved == "Print_Area":
                         try:
                             sheet._print_area = PrintArea.from_string(defn.value)
-                        except TypeError:
+                        except (TypeError, AttributeError):
                             pass
         self.bound = True
 

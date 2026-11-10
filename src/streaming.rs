@@ -132,6 +132,7 @@ impl NativeReadStream {
         name: String,
         data_only: bool,
         rich_text: bool,
+        date_1904: Option<bool>,
         first_row: u32,
         last_row: Option<u32>,
         first_column: u32,
@@ -156,6 +157,9 @@ impl NativeReadStream {
                     let strings = config.string_options(maximum, limits)?;
                     let mut book = WorkbookReader::with_limits(source, limits)?;
                     book.set_shared_string_options(strings);
+                    if let Some(value) = date_1904 {
+                        book.set_date_1904(value);
+                    }
                     let options = ReadOptions {
                         rows: Some(
                             RowIndex::new(first_row)?

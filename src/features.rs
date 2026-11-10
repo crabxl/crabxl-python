@@ -336,12 +336,6 @@ pub(crate) type WorkbookOut = (
     Option<Vec<u8>>,
 );
 
-fn pending_integration(what: &str) -> PyErr {
-    PyNotImplementedError::new_err(format!(
-        "{what} on a loaded workbook requires the core editor integration of features"
-    ))
-}
-
 fn sheet_out(
     features: Option<&SheetFeatures>,
     catalog: Option<&crabxl::StyleCatalog>,
@@ -741,6 +735,7 @@ pub(crate) fn sheet_register_dxf(
     sheet: &NativeSheet,
     dxf: Vec<u8>,
 ) -> PyResult<u32> {
+    drop(sheet.styled()?);
     let storage = Arc::clone(&sheet.storage);
     py.detach(move || {
         let style = feature_xml::differential_style_from_xml(&dxf).map_err(failure)?;
@@ -754,9 +749,9 @@ pub(crate) fn sheet_register_dxf(
                 .ok_or_else(closed)?
                 .register_differential_style(style)
                 .map_err(failure),
-            SheetStorage::Standalone(_) => Err(PyNotImplementedError::new_err(
-                "Conditional-format styles need a sheet owned by a workbook",
-            )),
+            SheetStorage::Standalone(_) => {
+                Err(PyRuntimeError::new_err("Worksheet has no workbook"))
+            }
         }
     })
 }
@@ -848,10 +843,7 @@ pub(crate) fn workbook_features_write(
     let target = if let Ok(book) = owner.cast::<NativeBook>() {
         Target::Book(Arc::clone(&book.borrow().book))
     } else if let Ok(reader) = owner.cast::<NativeReader>() {
-        match &reader.borrow().loaded {
-            Some(loaded) => Target::Loaded(Arc::clone(loaded)),
-            None => return Err(pending_integration("Setting workbook features")),
-        }
+        Target::Loaded(Arc::clone(reader.borrow().style_book()?))
     } else if let Ok(writer) = owner.cast::<streaming::NativeWriteBook>() {
         Target::Writer(Arc::clone(&writer.borrow().state))
     } else {

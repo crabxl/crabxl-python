@@ -157,8 +157,7 @@ class Hyperlink:
         fields = dict(node.attrib)
         if f"{{{_REL}}}id" in fields:
             fields["id"] = fields.pop(f"{{{_REL}}}id")
-        if list(node):
-            raise NotImplementedError("Hyperlink child elements are not implemented")
+        # Like openpyxl, child elements are ignored.
         return cls(**fields)
 
 
@@ -195,5 +194,8 @@ class HyperlinkList:
         if node.tag not in (cls.tagname, f"{{{_MAIN}}}{cls.tagname}"):
             raise ValueError("Expected a hyperlinks element")
         if node.attrib:
-            raise NotImplementedError("HyperlinkList attributes are not implemented")
+            name = next(iter(node.attrib))
+            raise TypeError(
+                f"HyperlinkList.__init__() got an unexpected keyword argument '{name}'"
+            )
         return cls([Hyperlink.from_tree(child) for child in node])

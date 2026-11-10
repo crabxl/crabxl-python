@@ -461,6 +461,22 @@ impl NativeWriteBook {
             .start_interleaved_sheet(name)
             .map_err(failure)
     }
+    fn move_sheet(&self, id: usize, position: usize) -> PyResult<()> {
+        lock(&self.state)?
+            .writer
+            .as_mut()
+            .ok_or_else(closed)?
+            .move_interleaved_sheet(id, position)
+            .map_err(failure)
+    }
+    fn remove_sheet(&self, id: usize) -> PyResult<()> {
+        lock(&self.state)?
+            .writer
+            .as_mut()
+            .ok_or_else(closed)?
+            .remove_interleaved_sheet(id)
+            .map_err(failure)
+    }
     fn rename_sheet(&self, id: usize, name: String) -> PyResult<()> {
         lock(&self.state)?
             .writer

@@ -307,9 +307,7 @@ class Workbook:
         if keep == self._keep_vba:
             return
         if self._editor is not None:
-            if keep:
-                raise NotImplementedError("Removed VBA parts cannot be restored")
-            self._editor.remove_vba()
+            self._editor.set_vba(keep)
         self._keep_vba = keep
 
     @property
@@ -326,10 +324,13 @@ class Workbook:
 
     @iso_dates.setter
     def iso_dates(self, value):
-        if self._reader is not None and value:
-            raise NotImplementedError(
-                "Changing loaded date storage requires loaded bank integration"
+        value = bool(value)
+        if self._editor is not None and value != self._iso_dates:
+            self._iso_dates = value
+            self._rewrite_dates(
+                lambda: self._editor.set_date_options(self._reader.date_1904(), value)
             )
+            return
         if self.write_only:
             self._stream_writer.configure(self._book.date_1904(), bool(value))
         self._iso_dates = bool(value)
@@ -348,13 +349,35 @@ class Workbook:
     def epoch(self, value):
         if value not in (datetime(1899, 12, 30), datetime(1904, 1, 1)):
             raise ValueError("The epoch must be either 1900 or 1904")
+        mac = value == datetime(1904, 1, 1)
         if self._reader is not None:
-            raise NotImplementedError(
-                "Changing a loaded workbook epoch is not implemented"
-            )
+            if self._editor is None:
+                # Read-only: later reads use the new epoch, as in openpyxl.
+                self._reader.set_date_1904(mac)
+            elif mac != self._reader.date_1904():
+                self._rewrite_dates(
+                    lambda: self._editor.set_date_options(mac, self._iso_dates)
+                )
+            return
         if self.write_only:
             self._stream_writer.configure(value == datetime(1904, 1, 1), self.iso_dates)
         self._book.set_date_1904(value == datetime(1904, 1, 1))
+
+    def _rewrite_dates(self, change):
+        # openpyxl keeps dates as datetime values and encodes them on save, so a
+        # new epoch or ISO setting applies to every date cell. Read them first.
+        from datetime import date, time, timedelta
+
+        cells = [
+            (cell, cell.value)
+            for sheet in self.worksheets
+            for row in sheet.iter_rows()
+            for cell in row
+            if isinstance(cell.value, (date, time, timedelta))
+        ]
+        change()
+        for cell, value in cells:
+            cell.value = value
 
     @property
     def worksheets(self):
@@ -457,17 +480,15 @@ class Workbook:
         if self.write_only:
             from ..optimized import WriteOnlyChartsheet, WriteOnlyWorksheet
 
-            if position != len(self._sheets):
-                raise NotImplementedError(
-                    "Reordering streaming sheets is not implemented"
-                )
             if self._saved:
                 from ..utils.exceptions import WorkbookAlreadySaved
 
                 raise WorkbookAlreadySaved("Workbook has already been saved")
             sheet_type = WriteOnlyChartsheet if chartsheet else WriteOnlyWorksheet
             sheet = sheet_type(self, title, self._stream_writer.create_sheet(title))
-            self._sheets.append(sheet)
+            if position != len(self._sheets):
+                self._stream_writer.move_sheet(sheet._id, position)
+            self._sheets.insert(position, sheet)
             return sheet
         if self._editor is not None:
             native = self._editor.create_sheet(title, chartsheet)
@@ -487,10 +508,6 @@ class Workbook:
         return self._sheets.index(worksheet)
 
     def move_sheet(self, sheet, offset=0):
-        if self.read_only or self.write_only:
-            raise NotImplementedError(
-                "Reordering optimized worksheets is not implemented"
-            )
         if not isinstance(sheet, Worksheet):
             sheet = self[sheet]
         if not isinstance(offset, int):
@@ -500,9 +517,11 @@ class Workbook:
         index = old + offset
         # Match list.insert after removing the source, including negative offsets.
         position = max(0, min(remaining, index if index >= 0 else remaining + index))
-        if self._editor is not None:
+        if self.write_only:
+            self._stream_writer.move_sheet(sheet._id, position)
+        elif self._editor is not None:
             self._editor.move_sheet(sheet.title, position)
-        else:
+        elif not self.read_only:
             self._book.move_sheet(sheet._native, position)
         self._sheets.pop(old)
         self._sheets.insert(position, sheet)
@@ -542,13 +561,14 @@ class Workbook:
             value._bind(destination, row, column)
 
     def remove(self, worksheet):
-        if self.read_only or self.write_only:
-            raise NotImplementedError(
-                "Removing optimized worksheets is not implemented"
-            )
         self._check_open()
         self.index(worksheet)
-        if self._editor is not None:
+        if self.write_only:
+            self._stream_writer.remove_sheet(worksheet._id)
+            worksheet._finished = True
+        elif self.read_only:
+            pass
+        elif self._editor is not None:
             if worksheet._native is None:
                 worksheet._native = self._editor.sheet_handle(worksheet.title)
             self._editor.remove_sheet(worksheet._native)

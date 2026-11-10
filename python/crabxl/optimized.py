@@ -169,6 +169,26 @@ class ReadOnlyCell:
         raise AttributeError(name)
 
 
+class _Absent:
+    """An attribute that the openpyxl sheet of this mode does not have."""
+
+    def __set_name__(self, owner, name):
+        self.name = name
+
+    def __get__(self, obj, owner=None):
+        raise AttributeError(
+            f"'{(owner or type(obj)).__name__}' object has no attribute '{self.name}'"
+        )
+
+
+def _absent(cls, *names):
+    for name in names:
+        descriptor = _Absent()
+        descriptor.__set_name__(cls, name)
+        setattr(cls, name, descriptor)
+    return cls
+
+
 class ReadOnlyWorksheet(Worksheet):
     __slots__ = ("_dimension", "_sheet_state", "_min_row", "_min_column")
 
@@ -190,7 +210,7 @@ class ReadOnlyWorksheet(Worksheet):
         self._sheet_state = state
 
     def _model(self):
-        raise NotImplementedError("Read-only worksheets do not have editable models")
+        raise TypeError("Read-only worksheets cannot be modified")
 
     def _set(self, row, column, value):
         raise TypeError("Read-only worksheets cannot be modified")
@@ -326,9 +346,6 @@ class ReadOnlyWorksheet(Worksheet):
                 self.parent._streams.discard(stream)
 
         return rows()
-
-    def iter_cols(self, *args, **kwargs):
-        raise NotImplementedError("Column-wise read-only iteration is not implemented")
 
     def append(self, iterable):
         raise TypeError("Read-only worksheets cannot be modified")
@@ -641,7 +658,7 @@ class WriteOnlyWorksheet(Worksheet):
         return self._finished
 
     def _model(self):
-        raise NotImplementedError("Write-only worksheets do not have editable models")
+        raise TypeError("Write-only worksheets cannot be read or changed")
 
     def _views_source(self):
         return bytes(self.parent._stream_writer.defaults()[0])
@@ -693,16 +710,6 @@ class WriteOnlyWorksheet(Worksheet):
                 views if changed_views else None,
                 printing if changed_printing else None,
             )
-
-    def cell(self, *args, **kwargs):
-        raise NotImplementedError(
-            "Random access is unavailable on write-only worksheets"
-        )
-
-    def iter_rows(self, *args, **kwargs):
-        raise NotImplementedError("Reading write-only worksheets is not implemented")
-
-    iter_cols = iter_rows
 
     def append(self, iterable):
         self.parent._check_open()
@@ -865,12 +872,48 @@ class WriteOnlyWorksheet(Worksheet):
                     object.__setattr__(link, "id", identity)
             self._finished = True
 
-    def insert_rows(self, *args, **kwargs):
-        raise NotImplementedError(
-            "Structural edits of flushed worksheets are not implemented"
-        )
 
-    insert_cols = delete_rows = delete_cols = move_range = insert_rows
+# Match the attributes of openpyxl's ReadOnlyWorksheet and WriteOnlyWorksheet.
+_absent(
+    ReadOnlyWorksheet,
+    "add_chart",
+    "add_image",
+    "add_pivot",
+    "freeze_panes",
+    "iter_cols",
+    "merged_cell_ranges",
+    "page_margins",
+    "page_setup",
+    "print_options",
+    "row_breaks",
+    "selected_cell",
+    "sheet_format",
+    "sheet_properties",
+    "sheet_view",
+    "show_gridlines",
+    "views",
+)
+_absent(
+    WriteOnlyWorksheet,
+    "array_formulae",
+    "calculate_dimension",
+    "cell",
+    "columns",
+    "delete_cols",
+    "delete_rows",
+    "dimensions",
+    "insert_cols",
+    "insert_rows",
+    "iter_cols",
+    "iter_rows",
+    "max_column",
+    "max_row",
+    "min_column",
+    "min_row",
+    "move_range",
+    "rows",
+    "values",
+)
 
 
 class WriteOnlyChartsheet(Chartsheet, WriteOnlyWorksheet):

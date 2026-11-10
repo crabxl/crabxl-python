@@ -225,9 +225,10 @@ impl NativeBook {
         if !Arc::ptr_eq(book, &self.book) {
             return Err(PyValueError::new_err("Sheet belongs to another workbook"));
         }
-        let removed = lock(&self.book)?.remove_sheet(*id).map_err(failure)?;
+        let mut book = lock(&self.book)?;
+        let removed = book.remove_sheet(*id).map_err(failure)?;
         // Removed Python worksheet/cell aliases remain usable, as in openpyxl.
-        *storage = SheetStorage::Standalone(Box::new(removed));
+        *storage = SheetStorage::adopt(removed, Some(&book))?;
         Ok(())
     }
     pub(crate) fn date_1904(&self) -> PyResult<bool> {

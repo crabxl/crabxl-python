@@ -47,8 +47,6 @@ class Dimension:
         visible=True,
         style=None,
     ):
-        if style is not None:
-            raise NotImplementedError("Raw dimension style arrays are not implemented")
         self._initialize(
             worksheet,
             index,
@@ -57,6 +55,31 @@ class Dimension:
                 "outlineLevel": outlineLevel,
                 "collapsed": collapsed,
             },
+        )
+        self._apply_style_array(style)
+
+    def _apply_style_array(self, style):
+        """Apply openpyxl's raw style array: indices into the workbook style lists."""
+        if style is None:
+            return
+        from ..styles.cell_style import StyleArray
+        from ..styles.numbers import BUILTIN_FORMATS, BUILTIN_FORMATS_MAX_SIZE
+
+        style = StyleArray(style)
+        workbook = self.parent.parent
+        for name, items, index in (
+            ("font", workbook._fonts, style.fontId),
+            ("fill", workbook._fills, style.fillId),
+            ("border", workbook._borders, style.borderId),
+            ("alignment", workbook._alignments, style.alignmentId),
+            ("protection", workbook._protections, style.protectionId),
+        ):
+            setattr(self, name, items[index])
+        number = style.numFmtId
+        self.number_format = (
+            BUILTIN_FORMATS.get(number, "General")
+            if number < BUILTIN_FORMATS_MAX_SIZE
+            else workbook._number_formats[number - BUILTIN_FORMATS_MAX_SIZE]
         )
 
     def __iter__(self):
@@ -305,10 +328,7 @@ class RowDimension(Dimension):
         thickTop=None,
         **kwargs,
     ):
-        if s is not None or spans is not None or kwargs:
-            raise NotImplementedError(
-                "Raw row style arrays and spans are not implemented"
-            )
+        # openpyxl also ignores spans and unknown attributes.
         self._initialize(
             worksheet,
             index if r is None else r,
@@ -323,6 +343,7 @@ class RowDimension(Dimension):
                 "thickTop": thickTop,
             },
         )
+        self._apply_style_array(s)
 
 
 class ColumnDimension(Dimension):
@@ -376,8 +397,6 @@ class ColumnDimension(Dimension):
         visible=None,
         auto_size=None,
     ):
-        if style is not None:
-            raise NotImplementedError("Raw column style arrays are not implemented")
         self._initialize(
             worksheet,
             index,
@@ -394,6 +413,7 @@ class ColumnDimension(Dimension):
                 "max": max,
             },
         )
+        self._apply_style_array(style)
 
 
 class DimensionHolder(MutableMapping):

@@ -10,13 +10,14 @@ from crabxl.xml.functions import Element
 
 
 class ElementList(list):
+    # Subclasses define these; the base list has neither.
     @property
     def tagname(self):
-        raise NotImplementedError
+        raise AttributeError(f"{type(self).__name__} has no tagname")
 
     @property
     def expected_type(self):
-        raise NotImplementedError
+        raise AttributeError(f"{type(self).__name__} has no expected_type")
 
     @classmethod
     def from_tree(cls, tree):

@@ -16,11 +16,56 @@ pub(crate) enum SheetStorage {
         id: SheetId,
     },
 }
+impl SheetStorage {
+    /// Put a sheet in a workbook of its own. `source` holds the styles that its
+    /// style IDs refer to; without it the sheet gets the default styles.
+    pub(crate) fn adopt(sheet: Worksheet, source: Option<&Workbook>) -> PyResult<Self> {
+        let mut book = Workbook::new(WorkbookLimits {
+            max_bytes: usize::MAX,
+            sheet: EditLimits {
+                max_bytes: usize::MAX,
+                ..EditLimits::default()
+            },
+            ..WorkbookLimits::default()
+        })
+        .map_err(failure)?;
+        let limits = crabxl::StyleLimits::default();
+        match source.and_then(Workbook::style_catalog) {
+            Some(catalog) => book.import_style_catalog(catalog.clone(), limits),
+            None => book.initialize_style_catalog(limits),
+        }
+        .map_err(failure)?;
+        if let Some(source) = source {
+            book.set_epoch(source.epoch());
+        }
+        let id = book.adopt_sheet(sheet).map_err(failure)?;
+        Ok(Self::Bank {
+            book: Arc::new(Mutex::new(book)),
+            id,
+        })
+    }
+}
+fn unowned() -> PyErr {
+    PyRuntimeError::new_err("Worksheet has no workbook")
+}
 #[pyclass]
 pub(crate) struct NativeSheet {
     pub(crate) storage: Arc<Mutex<SheetStorage>>,
 }
 impl NativeSheet {
+    /// Lock the storage. A sheet without a workbook first gets one, so that
+    /// style changes work as in openpyxl.
+    pub(crate) fn styled(&self) -> PyResult<MutexGuard<'_, SheetStorage>> {
+        let mut storage = lock(&self.storage)?;
+        if let SheetStorage::Standalone(sheet) = &mut *storage {
+            let placeholder = Box::new(
+                Worksheet::new(sheet.name().to_owned(), EditLimits::default()).map_err(failure)?,
+            );
+            let sheet = std::mem::replace(sheet, placeholder);
+            *storage = SheetStorage::adopt(*sheet, None)?;
+        }
+        Ok(storage)
+    }
     pub(crate) fn with<T>(&self, action: impl FnOnce(&Worksheet) -> PyResult<T>) -> PyResult<T> {
         let storage = lock(&self.storage)?;
         match &*storage {
@@ -60,7 +105,7 @@ impl NativeSheet {
         index: u32,
         change: impl FnOnce(&mut dyn style_owners::StyleOwner, StyleId) -> crabxl::Result<StyleId>,
     ) -> PyResult<()> {
-        let storage = lock(&self.storage)?;
+        let storage = self.styled()?;
         match &*storage {
             SheetStorage::Bank { book, id } => {
                 let mut book = lock(book)?;
@@ -87,9 +132,7 @@ impl NativeSheet {
                 dimension.set_style(style);
                 dimension.apply_loaded(book, *id).map_err(failure)
             }
-            SheetStorage::Standalone(_) => Err(PyNotImplementedError::new_err(
-                "Detached dimension style registration is not implemented",
-            )),
+            SheetStorage::Standalone(_) => Err(unowned()),
         }
     }
     pub(crate) fn with_mut<T>(
@@ -102,7 +145,7 @@ impl NativeSheet {
             SheetStorage::Bank { book, id } => {
                 action(&mut lock(book)?.sheet_mut(*id).map_err(failure)?)
             }
-            SheetStorage::Loaded { .. } => Err(PyNotImplementedError::new_err(
+            SheetStorage::Loaded { .. } => Err(PyRuntimeError::new_err(
                 "Loaded model mutation must use the preserving coordinator",
             )),
         }
@@ -351,7 +394,7 @@ impl NativeSheet {
     }
     pub(crate) fn set_named_style(&self, row: u32, column: u32, name: &str) -> PyResult<()> {
         let address = CellAddress::new(row, column).map_err(failure)?;
-        let storage = lock(&self.storage)?;
+        let storage = self.styled()?;
         match &*storage {
             SheetStorage::Bank { book, id } => {
                 let mut book = lock(book)?;
@@ -367,9 +410,7 @@ impl NativeSheet {
                 let style = book.named_style_format(name).map_err(failure)?;
                 book.set_style(*id, address, style).map_err(failure)
             }
-            SheetStorage::Standalone(_) => Err(PyNotImplementedError::new_err(
-                "Detached named styles are not implemented",
-            )),
+            SheetStorage::Standalone(_) => Err(unowned()),
         }
     }
     pub(crate) fn get(&self, py: Python<'_>, row: u32, column: u32) -> PyResult<EncodedValue> {
@@ -448,11 +489,9 @@ impl NativeSheet {
     }
     pub(crate) fn set_number_format(&self, row: u32, column: u32, code: String) -> PyResult<()> {
         let address = CellAddress::new(row, column).map_err(failure)?;
-        let storage = lock(&self.storage)?;
+        let storage = self.styled()?;
         match &*storage {
-            SheetStorage::Standalone(_) => Err(PyNotImplementedError::new_err(
-                "Detached sheet style registration remains unimplemented",
-            )),
+            SheetStorage::Standalone(_) => Err(unowned()),
             SheetStorage::Bank { book, id } => {
                 let mut book = lock(book)?;
                 let previous = book.sheet(*id).map_err(failure)?.style_at(address);
@@ -479,7 +518,7 @@ impl NativeSheet {
         name: &str,
     ) -> PyResult<Bound<'py, PyDict>> {
         let address = CellAddress::new(row, column).map_err(failure)?;
-        let storage = lock(&self.storage)?;
+        let storage = self.styled()?;
         let resolve = |book: &Workbook, id| {
             let style = book.sheet(id).map_err(failure)?.style_at(address);
             if let Some(catalog) = book.style_catalog() {
@@ -493,9 +532,7 @@ impl NativeSheet {
             SheetStorage::Loaded { book, id } => {
                 resolve(lock(book)?.as_ref().ok_or_else(closed)?.model(), *id)
             }
-            SheetStorage::Standalone(_) => Err(PyNotImplementedError::new_err(
-                "Detached sheet style catalog is unavailable",
-            )),
+            SheetStorage::Standalone(_) => Err(unowned()),
         }
     }
     pub(crate) fn set_style_component(
@@ -507,11 +544,9 @@ impl NativeSheet {
     ) -> PyResult<()> {
         let component = value.component.clone();
         let address = CellAddress::new(row, column).map_err(failure)?;
-        let storage = lock(&self.storage)?;
+        let storage = self.styled()?;
         match &*storage {
-            SheetStorage::Standalone(_) => Err(PyNotImplementedError::new_err(
-                "Detached sheet style registration remains unimplemented",
-            )),
+            SheetStorage::Standalone(_) => Err(unowned()),
             SheetStorage::Bank { book, id } => {
                 let mut book = lock(book)?;
                 let previous = book.sheet(*id).map_err(failure)?.style_at(address);
@@ -1064,7 +1099,7 @@ impl NativeSheet {
             SheetStorage::Bank { book, id } => lock(book)?
                 .set_sheet_visibility(*id, visibility)
                 .map_err(failure),
-            SheetStorage::Loaded { .. } => Err(PyNotImplementedError::new_err(
+            SheetStorage::Loaded { .. } => Err(PyRuntimeError::new_err(
                 "Loaded visibility changes require the preserving coordinator",
             )),
         }
@@ -1074,7 +1109,7 @@ impl NativeSheet {
         match &mut *storage {
             SheetStorage::Standalone(sheet) => sheet.rename(name).map_err(failure),
             SheetStorage::Bank { book, id } => lock(book)?.rename_sheet(*id, name).map_err(failure),
-            SheetStorage::Loaded { .. } => Err(PyNotImplementedError::new_err(
+            SheetStorage::Loaded { .. } => Err(PyRuntimeError::new_err(
                 "Renaming existing sheets remains unimplemented",
             )),
         }

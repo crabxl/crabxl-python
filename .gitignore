@@ -8,3 +8,4 @@ __pycache__/
 # Native extension built by maturin develop or pip install -e
 python/crabxl/*.so
 python/crabxl/*.pyd
+python/crabxl/*.pdb

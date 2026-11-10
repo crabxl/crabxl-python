@@ -219,10 +219,10 @@ class Worksheet:
         from ..chart._chart import ChartBase
 
         self.parent._check_open()
-        if self.parent.read_only or (
-            self.parent.write_only and (self.closed or self._drawings_prepared)
-        ):
-            raise NotImplementedError("Charts require an editable worksheet")
+        if self.parent.write_only and (self.closed or self._drawings_prepared):
+            from ..utils.exceptions import WorkbookAlreadySaved
+
+            raise WorkbookAlreadySaved("Workbook has already been saved")
         if not isinstance(chart, ChartBase):
             raise TypeError("Only chart objects can be added")
         if anchor is not None:
@@ -294,10 +294,10 @@ class Worksheet:
 
         if isinstance(self, Chartsheet):
             raise TypeError("Pivot tables require a cell worksheet")
-        if self.parent.read_only or (
-            self.parent.write_only and (self.closed or self._drawings_prepared)
-        ):
-            raise NotImplementedError("Pivot creation requires an editable worksheet")
+        if self.parent.write_only and (self.closed or self._drawings_prepared):
+            from ..utils.exceptions import WorkbookAlreadySaved
+
+            raise WorkbookAlreadySaved("Workbook has already been saved")
         if not isinstance(pivot, TableDefinition):
             raise TypeError("Expected a pivot TableDefinition")
         if pivot.cache is None:
@@ -335,10 +335,10 @@ class Worksheet:
         from ..drawing.image import Image
 
         self.parent._check_open()
-        if self.parent.read_only or (
-            self.parent.write_only and (self.closed or self._drawings_prepared)
-        ):
-            raise NotImplementedError("Images require an editable worksheet")
+        if self.parent.write_only and (self.closed or self._drawings_prepared):
+            from ..utils.exceptions import WorkbookAlreadySaved
+
+            raise WorkbookAlreadySaved("Workbook has already been saved")
         if not isinstance(img, Image):
             raise TypeError("Only Image objects can be added")
         if anchor is not None:
@@ -876,8 +876,10 @@ class Worksheet:
         if re.search(r"[\\*?:/\[\]]", title):
             raise ValueError("Invalid character in sheet title")
         if len(title) > 31:
-            raise NotImplementedError(
-                "Titles longer than 31 characters are not implemented"
+            import warnings
+
+            warnings.warn(
+                "Title is more than 31 characters. Some applications may not be able to read the file"
             )
 
     @property
