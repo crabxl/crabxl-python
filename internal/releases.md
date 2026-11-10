@@ -17,6 +17,19 @@ The helper sets the Cargo version, the Python version, `__version__` and
 Cargo.lock. It does not commit, tag or publish. Review and commit the version
 with a changelog entry for it.
 
+## Release
+
+After the version commit is on `main`, tag it and push the tag:
+
+```sh
+git tag 0.1.0
+git push origin 0.1.0
+```
+
+The tag starts the release workflow. It checks that the tag matches the
+committed version, that the tagged commit is on `main` and that `CHANGELOG.md`
+has a section for the version. That section becomes the release notes.
+
 ## PyPI Trusted Publisher configuration
 
 Create a pending publisher for the first upload, or add a publisher to the
@@ -39,8 +52,6 @@ https://docs.pypi.org/trusted-publishers/ .
 
 - GitHub workflow name: **Release Python**.
 - Workflow file: `.github/workflows/release.yml`.
-- Run it on the default branch with the committed version, notes that name the
-  new capabilities, and `usable_feature` selected.
 
 All five CPython versions (3.11 through 3.15) build native wheels on each of:
 
@@ -62,11 +73,11 @@ included.
 
 After every build and test job passes, the workflow checks all 26 artifacts,
 their versions and any existing PyPI file hashes, then publishes with
-`pypa/gh-action-pypi-publish` through OIDC. It then creates the `X.Y.Z` tag and a
-GitHub release with all 26 files, at the checked-out commit.
+`pypa/gh-action-pypi-publish` through OIDC. It then creates the GitHub release
+for the tag with all 26 files.
 
-If an upload or the GitHub release step fails, rerun the same workflow commit
-and version. Identical PyPI files are skipped; different file hashes and tags
+If an upload or the GitHub release step fails, rerun the failed jobs of the same
+workflow run. Identical PyPI files are skipped; different file hashes and tags
 at another commit are rejected. PyPI publication cannot be undone and can
 partly succeed before a later step fails. Do not move tags or raise the version
 only to hide an interrupted release.
@@ -81,7 +92,3 @@ their reference bodies stay unchanged; they still run in every test job.
 Wheels are built with the latest stable Rust toolchain (currently 1.99).
 Installing a wheel does not need Rust. Source builds need Rust 1.99 or newer.
 The core crate's minimum Rust version is 1.88.
-
-A committed `.github/release-request.json` also starts publication on push to
-the default branch, with the same checks. Pushing a changed request file starts
-a release, so change it only when you mean to release.

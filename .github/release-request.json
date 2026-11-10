@@ -1,5 +1,0 @@
-{
-  "version": "0.1.0",
-  "usable_feature": true,
-  "feature_notes": "First release. Reads, writes and edits XLSX files with the openpyxl API and openpyxl 3.1.5 capabilities, using the Rust core 0.1.0. Plain appended rows are converted in Rust. The Python tests, the openpyxl 3.1.5 suite check and the openpyxl corpus round trip pass."
-}
