@@ -20,9 +20,10 @@ API for pivot tables so that client code will have to loop over the
 
 ```python
 from crabxl import load_workbook
+
 wb = load_workbook("campaign.xlsx")
 ws = wb["Results"]
-pivot = ws._pivots[0] # any will do as they share the same cache
+pivot = ws._pivots[0]  # any will do as they share the same cache
 pivot.cache.refreshOnLoad = True
 ```
 

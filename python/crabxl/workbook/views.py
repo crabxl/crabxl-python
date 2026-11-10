@@ -19,10 +19,9 @@ from crabxl.descriptors.serialisable import Serialisable
 
 
 class BookView(Serialisable):
-
     tagname = "workbookView"
 
-    visibility = NoneSet(values=(['visible', 'hidden', 'veryHidden']))
+    visibility = NoneSet(values=(["visible", "hidden", "veryHidden"]))
     minimized = Bool(allow_none=True)
     showHorizontalScroll = Bool(allow_none=True)
     showVerticalScroll = Bool(allow_none=True)
@@ -39,22 +38,23 @@ class BookView(Serialisable):
 
     __elements__ = ()
 
-    def __init__(self,
-                 visibility="visible",
-                 minimized=False,
-                 showHorizontalScroll=True,
-                 showVerticalScroll=True,
-                 showSheetTabs=True,
-                 xWindow=None,
-                 yWindow=None,
-                 windowWidth=None,
-                 windowHeight=None,
-                 tabRatio=600,
-                 firstSheet=0,
-                 activeTab=0,
-                 autoFilterDateGrouping=True,
-                 extLst=None,
-                ):
+    def __init__(
+        self,
+        visibility="visible",
+        minimized=False,
+        showHorizontalScroll=True,
+        showVerticalScroll=True,
+        showSheetTabs=True,
+        xWindow=None,
+        yWindow=None,
+        windowWidth=None,
+        windowHeight=None,
+        tabRatio=600,
+        firstSheet=0,
+        activeTab=0,
+        autoFilterDateGrouping=True,
+        extLst=None,
+    ):
         self.visibility = visibility
         self.minimized = minimized
         self.showHorizontalScroll = showHorizontalScroll
@@ -71,7 +71,6 @@ class BookView(Serialisable):
 
 
 class CustomWorkbookView(Serialisable):
-
     tagname = "customWorkbookView"
 
     name = String()
@@ -96,40 +95,40 @@ class CustomWorkbookView(Serialisable):
     activeSheetId = Integer()
     showFormulaBar = Bool(allow_none=True)
     showStatusbar = Bool(allow_none=True)
-    showComments = NoneSet(values=(['commNone', 'commIndicator',
-                                'commIndAndComment']))
-    showObjects = NoneSet(values=(['all', 'placeholders']))
+    showComments = NoneSet(values=(["commNone", "commIndicator", "commIndAndComment"]))
+    showObjects = NoneSet(values=(["all", "placeholders"]))
     extLst = Typed(expected_type=ExtensionList, allow_none=True)
 
     __elements__ = ()
 
-    def __init__(self,
-                 name=None,
-                 guid=None,
-                 autoUpdate=None,
-                 mergeInterval=None,
-                 changesSavedWin=None,
-                 onlySync=None,
-                 personalView=None,
-                 includePrintSettings=None,
-                 includeHiddenRowCol=None,
-                 maximized=None,
-                 minimized=None,
-                 showHorizontalScroll=None,
-                 showVerticalScroll=None,
-                 showSheetTabs=None,
-                 xWindow=None,
-                 yWindow=None,
-                 windowWidth=None,
-                 windowHeight=None,
-                 tabRatio=None,
-                 activeSheetId=None,
-                 showFormulaBar=None,
-                 showStatusbar=None,
-                 showComments="commIndicator",
-                 showObjects="all",
-                 extLst=None,
-                ):
+    def __init__(
+        self,
+        name=None,
+        guid=None,
+        autoUpdate=None,
+        mergeInterval=None,
+        changesSavedWin=None,
+        onlySync=None,
+        personalView=None,
+        includePrintSettings=None,
+        includeHiddenRowCol=None,
+        maximized=None,
+        minimized=None,
+        showHorizontalScroll=None,
+        showVerticalScroll=None,
+        showSheetTabs=None,
+        xWindow=None,
+        yWindow=None,
+        windowWidth=None,
+        windowHeight=None,
+        tabRatio=None,
+        activeSheetId=None,
+        showFormulaBar=None,
+        showStatusbar=None,
+        showComments="commIndicator",
+        showObjects="all",
+        extLst=None,
+    ):
         self.name = name
         self.guid = guid
         self.autoUpdate = autoUpdate

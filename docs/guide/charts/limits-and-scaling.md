@@ -21,21 +21,21 @@ from crabxl.chart import (
 wb = Workbook()
 ws = wb.active
 
-ws.append(['X', '1/X'])
+ws.append(["X", "1/X"])
 for x in range(-10, 11):
     if x:
         ws.append([x, 1.0 / x])
 
 chart1 = ScatterChart()
 chart1.title = "Full Axes"
-chart1.x_axis.title = 'x'
-chart1.y_axis.title = '1/x'
+chart1.x_axis.title = "x"
+chart1.y_axis.title = "1/x"
 chart1.legend = None
 
 chart2 = ScatterChart()
 chart2.title = "Clipped Axes"
-chart2.x_axis.title = 'x'
-chart2.y_axis.title = '1/x'
+chart2.x_axis.title = "x"
+chart2.y_axis.title = "1/x"
 chart2.legend = None
 
 chart2.x_axis.scaling.min = 0
@@ -82,42 +82,42 @@ import math
 wb = Workbook()
 ws = wb.active
 
-ws.append(['X', 'Gaussian'])
+ws.append(["X", "Gaussian"])
 for i, x in enumerate(range(-10, 11)):
-    ws.append([x, "=EXP(-(($A${row}/6)^2))".format(row = i + 2)])
+    ws.append([x, "=EXP(-(($A${row}/6)^2))".format(row=i + 2)])
 
 chart1 = ScatterChart()
 chart1.title = "No Scaling"
-chart1.x_axis.title = 'x'
-chart1.y_axis.title = 'y'
+chart1.x_axis.title = "x"
+chart1.y_axis.title = "y"
 chart1.legend = None
 
 chart2 = ScatterChart()
 chart2.title = "X Log Scale"
-chart2.x_axis.title = 'x (log10)'
-chart2.y_axis.title = 'y'
+chart2.x_axis.title = "x (log10)"
+chart2.y_axis.title = "y"
 chart2.legend = None
 chart2.x_axis.scaling.logBase = 10
 
 chart3 = ScatterChart()
 chart3.title = "Y Log Scale"
-chart3.x_axis.title = 'x'
-chart3.y_axis.title = 'y (log10)'
+chart3.x_axis.title = "x"
+chart3.y_axis.title = "y (log10)"
 chart3.legend = None
 chart3.y_axis.scaling.logBase = 10
 
 chart4 = ScatterChart()
 chart4.title = "Both Log Scale"
-chart4.x_axis.title = 'x (log10)'
-chart4.y_axis.title = 'y (log10)'
+chart4.x_axis.title = "x (log10)"
+chart4.y_axis.title = "y (log10)"
 chart4.legend = None
 chart4.x_axis.scaling.logBase = 10
 chart4.y_axis.scaling.logBase = 10
 
 chart5 = ScatterChart()
 chart5.title = "Log Scale Base e"
-chart5.x_axis.title = 'x (ln)'
-chart5.y_axis.title = 'y (ln)'
+chart5.x_axis.title = "x (ln)"
+chart5.y_axis.title = "y (ln)"
 chart5.legend = None
 chart5.x_axis.scaling.logBase = math.e
 chart5.y_axis.scaling.logBase = math.e
@@ -169,35 +169,40 @@ ws = wb.active
 ws["A1"] = "Archimedean Spiral"
 ws.append(["T", "X", "Y"])
 for i, t in enumerate(range(100)):
-    ws.append([t / 16.0, "=$A${row}*COS($A${row})".format(row = i + 3),
-                         "=$A${row}*SIN($A${row})".format(row = i + 3)])
+    ws.append(
+        [
+            t / 16.0,
+            "=$A${row}*COS($A${row})".format(row=i + 3),
+            "=$A${row}*SIN($A${row})".format(row=i + 3),
+        ]
+    )
 
 chart1 = ScatterChart()
 chart1.title = "Default Orientation"
-chart1.x_axis.title = 'x'
-chart1.y_axis.title = 'y'
+chart1.x_axis.title = "x"
+chart1.y_axis.title = "y"
 chart1.legend = None
 
 chart2 = ScatterChart()
 chart2.title = "Flip X"
-chart2.x_axis.title = 'x'
-chart2.y_axis.title = 'y'
+chart2.x_axis.title = "x"
+chart2.y_axis.title = "y"
 chart2.legend = None
 chart2.x_axis.scaling.orientation = "maxMin"
 chart2.y_axis.scaling.orientation = "minMax"
 
 chart3 = ScatterChart()
 chart3.title = "Flip Y"
-chart3.x_axis.title = 'x'
-chart3.y_axis.title = 'y'
+chart3.x_axis.title = "x"
+chart3.y_axis.title = "y"
 chart3.legend = None
 chart3.x_axis.scaling.orientation = "minMax"
 chart3.y_axis.scaling.orientation = "maxMin"
 
 chart4 = ScatterChart()
 chart4.title = "Flip Both"
-chart4.x_axis.title = 'x'
-chart4.y_axis.title = 'y'
+chart4.x_axis.title = "x"
+chart4.y_axis.title = "y"
 chart4.legend = None
 chart4.x_axis.scaling.orientation = "maxMin"
 chart4.y_axis.scaling.orientation = "maxMin"

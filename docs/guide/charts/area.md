@@ -22,7 +22,7 @@ wb = Workbook()
 ws = wb.active
 
 rows = [
-    ['Number', 'Batch 1', 'Batch 2'],
+    ["Number", "Batch 1", "Batch 2"],
     [2, 40, 30],
     [3, 40, 25],
     [4, 50, 30],
@@ -37,8 +37,8 @@ for row in rows:
 chart = AreaChart()
 chart.title = "Area Chart"
 chart.style = 13
-chart.x_axis.title = 'Test'
-chart.y_axis.title = 'Percentage'
+chart.x_axis.title = "Test"
+chart.y_axis.title = "Percentage"
 
 cats = Reference(ws, min_col=1, min_row=1, max_row=7)
 data = Reference(ws, min_col=2, min_row=1, max_col=3, max_row=7)
@@ -68,13 +68,13 @@ wb = Workbook()
 ws = wb.active
 
 rows = [
-    ['Number', 'Batch 1', 'Batch 2'],
+    ["Number", "Batch 1", "Batch 2"],
     [2, 30, 40],
     [3, 25, 40],
-    [4 ,30, 50],
-    [5 ,10, 30],
-    [6,  5, 25],
-    [7 ,10, 50],
+    [4, 30, 50],
+    [5, 10, 30],
+    [6, 5, 25],
+    [7, 10, 50],
 ]
 
 for row in rows:
@@ -83,8 +83,8 @@ for row in rows:
 chart = AreaChart3D()
 chart.title = "Area Chart"
 chart.style = 13
-chart.x_axis.title = 'Test'
-chart.y_axis.title = 'Percentage'
+chart.x_axis.title = "Test"
+chart.y_axis.title = "Percentage"
 chart.legend = None
 
 cats = Reference(ws, min_col=1, min_row=1, max_row=7)

@@ -37,7 +37,9 @@ def test_descriptor_edits_keep_unused_prefixes_shadowing_comments_and_instructio
 
 
 def test_extracted_and_copied_metadata_keeps_parent_namespace_context():
-    source = preserving_fromstring(b'<root xmlns:t="urn:types"><child value="t:Thing"/></root>')
+    source = preserving_fromstring(
+        b'<root xmlns:t="urn:types"><child value="t:Thing"/></root>'
+    )
     inherit_namespace_context(source[0], source)
     copied = deepcopy(source[0])
     checked = preserving_fromstring(preserving_tostring(copied))
@@ -46,7 +48,14 @@ def test_extracted_and_copied_metadata_keeps_parent_namespace_context():
 
 
 def test_new_qname_values_and_escaped_text_are_serialized_with_valid_bindings():
-    root = ET.Element("{urn:main}root", {"type": ET.QName("urn:types", "Thing"), "quoted": 'A & "B"', ET.QName("urn:attrs", "field"): "kept"})
+    root = ET.Element(
+        "{urn:main}root",
+        {
+            "type": ET.QName("urn:types", "Thing"),
+            "quoted": 'A & "B"',
+            ET.QName("urn:attrs", "field"): "kept",
+        },
+    )
     root.text = "Unicode 中文 <&>"
     checked = preserving_fromstring(preserving_tostring(root))
     prefix, local = checked.get("type").split(":")

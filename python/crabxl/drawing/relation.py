@@ -7,7 +7,6 @@ from crabxl.xml.constants import CHART_NS
 
 
 class ChartRelation(Serialisable):
-
     tagname = "chart"
     namespace = CHART_NS
 

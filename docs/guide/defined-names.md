@@ -28,7 +28,7 @@ Global definitions are stored in the workbook collection:
 ```python
 defn = wb.defined_names["my_range"]
 # the destinations attribute contains a list of ranges in the definitions
-dests = defn.destinations # returns a generator of (worksheet title, cell range) tuples
+dests = defn.destinations  # returns a generator of (worksheet title, cell range) tuples
 
 cells = []
 for title, coord in dests:
@@ -54,10 +54,11 @@ Global definitions are assigned to the workbook collection:
 from crabxl import Workbook
 from crabxl.workbook.defined_name import DefinedName
 from crabxl.utils import quote_sheetname, absolute_coordinate
+
 wb = Workbook()
 ws = wb.active
 # make sure sheetnames and cell references are quoted correctly
-ref =  "{quote_sheetname(ws.title)}!{absolute_coordinate('A1:A5')}"
+ref = "{quote_sheetname(ws.title)}!{absolute_coordinate('A1:A5')}"
 
 defn = DefinedName("global_range", attr_text=ref)
 wb.defined_names["global_range"] = defn

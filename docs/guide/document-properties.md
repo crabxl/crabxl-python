@@ -56,7 +56,7 @@ prop = wb.custom_doc_props["PropName6"]
 del prop["PropName6"]
 
 # save the file
-wb.save('outfile.xlsx')
+wb.save("outfile.xlsx")
 ```
 
 > **Note:** 

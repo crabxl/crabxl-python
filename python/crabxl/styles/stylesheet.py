@@ -39,7 +39,6 @@ from .table import TableStyleList
 
 
 class Stylesheet(Serialisable):
-
     tagname = "styleSheet"
 
     numFmts = Typed(expected_type=NumberFormatList)
@@ -54,22 +53,33 @@ class Stylesheet(Serialisable):
     colors = Typed(expected_type=ColorList, allow_none=True)
     extLst = Typed(expected_type=ExtensionList, allow_none=True)
 
-    __elements__ = ('numFmts', 'fonts', 'fills', 'borders', 'cellStyleXfs',
-                    'cellXfs', 'cellStyles', 'dxfs', 'tableStyles', 'colors')
+    __elements__ = (
+        "numFmts",
+        "fonts",
+        "fills",
+        "borders",
+        "cellStyleXfs",
+        "cellXfs",
+        "cellStyles",
+        "dxfs",
+        "tableStyles",
+        "colors",
+    )
 
-    def __init__(self,
-                 numFmts=None,
-                 fonts=(),
-                 fills=(),
-                 borders=(),
-                 cellStyleXfs=None,
-                 cellXfs=None,
-                 cellStyles=None,
-                 dxfs=(),
-                 tableStyles=None,
-                 colors=None,
-                 extLst=None,
-                ):
+    def __init__(
+        self,
+        numFmts=None,
+        fonts=(),
+        fills=(),
+        borders=(),
+        cellStyleXfs=None,
+        cellXfs=None,
+        cellStyles=None,
+        dxfs=(),
+        tableStyles=None,
+        colors=None,
+        extLst=None,
+    ):
         if numFmts is None:
             numFmts = NumberFormatList()
         self.numFmts = numFmts
@@ -97,7 +107,6 @@ class Stylesheet(Serialisable):
         self._normalise_numbers()
         self.named_styles = self._merge_named_styles()
 
-
     @classmethod
     def from_tree(cls, node):
         # strip all attribs
@@ -105,7 +114,6 @@ class Stylesheet(Serialisable):
         for k in attrs:
             del node.attrib[k]
         return super().from_tree(node)
-
 
     def _merge_named_styles(self):
         """
@@ -116,7 +124,6 @@ class Stylesheet(Serialisable):
         from_ref = [self._expand_named_style(style_ref) for style_ref in style_refs]
 
         return NamedStyleList(from_ref)
-
 
     def _expand_named_style(self, style_ref):
         """
@@ -148,21 +155,18 @@ class Stylesheet(Serialisable):
 
         return named_style
 
-
     def _split_named_styles(self, wb):
         """
         Convert NamedStyle into separate CellStyle and Xf objects
 
         """
-        for  style in wb._named_styles:
+        for style in wb._named_styles:
             self.cellStyles.cellStyle.append(style.as_name())
             self.cellStyleXfs.xf.append(style.as_xf())
-
 
     @property
     def custom_formats(self):
         return dict([(n.numFmtId, n.formatCode) for n in self.numFmts.numFmt])
-
 
     def _normalise_numbers(self):
         """
@@ -176,7 +180,7 @@ class Stylesheet(Serialisable):
         for idx, style in enumerate(self.cell_styles):
             if style.numFmtId in custom:
                 fmt = custom[style.numFmtId]
-                if fmt in BUILTIN_FORMATS_REVERSE: # remove builtins
+                if fmt in BUILTIN_FORMATS_REVERSE:  # remove builtins
                     style.numFmtId = BUILTIN_FORMATS_REVERSE[fmt]
                 else:
                     style.numFmtId = formats.add(fmt) + BUILTIN_FORMATS_MAX_SIZE
@@ -190,7 +194,6 @@ class Stylesheet(Serialisable):
                 timedelta_formats.add(idx)
         self.date_formats = date_formats
         self.timedelta_formats = timedelta_formats
-
 
     def to_tree(self, tagname=None, idx=None, namespace=None):
         tree = super().to_tree(tagname, idx, namespace)

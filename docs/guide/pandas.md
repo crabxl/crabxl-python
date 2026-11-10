@@ -20,6 +20,7 @@ simple way to work with Pandas Dataframes:
 
 ```python
 from crabxl.utils.dataframe import dataframe_to_rows
+
 wb = Workbook()
 ws = wb.active
 
@@ -40,8 +41,8 @@ ws = wb.active
 for r in dataframe_to_rows(df, index=True, header=True):
     ws.append(r)
 
-for cell in ws['A'] + ws[1]:
-    cell.style = 'Pandas'
+for cell in ws["A"] + ws[1]:
+    cell.style = "Pandas"
 
 wb.save("pandas_openpyxl.xlsx")
 ```
@@ -91,6 +92,7 @@ then a little more work is required:
 
 ```python
 from itertools import islice
+
 data = ws.values
 cols = next(data)[1:]
 data = list(data)

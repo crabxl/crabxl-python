@@ -59,9 +59,14 @@ class NamedStyle(Serialisable):
         from copy import copy
 
         result = type(self)(
-            name=self.name, number_format=self.number_format,
-            builtinId=self.builtinId, hidden=self.hidden,
-            **{name: copy(getattr(self, name)) for name in ("font", "fill", "border", "alignment", "protection")},
+            name=self.name,
+            number_format=self.number_format,
+            builtinId=self.builtinId,
+            hidden=self.hidden,
+            **{
+                name: copy(getattr(self, name))
+                for name in ("font", "fill", "border", "alignment", "protection")
+            },
         )
         result._style = copy(self._style)
         return result
@@ -69,8 +74,12 @@ class NamedStyle(Serialisable):
     def __deepcopy__(self, memo):
         from copy import deepcopy
 
-        result = type(self)(name=self.name, number_format=self.number_format,
-                            builtinId=self.builtinId, hidden=self.hidden)
+        result = type(self)(
+            name=self.name,
+            number_format=self.number_format,
+            builtinId=self.builtinId,
+            hidden=self.hidden,
+        )
         memo[id(self)] = result
         for name in ("font", "fill", "border", "alignment", "protection", "_style"):
             setattr(result, name, deepcopy(getattr(self, name), memo))
@@ -119,7 +128,9 @@ class NamedStyle(Serialisable):
                     if self._registered_name is None:
                         self._recalculate()
                     else:
-                        workbook._style_owner().add_named_style(self._native(), update=True)
+                        workbook._style_owner().add_named_style(
+                            self._native(), update=True
+                        )
                         self._recalculate()
                 except Exception:
                     object.__setattr__(self, name, previous)
@@ -128,16 +139,14 @@ class NamedStyle(Serialisable):
         object.__setattr__(self, name, value)
 
     def __iter__(self):
-        for key in ('name', 'builtinId', 'hidden', 'xfId'):
+        for key in ("name", "builtinId", "hidden", "xfId"):
             value = getattr(self, key, None)
             if value is not None:
                 yield key, safe_string(value)
 
-
     def as_tuple(self):
         """Return a style array representing the current style"""
         return self._style
-
 
     def as_xf(self):
         """
@@ -153,7 +162,6 @@ class NamedStyle(Serialisable):
             xf.protection = self.protection
         return xf
 
-
     def as_name(self):
         """
         Return relevant named style
@@ -163,10 +171,9 @@ class NamedStyle(Serialisable):
             name=self.name,
             builtinId=self.builtinId,
             hidden=self.hidden,
-            xfId=self._style.xfId
+            xfId=self._style.xfId,
         )
         return named
-
 
     @property
     def _wb(self):
@@ -194,16 +201,24 @@ class NamedStyle(Serialisable):
             self._style = StyleArray(values)
             return
         for field, collection, key in (
-            ("font", "_fonts", "fontId"), ("fill", "_fills", "fillId"),
-            ("border", "_borders", "borderId"), ("alignment", "_alignments", "alignmentId"),
+            ("font", "_fonts", "fontId"),
+            ("fill", "_fills", "fillId"),
+            ("border", "_borders", "borderId"),
+            ("alignment", "_alignments", "alignmentId"),
             ("protection", "_protections", "protectionId"),
         ):
-            setattr(self._style, key, getattr(workbook, collection).add(getattr(self, field)))
+            setattr(
+                self._style,
+                key,
+                getattr(workbook, collection).add(getattr(self, field)),
+            )
         code = self.number_format
         if code in BUILTIN_FORMATS_REVERSE:
             self._style.numFmtId = BUILTIN_FORMATS_REVERSE[code]
         else:
-            self._style.numFmtId = workbook._number_formats.add(code) + BUILTIN_FORMATS_MAX_SIZE
+            self._style.numFmtId = (
+                workbook._number_formats.add(code) + BUILTIN_FORMATS_MAX_SIZE
+            )
 
     def _native(self):
         return {
@@ -245,16 +260,13 @@ class NamedStyleList(list):
             s._style.xfId = idx
         super().__init__(iterable)
 
-
     @property
     def names(self):
         return [s.name for s in self]
 
-
     def __getitem__(self, key):
         if isinstance(key, int):
             return super().__getitem__(key)
-
 
         for idx, name in enumerate(self.names):
             if name == key:
@@ -265,14 +277,13 @@ class NamedStyleList(list):
     def append(self, style):
         if not isinstance(style, NamedStyle):
             raise TypeError("""Only NamedStyle instances can be added""")
-        elif style.name in self.names: # hotspot
+        elif style.name in self.names:  # hotspot
             raise ValueError("""Style {0} exists already""".format(style.name))
-        style._style.xfId = (len(self))
+        style._style.xfId = len(self)
         super().append(style)
 
 
 class _NamedCellStyle(Serialisable):
-
     """
     Pointer-based representation of named styles in XML
     xfId refers to the corresponding CellStyleXfs
@@ -292,16 +303,16 @@ class _NamedCellStyle(Serialisable):
 
     __elements__ = ()
 
-
-    def __init__(self,
-                 name=None,
-                 xfId=None,
-                 builtinId=None,
-                 iLevel=None,
-                 hidden=None,
-                 customBuiltin=None,
-                 extLst=None,
-                ):
+    def __init__(
+        self,
+        name=None,
+        xfId=None,
+        builtinId=None,
+        iLevel=None,
+        hidden=None,
+        customBuiltin=None,
+        extLst=None,
+    ):
         self.name = name
         self.xfId = xfId
         self.builtinId = builtinId
@@ -324,17 +335,16 @@ class _NamedCellStyleList(Serialisable):
 
     __attrs__ = ("count",)
 
-    def __init__(self,
-                 count=None,
-                 cellStyle=(),
-                ):
+    def __init__(
+        self,
+        count=None,
+        cellStyle=(),
+    ):
         self.cellStyle = cellStyle
-
 
     @property
     def count(self):
         return len(self.cellStyle)
-
 
     def remove_duplicates(self):
         """
@@ -355,7 +365,7 @@ class _NamedCellStyleList(Serialisable):
         ids = set()
 
         for ns in sorted(self.cellStyle, key=sort_fn):
-            if ns.xfId in ids or ns.name in names: # skip duplicates
+            if ns.xfId in ids or ns.name in names:  # skip duplicates
                 continue
             ids.add(ns.xfId)
             names.add(ns.name)

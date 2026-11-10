@@ -7,7 +7,6 @@ from crabxl.descriptors.serialisable import Serialisable
 
 
 class Drawing(Serialisable):
-
     tagname = "drawing"
 
     id = Relation()

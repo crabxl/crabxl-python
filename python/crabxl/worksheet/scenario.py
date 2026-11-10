@@ -14,7 +14,6 @@ from .cell_range import MultiCellRange
 
 
 class InputCells(Serialisable):
-
     tagname = "inputCells"
 
     r = String()
@@ -23,13 +22,14 @@ class InputCells(Serialisable):
     val = String()
     numFmtId = Integer(allow_none=True)
 
-    def __init__(self,
-                 r=None,
-                 deleted=False,
-                 undone=False,
-                 val=None,
-                 numFmtId=None,
-                ):
+    def __init__(
+        self,
+        r=None,
+        deleted=False,
+        undone=False,
+        val=None,
+        numFmtId=None,
+    ):
         self.r = r
         self.deleted = deleted
         self.undone = undone
@@ -38,7 +38,6 @@ class InputCells(Serialisable):
 
 
 class Scenario(Serialisable):
-
     tagname = "scenario"
 
     inputCells = Sequence(expected_type=InputCells)
@@ -48,18 +47,19 @@ class Scenario(Serialisable):
     user = String(allow_none=True)
     comment = String(allow_none=True)
 
-    __elements__ = ('inputCells',)
-    __attrs__ = ('name', 'locked', 'hidden', 'user', 'comment', 'count')
+    __elements__ = ("inputCells",)
+    __attrs__ = ("name", "locked", "hidden", "user", "comment", "count")
 
-    def __init__(self,
-                 inputCells=(),
-                 name=None,
-                 locked=False,
-                 hidden=False,
-                 count=None,
-                 user=None,
-                 comment=None,
-                ):
+    def __init__(
+        self,
+        inputCells=(),
+        name=None,
+        locked=False,
+        hidden=False,
+        count=None,
+        user=None,
+        comment=None,
+    ):
         self.inputCells = inputCells
         self.name = name
         self.locked = locked
@@ -67,14 +67,12 @@ class Scenario(Serialisable):
         self.user = user
         self.comment = comment
 
-
     @property
     def count(self):
         return len(self.inputCells)
 
 
 class ScenarioList(Serialisable):
-
     tagname = "scenarios"
 
     scenario = Sequence(expected_type=Scenario)
@@ -82,25 +80,24 @@ class ScenarioList(Serialisable):
     show = Integer(allow_none=True)
     sqref = Convertible(expected_type=MultiCellRange, allow_none=True)
 
-    __elements__ = ('scenario',)
+    __elements__ = ("scenario",)
 
-    def __init__(self,
-                 scenario=(),
-                 current=None,
-                 show=None,
-                 sqref=None,
-                ):
+    def __init__(
+        self,
+        scenario=(),
+        current=None,
+        show=None,
+        sqref=None,
+    ):
         self.scenario = scenario
         self.current = current
         self.show = show
         self.sqref = sqref
 
-
     def append(self, scenario):
         s = self.scenario
         s.append(scenario)
         self.scenario = s
-
 
     def __bool__(self):
         return bool(self.scenario)

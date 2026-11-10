@@ -20,7 +20,7 @@ from crabxl.worksheet.filters import (
     CustomFilters,
     DateGroupItem,
     Filters,
-    )
+)
 
 wb = Workbook()
 ws = wb.active
@@ -40,7 +40,7 @@ data = [
     ["Blackberry", 3],
     ["Orange", 3],
     ["Raspberry", 3],
-    ["Banana", 3]
+    ["Banana", 3],
 ]
 
 for r in data:
@@ -48,9 +48,9 @@ for r in data:
 
 filters = ws.auto_filter
 filters.ref = "A1:B15"
-col = FilterColumn(colId=0) # for column A
-col.filters = Filters(filter=["Kiwi", "Apple", "Mango"]) # add selected values
-filters.filterColumn.append(col) # add filter to the worksheet
+col = FilterColumn(colId=0)  # for column A
+col.filters = Filters(filter=["Kiwi", "Apple", "Mango"])  # add selected values
+filters.filterColumn.append(col)  # add filter to the worksheet
 
 ws.auto_filter.add_sort_condition("B2:B15")
 
@@ -75,11 +75,12 @@ Filter values < 10 and > 90:
 
 ```python
 from crabxl.worksheet.filters import CustomFilter, CustomFilters
+
 flt1 = CustomFilter(operator="lessThan", val=10)
 flt2 = CustomFilter(operator="greaterThan", val=90)
 
 cfs = CustomFilters(customFilter=[flt1, flt2])
-col = FilterColumn(colId=2, customFilters=cfs) # apply to **third** column in the range
+col = FilterColumn(colId=2, customFilters=cfs)  # apply to **third** column in the range
 filters.filter.append(col)
 ```
 
@@ -101,6 +102,7 @@ NumericFilters differ from CustomFilters only in that they are explicitly numeri
 
 ```python
 from crabxl.worksheet.filters import NumberFilter, CustomerFilter
+
 flt1 = CustomFilter(operator="lessThan", val=10)
 flt1.val == "10"
 flt2 = NumberFilter(operator="lessThan", val=10)
@@ -113,6 +115,7 @@ BlankFilters are used for excluding blanks and are not editable:
 
 ```python
 from crabxl.worksheet.filters import BlankFilter
+
 blank = BlankFilter()
 ```
 
@@ -122,6 +125,7 @@ StringFilters have the folowing operators: `contains` `startwith` `endswith` and
 
 ```python
 from crabxl.worksheet.filters import StringFilter
+
 fil = StringFilter("contains", "xml", exclude=True)
 ```
 
@@ -138,11 +142,12 @@ To filter by the month of March:
 
 ```python
 from crabxl.worksheet.filters import DateGroupItem
+
 df1 = DateGroupItem(month=3, dateTimeGrouping="month")
-col = FilterColumn(colId=1) # second column
+col = FilterColumn(colId=1)  # second column
 col.filters.dateGroupItem.append(df1)
 
-df2 = DateGroupItem(year=1984, dateTimeGrouping="year") # add another element
+df2 = DateGroupItem(year=1984, dateTimeGrouping="year")  # add another element
 col.filters.dateGroupItem.append(df2)
 filters.filter.append(col)
 ```

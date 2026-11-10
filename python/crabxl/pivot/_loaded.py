@@ -41,10 +41,14 @@ class PivotState:
             zip(self.pivots, self.previous, current, fresh)
         ):
             table = _merge_descriptor(
-                preserving_fromstring(bytes(raw[1])), fromstring(before[0]), fromstring(after[0])
+                preserving_fromstring(bytes(raw[1])),
+                fromstring(before[0]),
+                fromstring(after[0]),
             )
             cache = _merge_descriptor(
-                preserving_fromstring(bytes(raw[2])), fromstring(before[1]), fromstring(after[1])
+                preserving_fromstring(bytes(raw[2])),
+                fromstring(before[1]),
+                fromstring(after[1]),
             )
             changed_records = before[2] != after[2]
             records = after[2]

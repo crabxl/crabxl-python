@@ -46,12 +46,47 @@ wb = Workbook()
 ws = wb.active
 
 rows = [
-   ['Date',      'Volume','Open', 'High', 'Low', 'Close'],
-   ['2015-01-01', 20000,    26.2, 27.20, 23.49, 25.45,  ],
-   ['2015-01-02', 10000,    25.45, 25.03, 19.55, 23.05, ],
-   ['2015-01-03', 15000,    23.05, 24.46, 20.03, 22.42, ],
-   ['2015-01-04', 2000,     22.42, 23.97, 20.07, 21.90, ],
-   ['2015-01-05', 12000,    21.9, 23.65, 19.50, 21.51,  ],
+    ["Date", "Volume", "Open", "High", "Low", "Close"],
+    [
+        "2015-01-01",
+        20000,
+        26.2,
+        27.20,
+        23.49,
+        25.45,
+    ],
+    [
+        "2015-01-02",
+        10000,
+        25.45,
+        25.03,
+        19.55,
+        23.05,
+    ],
+    [
+        "2015-01-03",
+        15000,
+        23.05,
+        24.46,
+        20.03,
+        22.42,
+    ],
+    [
+        "2015-01-04",
+        2000,
+        22.42,
+        23.97,
+        20.07,
+        21.90,
+    ],
+    [
+        "2015-01-05",
+        12000,
+        21.9,
+        23.65,
+        19.50,
+        21.51,
+    ],
 ]
 
 for row in rows:
@@ -73,6 +108,7 @@ c1.hiLowLines = ChartLines()
 
 # Excel is broken and needs a cache of values in order to display hiLoLines :-/
 from crabxl.chart.data_source import NumData, NumVal
+
 pts = [NumVal(idx=i) for i in range(len(data) - 1)]
 cache = NumData(pt=pts)
 c1.series[-1].val.numRef.numCache = cache
@@ -98,7 +134,7 @@ ws.add_chart(c2, "G10")
 # Create bar chart for volume
 
 bar = BarChart()
-data =  Reference(ws, min_col=2, min_row=1, max_row=6)
+data = Reference(ws, min_col=2, min_row=1, max_row=6)
 bar.add_data(data, titles_from_data=True)
 bar.set_categories(labels)
 

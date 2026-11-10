@@ -19,11 +19,11 @@ from crabxl.chart import (
 from crabxl.chart.series import DataPoint
 
 data = [
-    ['Pie', 2014, 2015],
-    ['Plain', 40, 50],
-    ['Jam', 2, 10],
-    ['Lime', 20, 30],
-    ['Chocolate', 30, 40],
+    ["Pie", 2014, 2015],
+    ["Plain", 40, 50],
+    ["Jam", 2, 10],
+    ["Lime", 20, 30],
+    ["Chocolate", 30, 40],
 ]
 
 wb = Workbook()

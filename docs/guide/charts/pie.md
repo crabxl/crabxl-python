@@ -15,19 +15,15 @@ data. The title of the chart will default to being the title of the series.
 ```python
 from crabxl import Workbook
 
-from crabxl.chart import (
-    PieChart,
-    ProjectedPieChart,
-    Reference
-)
+from crabxl.chart import PieChart, ProjectedPieChart, Reference
 from crabxl.chart.series import DataPoint
 
 data = [
-    ['Pie', 'Sold'],
-    ['Apple', 50],
-    ['Cherry', 30],
-    ['Pumpkin', 10],
-    ['Chocolate', 40],
+    ["Pie", "Sold"],
+    ["Apple", 50],
+    ["Cherry", 30],
+    ["Pumpkin", 10],
+    ["Chocolate", 40],
 ]
 
 wb = Workbook()
@@ -52,11 +48,11 @@ ws.add_chart(pie, "D1")
 ws = wb.create_sheet(title="Projection")
 
 data = [
-    ['Page', 'Views'],
-    ['Search', 95],
-    ['Products', 4],
-    ['Offers', 0.5],
-    ['Sales', 0.5],
+    ["Page", "Views"],
+    ["Search", 95],
+    ["Products", 4],
+    ["Offers", 0.5],
+    ["Sales", 0.5],
 ]
 
 for row in data:
@@ -64,7 +60,7 @@ for row in data:
 
 projected_pie = ProjectedPieChart()
 projected_pie.type = "pie"
-projected_pie.splitType = "val" # split by value
+projected_pie.splitType = "val"  # split by value
 labels = Reference(ws, min_col=1, min_row=2, max_row=5)
 data = Reference(ws, min_col=2, min_row=1, max_row=5)
 projected_pie.add_data(data, titles_from_data=True)
@@ -73,9 +69,10 @@ projected_pie.set_categories(labels)
 ws.add_chart(projected_pie, "A10")
 
 from copy import deepcopy
+
 projected_bar = deepcopy(projected_pie)
 projected_bar.type = "bar"
-projected_bar.splitType = 'pos' # split by position
+projected_bar.splitType = "pos"  # split by position
 
 ws.add_chart(projected_bar, "A27")
 
@@ -101,17 +98,14 @@ Pie charts can also be created with a 3D effect.
 ```python
 from crabxl import Workbook
 
-from crabxl.chart import (
-    PieChart3D,
-    Reference
-)
+from crabxl.chart import PieChart3D, Reference
 
 data = [
-    ['Pie', 'Sold'],
-    ['Apple', 50],
-    ['Cherry', 30],
-    ['Pumpkin', 10],
-    ['Chocolate', 40],
+    ["Pie", "Sold"],
+    ["Apple", 50],
+    ["Cherry", 30],
+    ["Pumpkin", 10],
+    ["Chocolate", 40],
 ]
 
 wb = Workbook()
@@ -141,25 +135,22 @@ Pie charts can also be created with gradient series.
 ```python
 from crabxl import Workbook
 
-from crabxl.chart import (
-    PieChart,
-    Reference
-)
+from crabxl.chart import PieChart, Reference
 from crabxl.chart.series import DataPoint
 from crabxl.chart.shapes import GraphicalProperties
 from crabxl.drawing.fill import (
     GradientFillProperties,
     GradientStop,
-    LinearShadeProperties
+    LinearShadeProperties,
 )
 from crabxl.drawing.colors import SchemeColor
 
 data = [
-    ['Pie', 'Sold'],
-    ['Apple', 50],
-    ['Cherry', 30],
-    ['Pumpkin', 10],
-    ['Chocolate', 40],
+    ["Pie", "Sold"],
+    ["Apple", 50],
+    ["Cherry", 30],
+    ["Pumpkin", 10],
+    ["Chocolate", 40],
 ]
 
 wb = Workbook()
@@ -182,21 +173,14 @@ slice = DataPoint(
     spPr=GraphicalProperties(
         gradFill=GradientFillProperties(
             gsLst=(
-                GradientStop(
-                    pos=0,
-                    prstClr='blue'
-                ),
+                GradientStop(pos=0, prstClr="blue"),
                 GradientStop(
                     pos=100000,
-                    schemeClr=SchemeColor(
-                        val='accent1',
-                        lumMod=30000,
-                        lumOff=70000
-                    )
-                )
+                    schemeClr=SchemeColor(val="accent1", lumMod=30000, lumOff=70000),
+                ),
             )
         )
-    )
+    ),
 )
 pie.series[0].data_points = [slice]
 

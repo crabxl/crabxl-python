@@ -20,6 +20,7 @@ attribute names, eg. `GraphicalProperties for `spPr` or `line` for `line`.
 
 ```python
 from crabxl.chart.shapes import GraphicalProperties
+
 chart.graphical_properties = GraphicalProperties()
 chart.graphical_properties.noFill = True
 ```
@@ -30,6 +31,7 @@ chart.graphical_properties.noFill = True
 
 ```python
 from crabxl.chart.shapes import GraphicalProperties
+
 chart.graphical_properties = GraphicalProperties()
 chart.graphical_properties.line.noFill = True
 chart.graphical_properties.line.prstDash = None
@@ -76,7 +78,7 @@ text_props = RichText.from_tree(xml)
 highlight = chart.series[2]
 highlight.graphicalProperties.line.prstDash = "solid"
 highlight.graphicalProperties.ln.solidFill = "0070C0"
-highlight.graphicalProperties.line.width = 40000 # make the line thicker than normal
+highlight.graphicalProperties.line.width = 40000  # make the line thicker than normal
 highlight.dLbls = DataLabelList()
 highlight = DataLabel(idx=3, showSerName=True, dLblPos="b", txPr=text_props)
 highlight.dLbls.dLbl.append(label)

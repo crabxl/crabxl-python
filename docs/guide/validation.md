@@ -68,9 +68,7 @@ Any whole number above 100:
 :
 
 ```python
-dv = DataValidation(type="whole",
-                    operator="greaterThan",
-                    formula1=100)
+dv = DataValidation(type="whole", operator="greaterThan", formula1=100)
 ```
 
 Any decimal number:
@@ -84,10 +82,7 @@ Any decimal number between 0 and 1:
 :
 
 ```python
-dv = DataValidation(type="decimal",
-                    operator="between",
-                    formula1=0,
-                    formula2=1)
+dv = DataValidation(type="decimal", operator="between", formula1=0, formula2=1)
 ```
 
 Any date:
@@ -118,9 +113,10 @@ Cell range validation:
 
 ```python
 from crabxl.utils import quote_sheetname
-dv = DataValidation(type="list",
-                    formula1="{0}!$B$1:$B$10".format(quote_sheetname(sheetname))
-                    )
+
+dv = DataValidation(
+    type="list", formula1="{0}!$B$1:$B$10".format(quote_sheetname(sheetname))
+)
 ```
 
 Custom rule:

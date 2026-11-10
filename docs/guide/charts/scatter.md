@@ -21,7 +21,7 @@ wb = Workbook()
 ws = wb.active
 
 rows = [
-    ['Size', 'Batch 1', 'Batch 2'],
+    ["Size", "Batch 1", "Batch 2"],
     [2, 40, 30],
     [3, 40, 25],
     [4, 50, 30],
@@ -36,8 +36,8 @@ for row in rows:
 chart = ScatterChart()
 chart.title = "Scatter Chart"
 chart.style = 13
-chart.x_axis.title = 'Size'
-chart.y_axis.title = 'Percentage'
+chart.x_axis.title = "Size"
+chart.y_axis.title = "Percentage"
 
 xvalues = Reference(ws, min_col=1, min_row=2, max_row=7)
 for i in range(2, 4):

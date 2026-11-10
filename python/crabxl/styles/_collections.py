@@ -17,7 +17,9 @@ class StyleCollection:
             native = value.pop("_native_component", None)
             decoded = component(self.name, value)
             if native is not None:
-                object.__setattr__(decoded, "_native_cache", (decoded._signature(), native))
+                object.__setattr__(
+                    decoded, "_native_cache", (decoded._signature(), native)
+                )
             result.append(decoded)
         return result
 
@@ -73,8 +75,13 @@ class NamedStyleCollection:
         name, builtin, hidden = records[key]
         owner = self.workbook._style_owner()
         identity, number, components = owner.named_style_snapshot(name)
-        style = NamedStyle(name=name, builtinId=builtin, hidden=hidden, number_format=number,
-                           **{name: component(name, value) for name, value in components.items()})
+        style = NamedStyle(
+            name=name,
+            builtinId=builtin,
+            hidden=hidden,
+            number_format=number,
+            **{name: component(name, value) for name, value in components.items()},
+        )
         style._style = StyleArray(owner.style_array(identity))
         style._style.xfId = self.names.index(name)
         style._owner = ref(self.workbook)
