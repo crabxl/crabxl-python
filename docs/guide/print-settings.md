@@ -83,7 +83,7 @@ You can adjust the size and print orientation per sheet of a workbook.
 >>> ws.page_setup.paperSize = ws.PAPERSIZE_A5
 ```
 
-The table size is stored internally as an integer, a number of alias variables are
+The table size is stored internally as an integer, some alias variables are
 also available for common sizes (refer to PAPERSIZE_* in `worksheet` ).
 If you need a non-standard size, a full list can be found by searching `ECMA-376 pageSetup`
 and setting that value as the paperSize

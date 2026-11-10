@@ -99,7 +99,7 @@ anyway).
 >   `append()`. It is not possible to write (or read) cells at
 >   arbitrary locations with `cell()` or `iter_rows()`.
 >
-> * It is able to export unlimited amount of data (even more than Excel can
+> * It can export unlimited amount of data (even more than Excel can
 >   handle actually), while keeping memory usage under 10Mb.
 >
 > * A write-only workbook can only be saved once. After

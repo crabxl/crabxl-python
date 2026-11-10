@@ -59,7 +59,7 @@ Complications arise not only from the different start numbers of the
 reference dates, but also from the fact that the 1900 date system has a
 built-in (but wrong) assumption that the year 1900 had been a leap year.
 Excel deliberately refuses to recognize and display dates before the
-reference date correctly, in order to discourage people from storing
+reference date correctly, to discourage people from storing
 historical data.
 
 More information on this issue is available from Microsoft:

@@ -54,7 +54,7 @@ Table names must be unique within a workbook. By default tables are created with
 > **Warning:** 
 > In write-only mode you must add column headings to tables manually and the values must always be the same as the values of the corresponding cells (ee below for an example of how to do this), otherwise Excel may consider the file invalid and remove the table.
 
-Styles are managed using the the `TableStyleInfo` object. This allows you to
+Styles are managed using the `TableStyleInfo` object. This allows you to
 stripe rows or columns and apply the different colour schemes.
 
 ## Working with Tables

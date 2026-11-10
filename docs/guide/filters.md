@@ -90,11 +90,11 @@ To combine the filters:
 cfs.and_ = True
 ```
 
-In addition, Excel has non-standardised functionality for pattern matching with strings. The options in Excel: begins with, ends with, contains and their negatives are all implemented using the `equal` (or for negatives `notEqual`) operator and wildcard in the value. For this to work properly, the value is always a string.
+In addition, Excel has non-standardised capability for pattern matching with strings. The options in Excel: begins with, ends with, contains and their negatives are all implemented using the `equal` (or for negatives `notEqual`) operator and wildcard in the value. For this to work properly, the value is always a string.
 
 For example: for "begins with a", is actually `a*`; for "ends with a", `*a`; and for "contains a"",  `*a*`. `?` can be used to represent a single character. In regular expressions `*` is called *greedy* and `?` *non-greedy*. Wildcards are escaped with the `~` (tilde) so that `contains ~*`is serialised as `~~~*`.
 
-To simplify creating filters in client code, Openpyxl provides three specialised filters: `NumberFilter`; `BlankFilter` and `StringFilter`. These filters are all used only when **creating** filters. For convenience, you can use the the `CustomFilter.convert()` method to convert from a CustomFilter to a more specific filter.
+To simplify creating filters in client code, Openpyxl provides three specialised filters: `NumberFilter`; `BlankFilter` and `StringFilter`. These filters are all used only when **creating** filters. For convenience, you can use the `CustomFilter.convert()` method to convert from a CustomFilter to a more specific filter.
 
 ## NumberFilters
 
@@ -132,7 +132,7 @@ fil = StringFilter("contains", "xml", exclude=True)
 StringFilters with the wildcard operator are the same as CustomFilters. This allows for allows for more sophisticated uses of the wildcards such as `c?n` which would match the terms `cancan` and `contains`, but not `curtains`; or `c*n` which would match all terms. Openpyxl does **not** escape filters that use the wildcard operator.
 
 > **Note:** 
-> The wildcard syntax allows for even more sophisticated patterns with multiple wildcards. This functionality cannot be easily expressed using StringFilters and is not a design goal.
+> The wildcard syntax allows for even more sophisticated patterns with multiple wildcards. This capability cannot be easily expressed using StringFilters and is not a design goal.
 
 ## DateGroupItem
 
