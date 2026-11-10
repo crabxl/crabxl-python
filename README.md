@@ -21,7 +21,7 @@ use `import crabxl as openpyxl` to migrate compatible code. Processing runs in t
 shared Rust engine; openpyxl is not a runtime dependency.
 
 The public openpyxl 3.1.5 API is supported and the unchanged openpyxl test
-suite passes for it. Before version 1.0, a minor version can change the API. Unsupported operations raise
+suite passes for it. Before version 1.0, a minor version can change the API. Invalid input raises
 explicit errors. Formula calculation is not provided. See the
 [migration guide](docs/migration.md) and [supported features](docs/support.md).
 

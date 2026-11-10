@@ -319,12 +319,6 @@ def test_unused_external_link_removal_keeps_local_formulas_and_structured_names(
     loaded = engine.load_workbook(source, keep_links=False, data_only=data_only)
     loaded.active.title = "Renamed"
     loaded.save(output)
-    if backend == "crabxl":
-        previous = output.read_bytes()
-        loaded.active["B2"] = "=[1]Sheet!A1"
-        with pytest.raises(NotImplementedError, match="retaining formulas"):
-            loaded.save(output)
-        assert output.read_bytes() == previous
     loaded.close()
     with ZipFile(output) as archive:
         assert not any(
@@ -373,30 +367,16 @@ def test_external_links_can_be_removed_from_cached_value_output(
         for name, data in parts.items():
             archive.writestr(name, data)
 
-    with pytest.raises(NotImplementedError, match="retaining formulas"):
-        crabxl.load_workbook(source, keep_links=False)
-    if external_rule:
-        target.write_bytes(b"existing output")
-        with pytest.raises(NotImplementedError, match="worksheet rule"):
-            crabxl.load_workbook(source, data_only=True, keep_links=False)
-        assert target.read_bytes() == b"existing output"
-        return
+    # As in openpyxl, the links are dropped and formulas keep their text.
+    crabxl.load_workbook(source, keep_links=False).close()
     book = crabxl.load_workbook(source, data_only=True, keep_links=False)
     try:
-        book.save(target)
-        saved = target.read_bytes()
         book.defined_names.add(DefinedName("ExternalValue", attr_text="[1]Sheet!$A$1"))
-        with pytest.raises(NotImplementedError, match="defined name"):
-            book.save(target)
-        assert target.read_bytes() == saved
-        del book.defined_names["ExternalValue"]
         chart = BarChart()
         chart.add_data(Reference(book.active, min_col=1, min_row=1, max_row=1))
         chart.series[0].val.numRef.f = "[1]Sheet!$A$1"
         book.active.add_chart(chart)
-        with pytest.raises(NotImplementedError, match="chart"):
-            book.save(target)
-        assert target.read_bytes() == saved
+        book.save(target)
     finally:
         book.close()
     with ZipFile(target) as archive:
@@ -650,7 +630,7 @@ def test_loaded_pivot_full_objects_and_shared_cache_edits(
             check.close()
         original_output = restored.read_bytes()
         pivots[0].cache.cacheFields[1].caption = "Unsupported worksheet caption"
-        with pytest.raises(NotImplementedError, match="cache field captions"):
+        with pytest.raises(ValueError, match="cache field captions"):
             book.save(restored)
         assert restored.read_bytes() == original_output
         pivots[0].cache.cacheFields[1].caption = None

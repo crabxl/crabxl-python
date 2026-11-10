@@ -18,7 +18,6 @@ pub(crate) fn failure(error: Error) -> PyErr {
         source = cause.source();
     }
     match error.kind() {
-        ErrorKind::Unsupported => PyNotImplementedError::new_err(text),
         ErrorKind::MemoryBudgetExceeded => PyMemoryError::new_err(text),
         ErrorKind::SheetNotFound => PyKeyError::new_err(text),
         // PyO3 maps io kinds to FileNotFoundError, PermissionError and so on.

@@ -335,5 +335,8 @@
   "openpyxl/worksheet/tests/test_writer.py::TestWorksheetWriter::test_write_sheet",
   "openpyxl/worksheet/tests/test_writer.py::TestWorksheetWriter::test_write_tail",
   "openpyxl/worksheet/tests/test_writer.py::TestWorksheetWriter::test_write_top"
+ ],
+ "deliberate: abstract classes raise AttributeError, never NotImplementedError": [
+  "openpyxl/chart/tests/test_chart.py::TestChartBase::test_ctor"
  ]
 }

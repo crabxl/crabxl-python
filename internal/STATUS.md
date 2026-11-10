@@ -6,10 +6,8 @@ Replace this file when the status changes. Do not append a history log.
 
 ## Current release
 
-- Nothing is published yet. The next release is `0.1.0`, the first one.
-- The version is `0.1.0`. It pins the core revision
-  `7fee21dafa86cb6c9ac9445283b096d5065225ed` (core `0.1.0`). Push the core
-  before this repository so that the pinned revision resolves.
+- `0.1.0` is published. The version is `0.1.1`. It pins the core revision
+  `9c8f9ee3c7d35197acbb5ca39dab935d0bbddaff` (core `0.1.1`).
 - Wheels: CPython 3.11–3.15 on Linux x86_64 and ARM64, Windows x86_64, and
   macOS Intel and Apple Silicon. Python 3.15 is tested with its release
   candidate.
@@ -62,7 +60,6 @@ changes. They are:
 
 - `.xlsm` and `.xltm` files require `keep_vba=True`.
 - Formulas, chart caches and pivot results are not calculated.
-- Restoring a removed `vba_archive` raises `NotImplementedError`.
 - Row and column dimensions do not support `quotePrefix` and `pivotButton`.
 
 ## Next tasks

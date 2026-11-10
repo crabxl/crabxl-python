@@ -20,7 +20,7 @@ body:
     id: crabxl
     attributes:
       label: CrabXL result
-      description: For example, a NotImplementedError or a different value.
+      description: For example, an error or a different value.
     validations:
       required: true
   - type: input

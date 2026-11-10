@@ -6,6 +6,31 @@ Before version 1.0, a minor version can change the API.
 Each release uses a pinned revision of the Rust core. The core has its own
 [changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).
 
+## [0.1.1]
+
+It uses the Rust core 0.1.1.
+
+### Changed
+
+- CrabXL never raises `NotImplementedError`. Content it does not model is
+  dropped or kept as written when you save, as in openpyxl: signatures of a
+  changed signed file, unknown XML attributes, elements and alternatives, and
+  style extensions. Shared formulas whose first cell you replace become
+  ordinary formulas.
+- `keep_links=False` removes external links without checking formulas, names,
+  rules or charts, as openpyxl does.
+- Copying and removing sheets with unknown content, and editing dialog sheets,
+  now work.
+- Read-only and write-only sheets have the same attributes as in openpyxl.
+
+### Added
+
+- Restoring `vba_archive`, moving and removing write-only sheets, and changing
+  `epoch` and `iso_dates` of a loaded or read-only workbook.
+- Style changes on read-only workbooks, and styles on removed or unattached
+  sheets.
+- Long sheet titles warn as in openpyxl.
+
 ## [0.1.0]
 
 First release. It uses the Rust core 0.1.0.

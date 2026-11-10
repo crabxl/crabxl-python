@@ -40,8 +40,8 @@ public API pass.
   writes the full file again and drops the parts that it does not know.
 - CrabXL keeps the names of VBA, external link and comment parts. It also
   keeps the calculation chain if you do not change formulas.
-- An unsupported call raises `NotImplementedError`. CrabXL does not drop data
-  when you save.
+- When you change a part that holds content CrabXL does not model, that
+  content is dropped on save, as openpyxl does.
 - In write-only mode, set the worksheet views and sheet properties before the
   first `append`.
 - To open an `.xlsm` or `.xltm` file, set `keep_vba=True`.

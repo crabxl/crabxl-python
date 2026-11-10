@@ -5,15 +5,14 @@ This is a development oracle; it is not imported by the CrabXL package.
 """
 
 import argparse
-import re
 import sys
 import warnings
 from datetime import date, time, timedelta
 from itertools import product
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from xml.etree.ElementTree import canonicalize, fromstring, tostring
-from zipfile import BadZipFile, ZipFile
+from xml.etree.ElementTree import canonicalize, tostring
+from zipfile import BadZipFile
 
 import crabxl
 import openpyxl
@@ -23,39 +22,6 @@ def close(book):
     if isinstance(book, openpyxl.Workbook) and book.vba_archive is not None:
         book.vba_archive.close()
     book.close()
-
-
-def unsafe_reference_export(path, output, error, options, data_only=False):
-    if (
-        options["keep_links"]
-        or not isinstance(error, NotImplementedError)
-        or "defined name" not in str(error)
-    ):
-        return []
-    reference = openpyxl.load_workbook(path, data_only=data_only, **options)
-    try:
-        reference.save(output)
-    finally:
-        close(reference)
-    with ZipFile(output) as archive:
-        root = fromstring(archive.read("xl/workbook.xml"))
-    namespace = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
-    slots = len(
-        root.findall(f"{namespace}externalReferences/{namespace}externalReference")
-    )
-    dangling = []
-    for name in root.findall(f"{namespace}definedNames/{namespace}definedName"):
-        tokens = openpyxl.formula.tokenizer.Tokenizer("=" + (name.text or "")).items
-        for token in tokens:
-            match = (
-                re.match(r"^'?\[(\d+)\][^!]*!", token.value)
-                if token.subtype == "RANGE"
-                else None
-            )
-            if match and int(match[1]) > slots:
-                dangling.append(name.get("name"))
-                break
-    return dangling
 
 
 def cell_value(value):
@@ -200,7 +166,7 @@ def main():
     )
     if not files:
         parser.error(f"No workbook fixtures found under {root}")
-    passed = failed = rejected = unsafe = 0
+    passed = failed = rejected = 0
     with (
         TemporaryDirectory(prefix="crabxl-corpus-") as directory,
         warnings.catch_warnings(),
@@ -237,16 +203,6 @@ def main():
                     check_mode(path, coordinates, readonly, dataonly, output, **options)
                     passed += 1
                 except Exception as error:
-                    dangling = unsafe_reference_export(
-                        path, output, error, options, dataonly
-                    )
-                    if dangling:
-                        unsafe += 1
-                        print(
-                            f"REFERENCE_INVALID {label} [{phase}]: dangling external defined names {dangling}; native export rejected",
-                            flush=True,
-                        )
-                        continue
                     failed += 1
                     print(
                         f"FAIL {label} [{phase}]: {type(error).__name__}: {error}",
@@ -258,14 +214,6 @@ def main():
                     check_edit(path, output, **options)
                     passed += 1
                 except Exception as error:
-                    dangling = unsafe_reference_export(path, output, error, options)
-                    if dangling:
-                        unsafe += 1
-                        print(
-                            f"REFERENCE_INVALID {label} [edit {options}]: dangling external defined names {dangling}; native export rejected",
-                            flush=True,
-                        )
-                        continue
                     failed += 1
                     print(
                         f"FAIL {label} [edit {options}]: {type(error).__name__}: {error}",
@@ -273,7 +221,7 @@ def main():
                     )
             print(f"CHECKED {label}", flush=True)
     print(
-        f"{len(files)} fixtures: {passed} public API checks passed, {failed} failed; {unsafe} unsafe reference exports rejected (not passes); {rejected} corrupt ZIP inputs rejected by both implementations"
+        f"{len(files)} fixtures: {passed} public API checks passed, {failed} failed; {rejected} corrupt ZIP inputs rejected by both implementations"
     )
     return bool(failed)
 

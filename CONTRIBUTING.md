@@ -24,8 +24,9 @@ the core to the openpyxl API.
 - If a feature is missing in the core, add it to the core first.
 - `Cargo.toml` pins the core to an exact Git revision. A change that needs a
   new core feature also updates this revision.
-- An unsupported feature raises an explicit error, usually
-  `NotImplementedError`. The package never falls back to openpyxl.
+- Calls follow openpyxl: content the core does not model is dropped, not
+  refused. Never raise `NotImplementedError`. The package never falls back to
+  openpyxl.
 
 ## Repository layout
 

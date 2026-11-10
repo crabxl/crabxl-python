@@ -230,9 +230,11 @@ def test_cell_edits_preserve_unrelated_alternatives_and_reject_hidden_cells(
         if edit:
             book.active["A1"] = 3
         if alternative_cells and (edit or data_only):
-            with pytest.raises(NotImplementedError, match="alternative cell data"):
-                book.save(output)
-            assert output.read_bytes() == b"original output"
+            # The alternative holds cells the edit cannot reach, so it is
+            # dropped as openpyxl does.
+            book.save(output)
+            with zipfile.ZipFile(output) as archive:
+                assert b"AlternateContent" not in archive.read(part)
         else:
             for _ in range(2):
                 book.save(output)
