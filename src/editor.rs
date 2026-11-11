@@ -442,19 +442,23 @@ impl NativeEditor {
                 .map_err(failure)
         })
     }
-    #[pyo3(signature = (path, verify, compression_level=None))]
+    #[pyo3(signature = (path, verify, compression_level=None, calculate=false))]
     pub(crate) fn save(
         &self,
         py: Python<'_>,
         path: PathBuf,
         verify: bool,
         compression_level: Option<u8>,
+        calculate: bool,
     ) -> PyResult<i64> {
         if let Some(loaded) = &self.loaded {
             let loaded = Arc::clone(loaded);
             return py.detach(move || {
                 let mut handle = lock(&loaded)?;
                 let loaded = handle.as_mut().ok_or_else(closed)?;
+                if calculate {
+                    loaded.calculate().map_err(failure)?;
+                }
                 loaded
                     .save_path(
                         path,
@@ -466,6 +470,11 @@ impl NativeEditor {
                     .map_err(failure)?;
                 Ok(loaded.active_view_index())
             });
+        }
+        if calculate {
+            return Err(PyValueError::new_err(
+                "Formula calculation needs a loaded workbook",
+            ));
         }
         let editor = Arc::clone(&self.editor);
         py.detach(move || {

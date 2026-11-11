@@ -6,6 +6,16 @@ Before version 1.0, a minor version can change the API.
 Each release names the Rust core version it uses. The core has its own
 [changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).
 
+## [Unreleased]
+
+### Added
+
+- `Workbook.save(filename, calculate=True)` calculates every formula first
+  and saves each result as the formula's cached value, so programs that read
+  cached values, such as `openpyxl` with `data_only=True` or pandas, see
+  current results. It works for new and loaded workbooks, not write-only
+  ones. Array formulas are not calculated and lose their cached values.
+
 ## [0.1.3]
 
 It uses the Rust core 0.1.3.

@@ -30,4 +30,6 @@ All features are available in normal, read-only and write-only mode. See
 [optimized modes](guide/optimized.md).
 You cannot save a workbook in read-only mode.
 
-CrabXL does not calculate formulas, chart data or pivot table results.
+`wb.save(path, calculate=True)` calculates formulas, except array formulas,
+and saves each result as the cached value that `data_only=True` reads.
+CrabXL does not calculate chart data or pivot table results.

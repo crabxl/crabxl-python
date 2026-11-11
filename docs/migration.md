@@ -53,6 +53,6 @@ public API pass.
 - The private modules and attributes of openpyxl, for example
   `openpyxl.reader.excel.ExcelReader`, `openpyxl.writer.excel`,
   `openpyxl.worksheet._reader` and `cell._style`. The Rust core does this work.
-- Formula calculation. CrabXL does not calculate formulas, chart data or pivot
-  table results. openpyxl does not calculate them either.
+- Chart data and pivot table results are not calculated. Formulas are
+  calculated only when you save with `calculate=True`; openpyxl cannot do this.
 - `quotePrefix` and `pivotButton` on row and column dimensions.

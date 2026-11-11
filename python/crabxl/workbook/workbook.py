@@ -626,7 +626,10 @@ class Workbook:
             defn.value = value
         self.defined_names[name] = defn
 
-    def save(self, filename, *, compression_level=None):
+    def save(self, filename, *, compression_level=None, calculate=False):
+        """Save the workbook. With ``calculate=True``, every formula is
+        calculated first and its result is saved as the cached value, so
+        readers that do not calculate formulas see current results."""
         self._check_open()
         if compression_level is not None:
             if isinstance(compression_level, bool) or not isinstance(
@@ -637,6 +640,8 @@ class Workbook:
                 raise ValueError("Compression level must be between 0 and 9")
         if self.read_only:
             raise TypeError("Workbook is read-only")
+        if calculate and self.write_only:
+            raise ValueError("Write-only workbooks cannot calculate formulas")
         if not isinstance(filename, (str, PathLike)):
             if not callable(getattr(filename, "write", None)):
                 raise TypeError("Expected a path or writable binary stream")
@@ -644,7 +649,9 @@ class Workbook:
 
             with TemporaryDirectory(prefix="crabxl-output-") as directory:
                 path = Path(directory) / "workbook.xlsx"
-                self.save(path, compression_level=compression_level)
+                self.save(
+                    path, compression_level=compression_level, calculate=calculate
+                )
                 with path.open("rb") as source:
                     while chunk := source.read(1024 * 1024):
                         written = filename.write(chunk)
@@ -715,7 +722,9 @@ class Workbook:
                 for sheet in self._sheets:
                     sheet._finished = True
         elif self._editor is not None:
-            self._active = self._editor.save(Path(filename), False, compression_level)
+            self._active = self._editor.save(
+                Path(filename), False, compression_level, calculate
+            )
         else:
             self._book.set_template(self.template)
             self._active = save_models(
@@ -726,6 +735,7 @@ class Workbook:
                 self._book.date_1904(),
                 compression_level,
                 self._book,
+                calculate,
             )
             self._book.set_active_view_index(self._active)
         for sheet, row, column, identity in hyperlink_ids:

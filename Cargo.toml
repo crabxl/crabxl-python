@@ -17,7 +17,7 @@ deflate-zlib-rs = ["crabxl/deflate-zlib-rs"]
 deflate-zlib = ["crabxl/deflate-zlib"]
 
 [dependencies]
-crabxl = { version = "=0.1.3", default-features = false }
+crabxl = { version = "=0.1.3", default-features = false, features = ["calc"] }
 chrono = { version = "0.4", default-features = false }
 pyo3 = { version = "0.30.1", features = ["extension-module"] }
 tempfile = "3.27"
@@ -28,6 +28,12 @@ unsafe_code = "forbid"
 [lints.clippy]
 unwrap_used = "deny"
 expect_used = "deny"
+
+# shortcut: builds against the local crabxl checkout until crabxl-calc is on crates.io.
+[patch.crates-io]
+crabxl = { path = "../crabxl/crates/crabxl" }
+crabxl-core = { path = "../crabxl/crates/crabxl-core" }
+crabxl-xlsx = { path = "../crabxl/crates/crabxl-xlsx" }
 
 [profile.release]
 lto = "thin"

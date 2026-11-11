@@ -199,7 +199,7 @@ pub(crate) fn resolve_model_budget(
     }
 }
 #[pyfunction]
-#[pyo3(signature = (path, sheets, active_sheet=0, iso_dates=false, date_1904=false, compression_level=None, book=None))]
+#[pyo3(signature = (path, sheets, active_sheet=0, iso_dates=false, date_1904=false, compression_level=None, book=None, calculate=false))]
 // Preserve the legacy private binding arguments while accepting its canonical owner.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn save_models(
@@ -211,7 +211,13 @@ pub(crate) fn save_models(
     date_1904: bool,
     compression_level: Option<u8>,
     book: Option<PyRef<'_, NativeBook>>,
+    calculate: bool,
 ) -> PyResult<i64> {
+    if calculate && book.is_none() {
+        return Err(PyValueError::new_err(
+            "Formula calculation needs the workbook",
+        ));
+    }
     let book = book.map(|book| Arc::clone(&book.book));
     let sheets = sheets
         .iter()
@@ -225,7 +231,10 @@ pub(crate) fn save_models(
             ..WriteOptions::default()
         };
         let mut writer = if let Some(book) = &book {
-            let book = lock(book)?;
+            let mut book = lock(book)?;
+            if calculate {
+                crabxl::calculate(&mut book, crabxl::max_threads()).map_err(failure)?;
+            }
             let mut writer = if let Some(catalog) = book.style_catalog() {
                 WorkbookWriter::from_canonical_style_catalog(options, catalog.clone())
             } else {
