@@ -1,6 +1,6 @@
 [package]
 name = "crabxl-python"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 rust-version = "1.99"
 license = "MIT"
@@ -17,7 +17,7 @@ deflate-zlib-rs = ["crabxl/deflate-zlib-rs"]
 deflate-zlib = ["crabxl/deflate-zlib"]
 
 [dependencies]
-crabxl = { version = "=0.2.0", default-features = false, features = ["calc"] }
+crabxl = { version = "=0.2.1", default-features = false, features = ["calc"] }
 chrono = { version = "0.4", default-features = false }
 pyo3 = { version = "0.30.1", features = ["extension-module"] }
 tempfile = "3.27"

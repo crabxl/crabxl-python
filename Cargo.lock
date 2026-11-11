@@ -381,9 +381,9 @@ dependencies = [
 
 [[package]]
 name = "crabxl"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e187051127f8792252aea82a1ed8dea438b06a3306358cb6c1f5634e338bce29"
+checksum = "4760d8ae1c168debe17cc2d9eeecc9884b929b298874668bc1ce6bc23be8a68e"
 dependencies = [
  "crabxl-calc",
  "crabxl-core",
@@ -392,9 +392,9 @@ dependencies = [
 
 [[package]]
 name = "crabxl-calc"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbd9d79345f0109ba21019c97ce6ad042e839fa7352fa92fc402593176277876"
+checksum = "24322981b72dd06f202e0d44f3b48ff4f12e2010a419fdc52692d1751498ca00"
 dependencies = [
  "crabxl-core",
  "formualizer-common",
@@ -405,16 +405,16 @@ dependencies = [
 
 [[package]]
 name = "crabxl-core"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "290c702ca6add266f294329f841ec30eaeb7fdc85ecd1b8054a594945683c038"
+checksum = "f37f30147eaf9991d932f56d84cbb3c9de99580e44d567844b9155973e05564c"
 dependencies = [
  "chrono",
 ]
 
 [[package]]
 name = "crabxl-python"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "chrono",
  "crabxl",
@@ -424,9 +424,9 @@ dependencies = [
 
 [[package]]
 name = "crabxl-xlsx"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acac0b2e8ad128310341fba3761a889fc5ccbf5b6ec1e838e6d0474d31046f63"
+checksum = "920ae9e97686ad809e49d5589a999ae9466ce29b324772b75384a550945a9975"
 dependencies = [
  "core_affinity",
  "crabxl-calc",
