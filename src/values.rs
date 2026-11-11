@@ -5,6 +5,12 @@ pub(crate) type TaggedValue = (String, Py<PyAny>);
 pub(crate) type EncodedValue = (&'static str, Py<PyAny>);
 pub(crate) type DecodedValues = (Vec<Py<PyAny>>, Option<Vec<u32>>);
 pub(crate) type SharedLoaded = Arc<Mutex<Option<LoadedWorkbook<streaming::SharedFile>>>>;
+pyo3::create_exception!(
+    crabxl,
+    LimitExceededError,
+    PyValueError,
+    "A file exceeds a ResourceLimits guard."
+);
 pub(crate) fn failure(error: Error) -> PyErr {
     let mut text = error.to_string();
     let mut source = std::error::Error::source(&error);
@@ -19,6 +25,9 @@ pub(crate) fn failure(error: Error) -> PyErr {
     }
     match error.kind() {
         ErrorKind::MemoryBudgetExceeded => PyMemoryError::new_err(text),
+        ErrorKind::LimitExceeded => LimitExceededError::new_err(
+            text + ". For files you trust, pass limits=\"unlimited\" to load_workbook or set CRABXL_LIMITS=unlimited.",
+        ),
         ErrorKind::SheetNotFound => PyKeyError::new_err(text),
         // PyO3 maps io kinds to FileNotFoundError, PermissionError and so on.
         ErrorKind::Io => io_kind.map_or_else(

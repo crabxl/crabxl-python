@@ -373,3 +373,50 @@ def test_loaded_bank_aggregate_failure_preserves_aliases_source_and_repeat_saves
     with pytest.raises(ValueError, match="closed"):
         native_alias.get(0, 0)
     assert source.read_bytes() == original_bytes
+
+
+def _bomb(path):
+    """A valid workbook with one extra entry that expands about 1000 times."""
+    book = crabxl.Workbook()
+    book.active["A1"] = 1
+    book.save(path)
+    with zipfile.ZipFile(path, "a", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("xl/bomb.xml", b" " * (20 * MIB))
+
+
+def test_limit_presets_stop_and_allow_expansion_bombs(tmp_path, monkeypatch):
+    path = tmp_path / "bomb.xlsx"
+    _bomb(path)
+    with pytest.raises(crabxl.LimitExceededError, match="max_expansion_ratio"):
+        crabxl.load_workbook(path)
+    with pytest.raises(ValueError, match='limits="unlimited"'):
+        crabxl.load_workbook(path, read_only=True)
+    for limits in [
+        "unlimited",
+        crabxl.ResourceLimits.unlimited(),
+        crabxl.ResourceLimits(max_expansion_ratio=10_000),
+    ]:
+        assert crabxl.load_workbook(path, limits=limits).active["A1"].value == 1
+    monkeypatch.setenv("CRABXL_LIMITS", "unlimited")
+    assert crabxl.load_workbook(path).active["A1"].value == 1
+    with pytest.raises(crabxl.LimitExceededError):
+        crabxl.load_workbook(path, limits="strict")
+    with pytest.raises(ValueError):
+        crabxl.load_workbook(path, limits="loose")
+    with pytest.raises(TypeError):
+        crabxl.load_workbook(
+            path, limits="unlimited", resource_options=crabxl.ResourceOptions()
+        )
+
+
+def test_default_limits_open_large_legitimate_values(tmp_path):
+    path = tmp_path / "large.xlsx"
+    text = "測" * 32767
+    book = crabxl.Workbook()
+    book.active["A1"] = text
+    for index in range(1500):
+        book.create_sheet(f"S{index}")
+    book.save(path)
+    loaded = crabxl.load_workbook(path)
+    assert loaded.active["A1"].value == text
+    assert len(loaded.sheetnames) == 1501

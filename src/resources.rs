@@ -72,8 +72,9 @@ pub(crate) struct NativeResources {
 impl NativeResources {
     #[new]
     #[allow(clippy::too_many_arguments)]
-    #[pyo3(signature = (*, limits=None, auto=None, storage="auto", memory_bytes=None, cache_bytes=None, max_temp_bytes=None, max_entries=None, temp_directory=None, max_patch_bytes=None, max_patch_cells=None))]
+    #[pyo3(signature = (*, preset="default", limits=None, auto=None, storage="auto", memory_bytes=None, cache_bytes=None, max_temp_bytes=None, max_entries=None, temp_directory=None, max_patch_bytes=None, max_patch_cells=None))]
     fn new(
+        preset: &str,
         limits: Option<HashMap<String, u64>>,
         auto: Option<HashMap<String, u64>>,
         storage: &str,
@@ -85,12 +86,25 @@ impl NativeResources {
         max_patch_bytes: Option<usize>,
         max_patch_cells: Option<usize>,
     ) -> PyResult<Self> {
-        let mut config = ResourceConfig::default();
+        let mut config = ResourceConfig {
+            limits: match preset {
+                "default" => ResourceLimits::default(),
+                "strict" => ResourceLimits::strict(),
+                "unlimited" => ResourceLimits::unlimited(),
+                _ => {
+                    return Err(PyValueError::new_err(
+                        "Limits preset must be default, strict or unlimited",
+                    ));
+                }
+            },
+            ..Default::default()
+        };
         macro_rules! limits {
             ($name:expr, $value:expr, $($field:ident),+) => {
                 match $name {
                     $(stringify!($field) => config.limits.$field = platform_size($value)?,)+
                     "max_archive_bytes" => config.limits.max_archive_bytes = $value,
+                    "max_expansion_ratio" => config.limits.max_expansion_ratio = $value,
                     "max_total_uncompressed_bytes" => config.limits.max_total_uncompressed_bytes = $value,
                     "max_part_bytes" => config.limits.max_part_bytes = $value,
                     "max_metadata_bytes" => config.limits.max_metadata_bytes = $value,

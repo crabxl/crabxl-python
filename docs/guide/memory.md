@@ -34,9 +34,44 @@ book = load_workbook("input.xlsx", read_only=True, resource_options=options)
 
 - `SharedStringOptions.storage` is `"auto"`, `"memory"` or `"disk"`. With
   `"disk"`, CrabXL keeps the shared text of the workbook in a temporary file.
-- `ResourceLimits` sets limits for the file size, the number of parts and the
-  size of rows and batches.
 - `AutoMemory` calculates a memory limit from the available memory.
+
+## Open untrusted files
+
+CrabXL guards against files built to exhaust memory or CPU: ZIP bombs, deeply
+nested XML and huge XML tokens. The guards apply when you load a workbook, not
+to data you write. The default opens every file Excel writes. Choose another
+preset with `limits`:
+
+```python
+from crabxl import load_workbook
+
+# Uploads from strangers: tighter guards and memory caps.
+book = load_workbook("upload.xlsx", limits="strict")
+# Files you trust: no guards. The memory limit still applies.
+book = load_workbook("trusted.xlsx", limits="unlimited")
+```
+
+For code that cannot pass arguments, such as `pandas.read_excel`, set the
+`CRABXL_LIMITS` environment variable to `strict` or `unlimited`.
+
+A file that exceeds a guard raises `crabxl.LimitExceededError`, a `ValueError`
+whose message names the guard. To change one guard, pass `ResourceLimits`:
+
+```python
+from crabxl import ResourceLimits, load_workbook
+
+book = load_workbook("input.xlsx", limits=ResourceLimits(max_expansion_ratio=1000))
+```
+
+| Guard | Default | `strict` |
+|---|---|---|
+| `max_expansion_ratio` (entries over 1 MiB) | 100 | 100 |
+| `max_total_uncompressed_bytes` | 16 GiB | 1 GiB |
+| `max_part_bytes` | 4 GiB | 256 MiB |
+| `max_archive_entries` | 1,000,000 | 10,000 |
+| `max_xml_depth` | 256 | 256 |
+| `max_xml_event_bytes` | 10 MiB | 1 MiB |
 
 ## Set the compression level
 

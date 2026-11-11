@@ -45,8 +45,16 @@ class AutoMemory:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ResourceLimits:
-    """Read/edit limits. None preserves the canonical Rust or adapter mode default."""
+    """Guards against hostile files when reading and editing.
 
+    The default preset opens every file Excel writes and stops ZIP bombs,
+    deeply nested XML and huge XML tokens. Use ``ResourceLimits.strict()`` for
+    uploads from strangers and ``ResourceLimits.unlimited()`` for files you
+    trust. Fields set to a number override the preset; None keeps it.
+    """
+
+    preset: str = "default"
+    max_expansion_ratio: int | None = None
     input_buffer_bytes: int | None = None
     max_materialized_bytes: int | None = None
     max_archive_bytes: int | None = None
@@ -69,7 +77,41 @@ class ResourceLimits:
     max_batch_bytes: int | None = None
 
     def __post_init__(self):
-        _validate_integers(self)
+        if self.preset not in _PRESETS:
+            raise ValueError("preset must be default, strict or unlimited")
+        _validate_integers(self, [item.name for item in fields(self)][1:])
+
+    @classmethod
+    def strict(cls, **overrides):
+        """Tight guards and memory caps for untrusted uploads."""
+        return cls(preset="strict", **overrides)
+
+    @classmethod
+    def unlimited(cls, **overrides):
+        """No guards, for files you trust. Memory settings still apply."""
+        return cls(preset="unlimited", **overrides)
+
+
+_PRESETS = ("default", "strict", "unlimited")
+
+
+def _limits(value):
+    """Accept a preset name or ResourceLimits; None reads CRABXL_LIMITS."""
+    if value is None:
+        from os import environ
+
+        value = environ.get("CRABXL_LIMITS") or None
+        if value is None:
+            return None
+    if isinstance(value, str):
+        if value not in _PRESETS:
+            raise ValueError(
+                "limits must be default, strict, unlimited or ResourceLimits"
+            )
+        return ResourceLimits(preset=value)
+    if not isinstance(value, ResourceLimits):
+        raise TypeError("limits must be a preset name or ResourceLimits")
+    return value
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -138,8 +180,10 @@ class ResourceOptions:
             or self.limits.max_batch_bytes is not None
         ):
             raise ValueError("Batch limits apply to read_only workbooks")
+        limits = _configured(self.limits)
         return NativeResources(
-            limits=_configured(self.limits),
+            preset=limits.pop("preset"),
+            limits=limits,
             auto=_configured(self.auto_memory)
             if self.auto_memory is not None
             else None,

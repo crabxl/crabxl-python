@@ -8,6 +8,26 @@ Each release names the Rust core version it uses. The core has its own
 
 ## [Unreleased]
 
+### Changed
+
+- Loading no longer stops real workbooks at limits meant for hostile files.
+  The old limits rejected, for example, files with more than 1,024 sheets or
+  16,384 parts, 16 MiB of styles or names, or a cell over 64 KiB. The guards
+  that remain stop ZIP bombs, deeply nested XML and huge XML tokens, and the
+  default opens every file Excel writes.
+
+### Added
+
+- `load_workbook(..., limits=...)` takes `"strict"` for uploads from
+  strangers, `"unlimited"` for files you trust, or a `ResourceLimits`.
+  `ResourceLimits.strict()` and `ResourceLimits.unlimited()` give the presets,
+  and the `CRABXL_LIMITS` environment variable sets the preset for code that
+  cannot pass arguments, such as pandas.
+- `max_expansion_ratio` stops ZIP bombs: an entry larger than 1 MiB may
+  expand at most 100 times.
+- `crabxl.LimitExceededError`, a `ValueError`, says which guard a file
+  exceeded and how to relax it.
+
 ### Fixed
 
 - `iter_rows` with all four limits no longer scans every cell of the sheet,

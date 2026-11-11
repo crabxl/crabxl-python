@@ -30,6 +30,7 @@ from .resources import AutoMemory as AutoMemory
 from .resources import ResourceLimits as ResourceLimits
 from .resources import ResourceOptions as ResourceOptions
 from .resources import SharedStringOptions as SharedStringOptions
+from .utils.exceptions import LimitExceededError as LimitExceededError
 from .workbook.loader import load_workbook as load_workbook
 from .workbook.workbook import Workbook as Workbook
 from .worksheet.worksheet import Worksheet as Worksheet

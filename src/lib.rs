@@ -32,6 +32,10 @@ fn default_style_component<'py>(py: Python<'py>, name: &str) -> PyResult<Bound<'
 #[pymodule]
 fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<NativeSheet>()?;
+    module.add(
+        "LimitExceededError",
+        module.py().get_type::<values::LimitExceededError>(),
+    )?;
     module.add_class::<images::NativeImage>()?;
     module.add_function(wrap_pyfunction!(images::sheet_images_read, module)?)?;
     module.add_class::<streaming::NativeReadStream>()?;

@@ -1,5 +1,7 @@
 """Compatible exception names owned by the optional adapter."""
 
+from .._native import LimitExceededError as LimitExceededError
+
 
 class IllegalCharacterError(ValueError):
     """A cell contains a character forbidden in XML."""

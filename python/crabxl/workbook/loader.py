@@ -8,7 +8,7 @@ from .._native import (
     NativeReader,
     resolve_model_budget,
 )
-from ..resources import ResourceOptions
+from ..resources import ResourceOptions, _limits
 from ..worksheet.worksheet import Worksheet
 from .workbook import Workbook
 
@@ -23,12 +23,21 @@ def load_workbook(
     *,
     max_memory_bytes=None,
     resource_options=None,
+    limits=None,
 ):
-    """Use openpyxl call names; unsupported modes fail rather than change semantics."""
+    """Use openpyxl call names; unsupported modes fail rather than change semantics.
+
+    ``limits`` is "default", "strict", "unlimited" or a ResourceLimits. Without
+    it, the CRABXL_LIMITS environment variable picks the preset.
+    """
     if resource_options is not None and not isinstance(
         resource_options, ResourceOptions
     ):
         raise TypeError("resource_options must be ResourceOptions or None")
+    if limits is not None and resource_options is not None:
+        raise TypeError("Pass limits or resource_options.limits, not both")
+    if resource_options is None and (limits := _limits(limits)) is not None:
+        resource_options = ResourceOptions(limits=limits)
     native_resources = (
         resource_options._native(max_memory_bytes, read_only=bool(read_only))
         if resource_options is not None
