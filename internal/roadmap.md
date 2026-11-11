@@ -1,27 +1,33 @@
 # Roadmap
 
-A12 completed openpyxl 3.1.5 compatibility. A13 (performance and memory) is
-done; the core [roadmap](https://github.com/crabxl/crabxl/blob/main/internal/roadmap.md)
-has the targets and results. Release 0.1.0 is next.
+CrabXL for Python 0.1.1 is the current release. It supports the public
+openpyxl 3.1.5 API. The Rust core has its own
+[roadmap](https://github.com/crabxl/crabxl/blob/main/internal/roadmap.md).
 
-## A13 in this repository (done)
+## Released
 
-- Rows of plain values (`None`, `bool`, `int`, `float`, `str` and naive date
-  and time values) are converted in Rust when appended. Other values use the
-  Python conversion, so errors are unchanged.
-- Appending to a loaded sheet that Python has not read yet does not load the
-  sheet; the core streams the rows on save.
-- 100,000-row write: 1.79 s to 0.89 s. Edit of 1,000,000 rows: 34 s to 16.6 s.
+- 0.1.0: the openpyxl API in normal, read-only and write-only modes.
+- 0.1.1: no call raises `NotImplementedError`. Content that CrabXL does not
+  model is dropped or kept as written when you save, as in openpyxl. See the
+  [changelog](../CHANGELOG.md).
 
-The package pins the core `0.1.0` revision. Push the core first so that the
-pinned revision resolves.
+## Next
 
-## Optional: benchmark results
+1. Publish benchmark results. Run the Python suite in crabxl-benchmarks on an
+   idle computer and commit the results there.
+2. Remove private helpers such as `_address` and `_decode` from the package
+   namespace.
+3. Shorten the README now that docs.crabxl.com has the guides.
 
-Run the Python suite in crabxl-benchmarks on an idle computer and commit the
-results there. This is
-not needed for 0.1.0.
+## Not provided
 
-## 0.1.0
+- Formula calculation. CrabXL keeps the cached results that Excel saved.
+- Legacy `.xls` and binary `.xlsb` files.
 
-Release `0.1.0` with the core `0.1.0`. See `internal/releases.md`.
+## Performance measurements
+
+Measured before 0.1.0 on one Windows computer. These are development
+measurements, not published benchmarks.
+
+- Write of 100,000 rows: 1.79 s before the work, 0.89 s after.
+- Edit of 1,000,000 rows: 34 s before the work, 16.6 s after.
