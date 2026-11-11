@@ -6,6 +6,23 @@ Before version 1.0, a minor version can change the API.
 Each release names the Rust core version it uses. The core has its own
 [changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).
 
+## [0.1.3]
+
+It uses the Rust core 0.1.3.
+
+### Changed
+
+- Large worksheets are read and saved on several CPUs. On 12 CPUs, the
+  1,000,001-row sheet reads in read-only mode in about 5.2 s instead of
+  10.3 s, and saving an edited medium workbook takes 0.83 s instead of
+  1.35 s. Values do not change. Set `CRABXL_MAX_THREADS` to use fewer
+  threads; 1 keeps all work on the calling thread.
+
+### Security
+
+- The Rust core uses zip 9. Earlier versions accept archives whose local file
+  headers disagree with the central directory (GHSA-m665-v7pm-7grj).
+
 ## [0.1.2]
 
 It uses the Rust core 0.1.2.
@@ -83,4 +100,7 @@ First release. It uses the Rust core 0.1.0.
 - The user guide, adapted from the openpyxl documentation, and pages for
   memory limits, migration, supported features and compatibility.
 
+[0.1.3]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.3
+[0.1.2]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.2
+[0.1.1]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.1
 [0.1.0]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.0
