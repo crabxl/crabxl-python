@@ -1,10 +1,12 @@
 name: Release Python
 
-# Push a version tag, for example 0.1.0, to release that commit.
+# A push to main whose version has no tag yet releases that commit. The tag
+# and the GitHub release are created after publishing. Run the workflow
+# manually to resume an interrupted release.
 on:
   push:
-    tags:
-      - '[0-9]+.[0-9]+.[0-9]+'
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,6 +19,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     outputs:
+      release: ${{ steps.request.outputs.release }}
       version: ${{ steps.request.outputs.version }}
       notes: ${{ steps.request.outputs.notes }}
     steps:
@@ -29,7 +32,7 @@ jobs:
       - run: pip install 'ruff>=0.16.10,<0.17'
       - run: ruff format --check .
       - run: ruff check .
-      - name: Validate the tag, the committed version and the changelog
+      - name: Check the committed version and its changelog section
         id: request
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
@@ -37,6 +40,7 @@ jobs:
 
   package:
     needs: validate
+    if: needs.validate.outputs.release == 'true'
     runs-on: ${{ matrix.platform.runner }}
     strategy:
       fail-fast: false
@@ -101,6 +105,7 @@ jobs:
 
   source:
     needs: validate
+    if: needs.validate.outputs.release == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -176,6 +181,6 @@ jobs:
           if gh release view "$RELEASE_VERSION" > /dev/null 2>&1; then
             gh release upload "$RELEASE_VERSION" dist/* --clobber
           else
-            gh release create "$RELEASE_VERSION" dist/* --verify-tag \
+            gh release create "$RELEASE_VERSION" dist/* --target "$GITHUB_SHA" \
               --title "$RELEASE_VERSION" --notes-file "$RUNNER_TEMP/release-notes.md"
           fi

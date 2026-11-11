@@ -1,16 +1,8 @@
 # Roadmap
 
-CrabXL for Python 0.1.2 is the current release. It supports the public
-openpyxl 3.1.5 API. The Rust core has its own
+CrabXL for Python supports the public openpyxl 3.1.5 API. Each release and its
+changes are in the [changelog](../CHANGELOG.md). The Rust core has its own
 [roadmap](https://github.com/crabxl/crabxl/blob/main/internal/roadmap.md).
-
-## Released
-
-- 0.1.0: the openpyxl API in normal, read-only and write-only modes.
-- 0.1.1: no call raises `NotImplementedError`. Content that CrabXL does not
-  model is dropped or kept as written when you save, as in openpyxl. See the
-  [changelog](../CHANGELOG.md).
-- 0.1.2: faster import and faster reads.
 
 ## Next
 

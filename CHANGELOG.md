@@ -3,7 +3,7 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Before version 1.0, a minor version can change the API.
 
-Each release uses a pinned revision of the Rust core. The core has its own
+Each release names the Rust core version it uses. The core has its own
 [changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).
 
 ## [0.1.2]

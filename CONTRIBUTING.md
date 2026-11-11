@@ -65,6 +65,15 @@ The editable install builds the native extension. After you change Rust code in
 maturin develop --release
 ```
 
+The Rust core comes from crates.io. To build against a local checkout of
+[crabxl](https://github.com/crabxl/crabxl) instead, create
+`.cargo/config.toml` (Git ignores it):
+
+```toml
+[patch.crates-io]
+crabxl = { path = "../crabxl/crates/crabxl" }
+```
+
 ## Checks
 
 CI runs these checks. Run them before you open a pull request:

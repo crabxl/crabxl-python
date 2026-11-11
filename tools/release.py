@@ -1,4 +1,4 @@
-"""Prepare and validate manually numbered Python releases (X.Y.Z)."""
+"""Prepare and validate Python releases (X.Y.Z)."""
 
 import argparse
 import re
@@ -53,16 +53,63 @@ def validate(version, history=True):
     source = (ROOT / "python/crabxl/__init__.py").read_text()
     if f'__version__ = "{version}"' not in source:
         raise ValueError("Update the public Python __version__")
-    if not re.fullmatch(r"[0-9a-f]{40}", cargo["dependencies"]["crabxl"]["rev"]):
-        raise ValueError("Pin a full canonical Rust core commit")
+    core = cargo["dependencies"]["crabxl"]
+    if (
+        set(core) & {"git", "path", "rev", "branch", "tag"}
+        or not PATTERN.fullmatch(core.get("version", "").removeprefix("="))
+        or not core["version"].startswith("=")
+    ):
+        raise ValueError("Require an exact crates.io version of the Rust core")
     if history:
         check_history(version)
     return version
 
 
-def prepare(version):
+def name_changelog_section(version, core):
+    """Rename the Unreleased section of CHANGELOG.md and name the core it uses."""
+    path = ROOT / "CHANGELOG.md"
+    text = path.read_text(encoding="utf-8")
+    if re.search(rf"^## \[{re.escape(version)}\]", text, re.M):
+        return
+    match = re.search(
+        r"^## \[Unreleased\][^\n]*\n(.*?)(?=^## \[|\Z)", text, re.S | re.M
+    )
+    if not match or not match[1].strip():
+        raise ValueError("Describe the changes under ## [Unreleased] in CHANGELOG.md")
+    body = match[1].lstrip("\n")
+    path.write_text(
+        text[: match.start()]
+        + f"## [{version}]\n\nIt uses the Rust core {core}.\n\n"
+        + body
+        + text[match.end() :],
+        encoding="utf-8",
+    )
+
+
+def prepare(version, core=None):
     if not PATTERN.fullmatch(version):
         raise ValueError("Expected X.Y.Z without leading zeros")
+    core = core or version
+    if not PATTERN.fullmatch(core):
+        raise ValueError("Expected a core version X.Y.Z")
+    name_changelog_section(version, core)
+    path = ROOT / "Cargo.toml"
+    text, count = re.subn(
+        r'(?m)^(crabxl = \{ version = ")=[^"]+(")', rf"\g<1>={core}\2", path.read_text()
+    )
+    if count != 1:
+        raise ValueError("Expected one crabxl dependency in Cargo.toml")
+    path.write_text(text)
+    path = ROOT / ".github/ISSUE_TEMPLATE/bug_report.yml"
+    text, count = re.subn(
+        r"(?m)^(\s+placeholder: )[0-9]+\.[0-9]+\.[0-9]+$",
+        rf"\g<1>{version}",
+        path.read_text(encoding="utf-8"),
+        count=1,
+    )
+    if count != 1:
+        raise ValueError("Expected a version placeholder in the bug report form")
+    path.write_text(text, encoding="utf-8")
     for filename, key in (
         ("Cargo.toml", "version"),
         ("pyproject.toml", "version"),
@@ -75,6 +122,7 @@ def prepare(version):
         if count != 1:
             raise ValueError(f"Expected one {key} in {filename}")
         path.write_text(text)
+    # Fails when the core version is not on crates.io yet.
     subprocess.run(["cargo", "update", "--workspace"], cwd=ROOT, check=True)
     validate(version)
 
@@ -83,7 +131,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("prepare", "check"))
     parser.add_argument("version")
+    parser.add_argument(
+        "--core", help="the Rust core version on crates.io (default: the same version)"
+    )
     args = parser.parse_args()
     if args.command == "prepare":
-        prepare(args.version)
+        prepare(args.version, args.core)
     print(validate(args.version))

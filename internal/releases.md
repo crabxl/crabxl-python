@@ -2,33 +2,30 @@
 
 Versions are `X.Y.Z`, the same string for Cargo, PyPI and the Git tag. Before
 1.0, a minor version can change the API. Only tested, usable changes get a
-release. The package numbers its releases independently from the Rust core and
-pins a verified core commit in Cargo.toml.
+release. Each release depends on an exact Rust core version from crates.io.
 
-## Prepare the committed version
-
-Push the core commit first, so that the pinned revision resolves. Then run:
-
-```sh
-python tools/release.py prepare 0.1.0
-```
-
-The helper sets the Cargo version, the Python version, `__version__` and
-Cargo.lock. It does not commit, tag or publish. Review and commit the version
-with a changelog entry for it.
+Describe every change under `## [Unreleased]` in `CHANGELOG.md` as you make it.
 
 ## Release
 
-After the version commit is on `main`, tag it and push the tag:
+Release the Rust core first when this release needs a new core. Then run:
 
 ```sh
-git tag 0.1.0
-git push origin 0.1.0
+python tools/release.py prepare 0.1.3
 ```
 
-The tag starts the release workflow. It checks that the tag matches the
-committed version, that the tagged commit is on `main` and that `CHANGELOG.md`
-has a section for the version. That section becomes the release notes.
+This sets the Cargo version, the Python version, `__version__`, the core
+dependency (the same version by default; pass `--core 0.1.4` for another) and
+Cargo.lock, renames `## [Unreleased]` to `## [0.1.3]` with the core version,
+and updates the bug report form. It fails when the core version is not on
+crates.io yet. Review the changes, commit them as `Release 0.1.3` and push to
+`main`. Nothing else is manual.
+
+The **Release Python** workflow runs on every push to `main`. When the
+committed version has no tag yet, it builds and tests every wheel and the
+sdist, publishes them to PyPI, and then creates the tag and the GitHub release
+on that commit. The changelog section becomes the release notes. Pushes whose
+version already has a tag stop after the version check.
 
 ## PyPI Trusted Publisher configuration
 
@@ -73,14 +70,14 @@ included.
 
 After every build and test job passes, the workflow checks all 26 artifacts,
 their versions and any existing PyPI file hashes, then publishes with
-`pypa/gh-action-pypi-publish` through OIDC. It then creates the GitHub release
-for the tag with all 26 files.
+`pypa/gh-action-pypi-publish` through OIDC. It then creates the tag and the
+GitHub release with all 26 files.
 
 If an upload or the GitHub release step fails, rerun the failed jobs of the same
-workflow run. Identical PyPI files are skipped; different file hashes and tags
-at another commit are rejected. PyPI publication cannot be undone and can
-partly succeed before a later step fails. Do not move tags or raise the version
-only to hide an interrupted release.
+workflow run, or run the workflow manually on `main`. Identical PyPI files are
+skipped; different file hashes are rejected. PyPI publication cannot be undone
+and can partly succeed before a later step fails. Do not move tags or raise the
+version only to hide an interrupted release.
 
 ## Python quality checks
 
@@ -88,7 +85,3 @@ CI and release validation require `ruff format --check .` and `ruff check .`.
 Install the `dev` extra for Ruff. The configuration targets Python 3.11. The
 three provenance-tracked upstream test files are excluded from Ruff so that
 their reference bodies stay unchanged; they still run in every test job.
-
-Wheels are built with the latest stable Rust toolchain (currently 1.99).
-Installing a wheel does not need Rust. Source builds need Rust 1.99 or newer.
-The core crate's minimum Rust version is 1.88.

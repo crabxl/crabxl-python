@@ -1,4 +1,6 @@
 /target/
+# Local overrides, such as a path to a core checkout.
+/.cargo/
 /dist/
 /.venv/
 __pycache__/
