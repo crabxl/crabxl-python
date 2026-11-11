@@ -1,0 +1,43 @@
+# Weekly dependency updates, grouped into one pull request per ecosystem.
+# New versions wait 7 days before Dependabot proposes them; security updates
+# do not wait.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    labels: [dependencies]
+    ignore:
+      # tools/release.py sets the core version for each release.
+      - dependency-name: crabxl
+    groups:
+      cargo:
+        patterns: ["*"]
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    labels: [dependencies]
+    ignore:
+      # The compatibility target.
+      - dependency-name: openpyxl
+    groups:
+      python:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/setup-supported-python
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    labels: [dependencies, ci]
+    groups:
+      actions:
+        patterns: ["*"]
