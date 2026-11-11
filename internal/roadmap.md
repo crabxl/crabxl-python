@@ -1,6 +1,6 @@
 # Roadmap
 
-CrabXL for Python 0.1.1 is the current release. It supports the public
+CrabXL for Python 0.1.2 is the current release. It supports the public
 openpyxl 3.1.5 API. The Rust core has its own
 [roadmap](https://github.com/crabxl/crabxl/blob/main/internal/roadmap.md).
 
@@ -10,14 +10,13 @@ openpyxl 3.1.5 API. The Rust core has its own
 - 0.1.1: no call raises `NotImplementedError`. Content that CrabXL does not
   model is dropped or kept as written when you save, as in openpyxl. See the
   [changelog](../CHANGELOG.md).
+- 0.1.2: faster import and faster reads.
 
 ## Next
 
-1. Publish benchmark results. Run the Python suite in crabxl-benchmarks on an
-   idle computer and commit the results there.
-2. Remove private helpers such as `_address` and `_decode` from the package
+1. Remove private helpers such as `_address` and `_decode` from the package
    namespace.
-3. Shorten the README now that docs.crabxl.com has the guides.
+2. Shorten the README now that docs.crabxl.com has the guides.
 
 ## Not provided
 

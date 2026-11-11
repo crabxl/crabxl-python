@@ -6,7 +6,9 @@ Before version 1.0, a minor version can change the API.
 Each release uses a pinned revision of the Rust core. The core has its own
 [changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).
 
-## [Unreleased]
+## [0.1.2]
+
+It uses the Rust core 0.1.2.
 
 ### Changed
 
@@ -14,8 +16,9 @@ Each release uses a pinned revision of the Rust core. The core has its own
   support load on first use, so reading cell values never imports them.
 - Reading values is faster, most of all in read-only mode. Numbers, text,
   booleans and dates become Python objects in Rust, and read-only sheets hand
-  rows to Python in batches. A 1,000,001-row sheet reads in read-only mode in
-  about 13 s instead of 15.5 s on one CPU.
+  rows to Python in batches. With the faster cell reading of core 0.1.2, a
+  1,000,001-row sheet reads in read-only mode in about 11.4 s instead of
+  15.5 s on one CPU.
 
 ## [0.1.1]
 

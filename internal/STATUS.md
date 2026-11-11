@@ -6,8 +6,8 @@ Replace this file when the status changes. Do not append a history log.
 
 ## Current release
 
-- `0.1.1` is published. It pins the core revision
-  `9c8f9ee3c7d35197acbb5ca39dab935d0bbddaff` (core `0.1.1`).
+- `0.1.2` is published. It pins the core revision
+  `078153c25330e6e189ed1b89f68f8d415b31c1bb` (core `0.1.2`).
 - Wheels: CPython 3.11–3.15 on Linux x86_64 and ARM64, Windows x86_64, and
   macOS Intel and Apple Silicon. Python 3.15 is tested with its release
   candidate.
