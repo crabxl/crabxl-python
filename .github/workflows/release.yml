@@ -2,11 +2,17 @@ name: Release Python
 
 # A push to main whose version has no tag yet releases that commit. The tag
 # and the GitHub release are created after publishing. Run the workflow
-# manually to resume an interrupted release.
+# manually to resume an interrupted release. When nothing since the previous
+# release changes the native build, the release reuses its compiled modules.
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      rebuild:
+        description: Compile every wheel even when the previous ones fit
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -22,6 +28,7 @@ jobs:
       release: ${{ steps.request.outputs.release }}
       version: ${{ steps.request.outputs.version }}
       notes: ${{ steps.request.outputs.notes }}
+      reuse: ${{ steps.request.outputs.reuse }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -36,11 +43,12 @@ jobs:
         id: request
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          REBUILD: ${{ inputs.rebuild }}
         run: python tools/release_tag.py
 
   package:
     needs: validate
-    if: needs.validate.outputs.release == 'true'
+    if: needs.validate.outputs.release == 'true' && needs.validate.outputs.reuse == ''
     runs-on: ${{ matrix.platform.runner }}
     strategy:
       fail-fast: false
@@ -103,6 +111,64 @@ jobs:
           path: dist/*.whl
           if-no-files-found: error
 
+  repack:
+    needs: validate
+    if: needs.validate.outputs.release == 'true' && needs.validate.outputs.reuse != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+      - run: pip install 'maturin>=1.15,<2'
+      - run: maturin sdist --out new
+      - name: Download the wheels of the previous release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REUSE: ${{ needs.validate.outputs.reuse }}
+        run: gh release download "$REUSE" --pattern '*.whl' --dir old
+      - run: python tools/repack_wheels.py repack old new
+      - uses: actions/upload-artifact@v7
+        with:
+          name: repacked-wheels
+          path: new/*.whl
+          if-no-files-found: error
+
+  test-repacked:
+    needs: repack
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { name: linux-x86_64, runner: ubuntu-24.04, wheels: '*manylinux*_x86_64.whl' }
+          - { name: linux-aarch64, runner: ubuntu-24.04-arm, wheels: '*manylinux*_aarch64.whl' }
+          - { name: windows-x86_64, runner: windows-latest, wheels: '*win_amd64.whl' }
+          - { name: macos-x86_64, runner: macos-15-intel, wheels: '*macosx*_x86_64.whl' }
+          - { name: macos-arm64, runner: macos-15, wheels: '*macosx*_arm64.whl' }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-supported-python
+        id: pythons
+      - uses: actions/download-artifact@v8
+        with:
+          name: repacked-wheels
+          path: all
+      - name: Keep this platform's wheels
+        shell: bash
+        run: mkdir dist && cp all/${{ matrix.platform.wheels }} dist/
+      - name: Test all five installed CPython wheels
+        env:
+          PYTHON_PATHS: ${{ toJSON(steps.pythons.outputs) }}
+        run: python tools/platform_wheels.py test
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-wheel-${{ matrix.platform.name }}
+          path: dist/*.whl
+          if-no-files-found: error
+
   source:
     needs: validate
     if: needs.validate.outputs.release == 'true'
@@ -124,7 +190,12 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: [validate, package, source]
+    needs: [validate, package, test-repacked, source]
+    # One of package and test-repacked runs; the other is skipped.
+    if: >-
+      always() && needs.validate.outputs.release == 'true'
+      && needs.source.result == 'success'
+      && (needs.package.result == 'success' || needs.test-repacked.result == 'success')
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -154,6 +225,7 @@ jobs:
 
   release:
     needs: [validate, publish]
+    if: always() && needs.publish.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write

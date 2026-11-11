@@ -27,6 +27,22 @@ sdist, publishes them to PyPI, and then creates the tag and the GitHub release
 on that commit. The changelog section becomes the release notes. Pushes whose
 version already has a tag stop after the version check.
 
+## Python-only releases
+
+The Python version is separate from the Rust core version. To release Python
+changes on the same core, run `python tools/release.py prepare 0.2.1 --core
+0.2.0`.
+
+When nothing since the previous release tag changes the native build (only
+`python/`, `tests/`, `docs/`, `internal/`, `tools/`, `.github/`, the Markdown
+files and the version fields of `Cargo.toml`, `Cargo.lock` and
+`pyproject.toml`), the workflow skips compiling. It downloads the previous
+release's wheels, keeps their native module and SBOM, and replaces the Python
+files and metadata with those of the new sdist
+(`tools/repack_wheels.py`). All 25 wheels still run the full test suite on
+their platforms. Such a release takes minutes instead of about half an hour.
+Run the workflow manually with **rebuild** checked to compile anyway.
+
 ## PyPI Trusted Publisher configuration
 
 Create a pending publisher for the first upload, or add a publisher to the

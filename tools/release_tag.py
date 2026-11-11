@@ -12,6 +12,7 @@ import tomllib
 import uuid
 
 from release import ROOT, run, validate
+from repack_wheels import reusable
 
 
 def notes(version):
@@ -48,8 +49,13 @@ def main():
         ["git", "merge-base", "--is-ancestor", "HEAD", f"origin/{branch}"], cwd=ROOT
     ).returncode:
         raise ValueError(f"Release a commit that is on {branch}")
-    output(release="true", version=version, notes=notes(version))
-    print(f"Releasing {version}")
+    # A manual run with rebuild set compiles every wheel even when it could reuse one.
+    reuse = "" if os.environ.get("REBUILD") == "true" else reusable(version) or ""
+    output(release="true", version=version, notes=notes(version), reuse=reuse)
+    print(
+        f"Releasing {version}"
+        + (f" with the native modules of {reuse}" if reuse else "")
+    )
 
 
 if __name__ == "__main__":
