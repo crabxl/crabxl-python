@@ -26,7 +26,7 @@ def _tree(fields):
 
 
 def _notify(value):
-    _sync(list(getattr(value, "_listeners", {}).values()))
+    _sync(list((getattr(value, "_listeners", None) or {}).values()))
 
 
 def _sync(values):

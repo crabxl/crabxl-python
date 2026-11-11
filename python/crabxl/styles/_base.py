@@ -10,6 +10,15 @@ class StyleValue:
     _fields = ()
     _aliases = {}
     _children = ()
+    _field_set = frozenset()
+    # Class defaults keep these lookups off the raising __getattr__ path.
+    _revision = 0
+    _listeners = None
+    _native_cache = None
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls._field_set = frozenset(cls._fields)
 
     def __repr__(self):
         from .differential import _convert
@@ -44,12 +53,16 @@ class StyleValue:
 
     def __setattr__(self, name, value):
         name = self._aliases.get(name, name)
-        if name not in self._fields:
+        if name not in self._field_set:
             raise AttributeError(name)
+        if not self._listeners:
+            object.__setattr__(self, name, value)
+            object.__setattr__(self, "_revision", self._revision + 1)
+            return
         old = getattr(self, name, None)
         object.__setattr__(self, name, value)
-        object.__setattr__(self, "_revision", getattr(self, "_revision", 0) + 1)
-        if getattr(self, "_listeners", None):
+        object.__setattr__(self, "_revision", self._revision + 1)
+        if self._listeners:
             from ..cell.rich_text import _notify
 
             try:
@@ -93,7 +106,7 @@ class StyleValue:
         return result
 
     def _signature(self):
-        revision = getattr(self, "_revision", 0)
+        revision = self._revision
         if not self._children:
             return revision
         return (
@@ -103,7 +116,7 @@ class StyleValue:
 
     def _native(self):
         key = self._signature()
-        cached = getattr(self, "_native_cache", None)
+        cached = self._native_cache
         if cached is None or cached[0] != key:
             component_name = self._component
             cached = (key, make_style_component(component_name, self._mapping()))
@@ -194,36 +207,13 @@ def _from_xml_style(value):
     return value
 
 
-def color_from_native(values):
-    """Materialize a validated native color without repeating input validation."""
-    from .colors import Color
-
-    if values is None:
-        return None
-    result = Color.__new__(Color)
-    result.__dict__.update(values)
-    return result
-
-
-def font_from_native(values, font_type=None):
-    """Share trusted component/run conversion while preserving public defaults."""
-    from .fonts import Font
-
-    if font_type is None:
-        font_type = Font
-    result = font_type.__new__(font_type)
-    result.__dict__.update(values)
-    object.__setattr__(result, "b", bool(values["b"]))
-    object.__setattr__(result, "i", bool(values["i"]))
-    object.__setattr__(result, "color", color_from_native(values["color"]))
-    return result
-
-
-def component(name, values):
-    """Decode a borrowed native component into a small public value."""
+@cache
+def _classes():
     from . import (
         Alignment,
         Border,
+        Color,
+        Font,
         GradientFill,
         PatternFill,
         Protection,
@@ -231,30 +221,81 @@ def component(name, values):
     )
     from .fills import Stop
 
-    def decode_color(item):
-        return color_from_native(item)
+    return (
+        Alignment,
+        Border,
+        Color,
+        Font,
+        GradientFill,
+        PatternFill,
+        Protection,
+        Side,
+        Stop,
+    )
 
-    values = dict(values)
+
+def _trusted(cls, values):
+    """Build a style value from validated native fields, skipping the setters."""
+    result = cls.__new__(cls)
+    result.__dict__.update(values)
+    return result
+
+
+def color_from_native(values):
+    """Materialize a validated native color without repeating input validation."""
+    return None if values is None else _trusted(_classes()[2], values)
+
+
+def _color_or_default(values):
+    if values is None:
+        values = {"type": "rgb", "value": "00000000", "tint": 0.0}
+    return _trusted(_classes()[2], values)
+
+
+def font_from_native(values, font_type=None):
+    """Share trusted component/run conversion while preserving public defaults."""
+    result = _trusted(font_type or _classes()[3], values)
+    result.__dict__.update(
+        b=bool(values["b"]),
+        i=bool(values["i"]),
+        color=color_from_native(values["color"]),
+    )
+    return result
+
+
+def component(name, values):
+    """Decode a native component into a small public value."""
+    Alignment, Border, _, _, GradientFill, PatternFill, Protection, Side, Stop = (
+        _classes()
+    )
     if name == "font":
         return font_from_native(values)
+    values = dict(values)
     if name == "border":
-        for field in ("diagonalUp", "diagonalDown", "outline"):
+        # The same defaults as Border().
+        for field, default in (
+            ("diagonalUp", False),
+            ("diagonalDown", False),
+            ("outline", True),
+        ):
             if values[field] is None:
-                del values[field]
-        for edge in Border._fields[:9]:
+                values[field] = default
+        for edge in Border._children:
             item = values[edge]
             if item is not None:
-                values[edge] = Side(
-                    style=item["style"], color=decode_color(item["color"])
+                values[edge] = _trusted(
+                    Side,
+                    {"style": item["style"], "color": color_from_native(item["color"])},
                 )
-        return Border(**values)
+        return _trusted(Border, values)
     if name == "fill":
         if "patternType" in values:
-            for field in ("fgColor", "bgColor"):
-                values[field] = decode_color(values[field])
-            return PatternFill(**values)
+            # The same defaults as PatternFill().
+            values["fgColor"] = _color_or_default(values["fgColor"])
+            values["bgColor"] = _color_or_default(values["bgColor"])
+            return _trusted(PatternFill, values)
         values["stop"] = [
-            Stop(decode_color(item["color"]), item["position"])
+            Stop(color_from_native(item["color"]), item["position"])
             for item in values["stop"]
         ]
         for field in ("degree", "left", "right", "top", "bottom"):
@@ -267,9 +308,9 @@ def component(name, values):
         for field in ("textRotation", "indent", "relativeIndent", "readingOrder"):
             if values[field] is None:
                 values[field] = 0
-        return Alignment(**values)
+        return _trusted(Alignment, values)
     if name == "protection":
-        return Protection(**values)
+        return _trusted(Protection, values)
     raise ValueError("Unknown style component")
 
 

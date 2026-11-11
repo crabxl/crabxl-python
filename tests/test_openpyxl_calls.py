@@ -216,3 +216,16 @@ def test_removed_and_unattached_sheets_keep_working(tmp_path, loaded):
     assert unattached["A1"].font.bold
     book.save(tmp_path / "out.xlsx")
     assert "Two" not in openpyxl.load_workbook(tmp_path / "out.xlsx").sheetnames
+
+
+def test_save_replaces_a_file_another_workbook_has_open(tmp_path):
+    path = tmp_path / "book.xlsx"
+    first = crabxl.Workbook()
+    first.active["A1"] = 1
+    first.save(path)
+    loaded = crabxl.load_workbook(path)
+    second = crabxl.Workbook()
+    second.active["A1"] = 2
+    second.save(path)
+    assert loaded.active["A1"].value == 1
+    assert crabxl.load_workbook(path).active["A1"].value == 2

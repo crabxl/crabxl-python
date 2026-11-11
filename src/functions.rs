@@ -269,9 +269,12 @@ pub(crate) fn save_models(
             .tempfile_in(parent)
             .map_err(PyErr::from)?;
         writer.finish(&mut temporary).map_err(failure)?;
-        temporary
-            .persist(path)
-            .map_err(|error| PyOSError::new_err(error.error.to_string()))?;
+        let temporary = temporary.into_temp_path();
+        // Unlike tempfile's persist, std::fs::rename replaces a target that a
+        // loaded workbook still has open on Windows.
+        std::fs::rename(&temporary, path).map_err(PyErr::from)?;
+        // The file is gone from its temporary path, so nothing is left to delete.
+        let _ = temporary.keep();
         Ok(active_after)
     })
 }

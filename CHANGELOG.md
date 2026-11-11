@@ -19,6 +19,12 @@ Each release names the Rust core version it uses. The core has its own
   `cell.value` no longer imports modules, `ws.cell(row, column, value)`
   writes the cell once instead of twice, and checking text for illegal
   characters no longer loops over every character in Python.
+- Reading a cell's font, fill, border, alignment or protection took about
+  three times as long as in openpyxl, and creating a new `Font` or
+  `Alignment` for each cell about 1.7 times. Both now take about as long as
+  in openpyxl.
+- On Windows, saving a workbook over a file that a loaded workbook still had
+  open failed with "access denied". It now replaces the file.
 
 ## [0.2.0]
 
