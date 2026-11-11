@@ -6,7 +6,9 @@ Before version 1.0, a minor version can change the API.
 Each release names the Rust core version it uses. The core has its own
 [changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).
 
-## [Unreleased]
+## [0.2.0]
+
+It uses the Rust core 0.2.0.
 
 ### Added
 
@@ -15,6 +17,11 @@ Each release names the Rust core version it uses. The core has its own
   cached values, such as `openpyxl` with `data_only=True` or pandas, see
   current results. It works for new and loaded workbooks, not write-only
   ones. Array formulas are not calculated and lose their cached values.
+
+### Changed
+
+- Wheels are about twice as large, because they include the calculation
+  engine.
 
 ## [0.1.3]
 
@@ -110,6 +117,7 @@ First release. It uses the Rust core 0.1.0.
 - The user guide, adapted from the openpyxl documentation, and pages for
   memory limits, migration, supported features and compatibility.
 
+[0.2.0]: https://github.com/crabxl/crabxl-python/releases/tag/0.2.0
 [0.1.3]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.3
 [0.1.2]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.2
 [0.1.1]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.1
