@@ -26,7 +26,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.14'
-      - run: python -m pip install 'ruff>=0.16.10,<0.17'
+      - run: pip install 'ruff>=0.16.10,<0.17'
       - run: ruff format --check .
       - run: ruff check .
       - name: Validate the tag, the committed version and the changelog
@@ -83,7 +83,7 @@ jobs:
             /opt/python/cp315-cp315/bin/python
       - name: Install the native package builder
         if: runner.os != 'Linux'
-        run: python -m pip install 'maturin>=1.15,<2'
+        run: pip install 'maturin>=1.15,<2'
       - name: Build Windows and macOS wheels
         if: runner.os != 'Linux'
         env:
@@ -108,7 +108,7 @@ jobs:
         with:
           python-version: '3.14'
       - uses: dtolnay/rust-toolchain@stable
-      - run: python -m pip install 'maturin>=1.15,<2'
+      - run: pip install 'maturin>=1.15,<2'
       - run: maturin sdist --out dist
       - name: Build and test from the source distribution
         run: python tools/test_distribution.py '*.tar.gz'

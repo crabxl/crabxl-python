@@ -7,16 +7,22 @@ This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.re
 
 ## Installation
 
-Install CrabXL with pip. Use a virtual environment:
+Install CrabXL with pip or uv:
 
 ```sh
-python -m pip install crabxl
+pip install crabxl
+```
+
+Or with uv:
+
+```sh
+uv add crabxl
 ```
 
 To add images to a worksheet, also install [Pillow](https://pypi.org/project/pillow/):
 
 ```sh
-python -m pip install pillow
+pip install pillow
 ```
 
 ## Create a workbook

@@ -54,8 +54,8 @@ git clone https://github.com/crabxl/crabxl-python.git
 cd crabxl-python
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install "maturin>=1.15,<2"
-python -m pip install -e ".[test,dev]"
+pip install "maturin>=1.15,<2"
+pip install -e ".[test,dev]"
 ```
 
 The editable install builds the native extension. After you change Rust code in

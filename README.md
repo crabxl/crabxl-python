@@ -28,7 +28,13 @@ explicit errors. Formula calculation is not provided. See the
 ## Installation
 
 ```sh
-python -m pip install crabxl
+pip install crabxl
+```
+
+Or with uv:
+
+```sh
+uv add crabxl
 ```
 
 Wheels are available for **CPython 3.11–3.15** on Linux x86_64/ARM64, Windows
