@@ -264,19 +264,28 @@ class Cell:
 
     @property
     def value(self):
-        from ..worksheet.formula import ArrayFormula, DataTableFormula, bind
-        from .rich_text import CellRichText
-
         tagged = self._tagged()
         raw = tagged[1][1] if tagged[0] == "typed" else tagged
-        if raw[0] == "rich" and self._detached is None:
-            retained = self.parent._rich_views.get((self.row, self.column))
-            if retained is not None:
-                return retained
+        # Imports stay inside the rare branches: plain values are read per cell.
+        if raw[0] == "rich":
+            from .rich_text import CellRichText
+
+            if self._detached is None:
+                retained = self.parent._rich_views.get((self.row, self.column))
+                if retained is not None:
+                    return retained
+            value = _decode(tagged)
+            if isinstance(value, CellRichText) and self._detached is None:
+                return value._bind(self.parent, self.row, self.column, retain=False)
+            self._formula = None
+            return value
         value = _decode(tagged)
-        if isinstance(value, CellRichText) and self._detached is None:
-            return value._bind(self.parent, self.row, self.column, retain=False)
-        if isinstance(value, (ArrayFormula, DataTableFormula)):
+        if raw[0] in ("array", "table"):
+            from ..worksheet.formula import ArrayFormula, DataTableFormula, bind
+
+            if not isinstance(value, (ArrayFormula, DataTableFormula)):
+                self._formula = None
+                return value
             if (
                 self._formula is not None
                 and type(self._formula) is type(value)

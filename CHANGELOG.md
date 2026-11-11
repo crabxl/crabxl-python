@@ -15,6 +15,10 @@ Each release names the Rust core version it uses. The core has its own
   style module each time. Styling each appended row of a 34,000-row
   workbook took about 1.5 times as long as in openpyxl; it is now slightly
   faster than openpyxl.
+- Reading and writing cells one at a time does less work per cell. Reading
+  `cell.value` no longer imports modules, `ws.cell(row, column, value)`
+  writes the cell once instead of twice, and checking text for illegal
+  characters no longer loops over every character in Python.
 
 ## [0.2.0]
 

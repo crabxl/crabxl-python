@@ -943,8 +943,10 @@ class Worksheet:
             self.parent._editor.set(self.title, row - 1, column - 1, tagged)
         else:
             self._native.set(row - 1, column - 1, tagged)
-        self._rich_views.pop((row, column), None)
-        self._assigned_rich_views.pop((row, column), None)
+        if self._rich_views:
+            self._rich_views.pop((row, column), None)
+        if self._assigned_rich_views:
+            self._assigned_rich_views.pop((row, column), None)
 
     def _relocate_rich_views(self, transform):
         changed = []
@@ -1003,7 +1005,8 @@ class Worksheet:
             )
             cell = (MergedCell if merged else Cell)(self, row, column)
             self._cells[key] = cell
-            if not self._existing and not present and not merged:
+            # A given value creates the cell itself.
+            if value is None and not self._existing and not present and not merged:
                 self._native.set(row - 1, column - 1, ("empty", None))
         if value is not None:
             cell.value = value

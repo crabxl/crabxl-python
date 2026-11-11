@@ -21,6 +21,7 @@ _ERRORS = {
     "#GETTING_DATA",
 }
 _ADDRESS = re.compile(r"^\$?([A-Za-z]+)\$?([1-9][0-9]*)$")
+_ILLEGAL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
 
 def _column(value):
@@ -60,23 +61,13 @@ def _encode(value):
         return "float", value
     if isinstance(value, str):
         value = value[:32767]
-        if any(ord(char) < 32 and char not in "\t\n\r" for char in value):
+        if _ILLEGAL.search(value):
             from .utils.exceptions import IllegalCharacterError
 
             raise IllegalCharacterError("Text contains an illegal XML character")
         if value.startswith("=") and len(value) > 1:
             return "formula", value[1:]
         return ("error" if value in _ERRORS else "text"), value
-    from .cell.rich_text import CellRichText
-    from .worksheet.formula import ArrayFormula, DataTableFormula
-
-    if isinstance(value, CellRichText):
-        return "rich", value._native()
-
-    if isinstance(value, ArrayFormula):
-        return "array", {"ref": value.ref, "text": value.text}
-    if isinstance(value, DataTableFormula):
-        return "table", dict(vars(value))
     if isinstance(value, datetime):
         if value.tzinfo is not None:
             raise TypeError("Excel does not support timezones in datetimes")
@@ -97,6 +88,15 @@ def _encode(value):
         return "time", (value.hour, value.minute, value.second, value.microsecond)
     if isinstance(value, timedelta):
         return "duration", (value.days, value.seconds, value.microseconds)
+    from .cell.rich_text import CellRichText
+    from .worksheet.formula import ArrayFormula, DataTableFormula
+
+    if isinstance(value, CellRichText):
+        return "rich", value._native()
+    if isinstance(value, ArrayFormula):
+        return "array", {"ref": value.ref, "text": value.text}
+    if isinstance(value, DataTableFormula):
+        return "table", dict(vars(value))
     raise ValueError(f"Cannot convert {type(value).__name__} to Excel")
 
 
