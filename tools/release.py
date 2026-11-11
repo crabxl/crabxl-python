@@ -65,6 +65,16 @@ def validate(version, history=True):
     return version
 
 
+def link_release(text, version, repo):
+    """Add the release link of this version above the older links."""
+    line = f"[{version}]: https://github.com/crabxl/{repo}/releases/tag/{version}\n"
+    if line in text:
+        return text
+    match = re.search(r"^\[[0-9]+\.[0-9]+\.[0-9]+\]: ", text, re.M)
+    at = match.start() if match else len(text)
+    return text[:at] + line + text[at:]
+
+
 def name_changelog_section(version, core):
     """Rename the Unreleased section of CHANGELOG.md and name the core it uses."""
     path = ROOT / "CHANGELOG.md"
@@ -77,13 +87,13 @@ def name_changelog_section(version, core):
     if not match or not match[1].strip():
         raise ValueError("Describe the changes under ## [Unreleased] in CHANGELOG.md")
     body = match[1].lstrip("\n")
-    path.write_text(
+    text = (
         text[: match.start()]
         + f"## [{version}]\n\nIt uses the Rust core {core}.\n\n"
         + body
-        + text[match.end() :],
-        encoding="utf-8",
+        + text[match.end() :]
     )
+    path.write_text(link_release(text, version, "crabxl-python"), encoding="utf-8")
 
 
 def prepare(version, core=None):
