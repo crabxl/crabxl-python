@@ -113,6 +113,11 @@ Ordinary loaded workbooks share one retained allowance across source catalogs,
 models, overlays and SST/cache; I/O working space remains additional. These
 settings do not cap process RSS. See [memory limits](docs/guide/memory.md).
 
+Loading guards against ZIP bombs, deeply nested XML and huge XML tokens; the
+default opens every file Excel writes. Pass `limits="strict"` for uploads from
+strangers or `limits="unlimited"` for files you trust, or set the
+`CRABXL_LIMITS` environment variable.
+
 ## Documentation
 
 - [Quick start](docs/quick-start.md)
