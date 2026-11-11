@@ -3,11 +3,9 @@ title: Comments
 description: Read and write cell comments.
 ---
 
-> **Warning:** 
-> Openpyxl currently supports the reading and writing of comment text only.
-> Formatting information is lost. Comment dimensions are lost upon reading,
-> but can be written. Comments are not currently supported if
-> `read_only=True` is used.
+> **Note:** A comment's `text` is plain text, without formatting. Comment
+> width and height are read and written. Read-only worksheets do not read
+> comments.
 
 ## Adding a comment to a cell
 

@@ -10,7 +10,7 @@ description: Workbook and worksheet protection.
 > confused with file security. It is meant to make your workbook safe from unintentional
 > modification, and cannot protect it from malicious modification."
 
-Openpyxl provides support for protecting a workbook and worksheet from modification. The Open XML
+CrabXL can protect a workbook and worksheet from modification. The Open XML
 "Legacy Password Hash Algorithm" is used to generate hashed password values unless another
 algorithm is explicitly configured.
 

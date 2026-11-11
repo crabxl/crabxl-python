@@ -27,12 +27,8 @@ To delete the columns `F:H`:
 >>> ws.delete_cols(6, 3)
 ```
 
-> **Note:** 
-> Openpyxl does not manage dependencies, such as formulae, tables, charts,
-> etc., when rows or columns are inserted or deleted. This is considered to
-> be out of scope for a library that focuses on managing the file format.
-> As a result, client code **must** implement the capability required in
-> any particular use case.
+> **Note:** Inserting or deleting rows and columns does not update formulas,
+> tables or charts that refer to them. Update them in your own code.
 
 ## Moving ranges of cells
 

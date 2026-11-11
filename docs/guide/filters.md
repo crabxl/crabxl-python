@@ -8,7 +8,7 @@ It's possible to filter single range of values in a worksheet by adding an autof
 > **Note:** 
 > Filters and sorts can only be configured by CrabXL but will need to be applied in applications like Excel. This is because they actually rearrange, format and hide rows in the range.
 
-To add a filter you define a range and then add columns. You set the range over which the filter by setting the `ref` attribute. Filters are then applied to columns in the range using a zero-based index, eg. in a range from A1:H10, colId 1 refers to column B. Openpyxl does not check the validity of such assignments.
+To add a filter you define a range and then add columns. You set the range over which the filter by setting the `ref` attribute. Filters are then applied to columns in the range using a zero-based index, eg. in a range from A1:H10, colId 1 refers to column B. CrabXL does not check that the column is inside the range.
 
 ```python
 from crabxl import Workbook
@@ -92,7 +92,7 @@ In addition, Excel has non-standardised capability for pattern matching with str
 
 For example: for "begins with a", is actually `a*`; for "ends with a", `*a`; and for "contains a"",  `*a*`. `?` can be used to represent a single character. In regular expressions `*` is called *greedy* and `?` *non-greedy*. Wildcards are escaped with the `~` (tilde) so that `contains ~*`is serialised as `~~~*`.
 
-To simplify creating filters in client code, Openpyxl provides three specialised filters: `NumberFilter`; `BlankFilter` and `StringFilter`. These filters are all used only when **creating** filters. For convenience, you can use the `CustomFilter.convert()` method to convert from a CustomFilter to a more specific filter.
+To simplify creating filters, CrabXL provides three specialised filters: `NumberFilter`; `BlankFilter` and `StringFilter`. These filters are all used only when **creating** filters. For convenience, you can use the `CustomFilter.convert()` method to convert from a CustomFilter to a more specific filter.
 
 ## NumberFilters
 
@@ -119,7 +119,7 @@ blank = BlankFilter()
 
 ## StringFilters
 
-StringFilters have the folowing operators: `contains` `startwith` `endswith` and `wildcard`. To apply the filter in the negative, set the exclude attribue to `True`. Openpyxl handles escaping automatically:
+StringFilters have the folowing operators: `contains` `startwith` `endswith` and `wildcard`. To apply the filter in the negative, set the exclude attribue to `True`. CrabXL escapes wildcards for you:
 
 ```python
 from crabxl.worksheet.filters import StringFilter
@@ -127,7 +127,7 @@ from crabxl.worksheet.filters import StringFilter
 fil = StringFilter("contains", "xml", exclude=True)
 ```
 
-StringFilters with the wildcard operator are the same as CustomFilters. This allows for allows for more sophisticated uses of the wildcards such as `c?n` which would match the terms `cancan` and `contains`, but not `curtains`; or `c*n` which would match all terms. Openpyxl does **not** escape filters that use the wildcard operator.
+StringFilters with the wildcard operator are the same as CustomFilters. This allows for allows for more sophisticated uses of the wildcards such as `c?n` which would match the terms `cancan` and `contains`, but not `curtains`; or `c*n` which would match all terms. CrabXL does **not** escape filters that use the wildcard operator.
 
 > **Note:** 
 > The wildcard syntax allows for even more sophisticated patterns with multiple wildcards. This capability cannot be easily expressed using StringFilters and is not a design goal.

@@ -125,11 +125,8 @@ possible to create tables with header rows without filters.
 
 ## Table as a Print Area
 
-Excel can produce documents with the print area set to the table name. Openpyxl cannot,
-however, resolve such dynamic defintions and will raise a warning when trying to do so.
-
-If you need to handle this you can extract the range of the table and define the print area as the
-appropriate cell range.
+Excel can set the print area to a table name. CrabXL does not resolve such a name. To set the
+print area, use the cell range of the table instead.
 
 ```python
 >>> from crabxl import load_workbook
