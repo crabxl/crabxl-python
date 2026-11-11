@@ -1107,18 +1107,20 @@ class Worksheet:
     def iter_rows(
         self, min_row=None, max_row=None, min_col=None, max_col=None, values_only=False
     ):
-        bounds = self._model().bounds()
-        if (
-            min_row is None
-            and max_row is None
-            and min_col is None
-            and max_col is None
-            and not self._native.contains(0, 0)
-            and bounds == (1, 1, 1, 1)
-        ):
-            return iter(())
+        # bounds() scans every cell, so skip it when the caller gives the limits.
+        if not max_row or not max_col:
+            bounds = self._model().bounds()
+            if (
+                min_row is None
+                and max_row is None
+                and min_col is None
+                and max_col is None
+                and not self._native.contains(0, 0)
+                and bounds == (1, 1, 1, 1)
+            ):
+                return iter(())
+            max_row, max_col = max_row or bounds[2], max_col or bounds[3]
         min_row, min_col = min_row or 1, min_col or 1
-        max_row, max_col = max_row or bounds[2], max_col or bounds[3]
         self.cell(min_row, min_col)
         if max_row < min_row or max_col < min_col:
             return iter(())

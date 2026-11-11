@@ -6,6 +6,16 @@ Before version 1.0, a minor version can change the API.
 Each release names the Rust core version it uses. The core has its own
 [changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).
 
+## [Unreleased]
+
+### Fixed
+
+- `iter_rows` with all four limits no longer scans every cell of the sheet,
+  and assigning a font, fill, border or alignment no longer imports the
+  style module each time. Styling each appended row of a 34,000-row
+  workbook took about 1.5 times as long as in openpyxl; it is now slightly
+  faster than openpyxl.
+
 ## [0.2.0]
 
 It uses the Rust core 0.2.0.

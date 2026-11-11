@@ -1,6 +1,7 @@
 """Small public style values; workbook ownership and interning stay in Rust."""
 
 from copy import copy
+from functools import cache
 
 from .._native import make_style_component
 
@@ -272,6 +273,7 @@ def component(name, values):
     raise ValueError("Unknown style component")
 
 
+@cache
 def _style_types(expected):
     """Resolve style class names, such as "Font" or ("PatternFill", "GradientFill")."""
     from .. import styles
