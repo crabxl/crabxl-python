@@ -3,8 +3,6 @@ title: Edit worksheets
 description: Insert, delete and move rows, columns and ranges.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 ## Inserting rows and columns
 
 You can insert rows or columns using the relevant worksheet methods:

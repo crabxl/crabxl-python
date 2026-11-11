@@ -3,8 +3,6 @@ title: Document properties
 description: Core, extended and custom document properties.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 It is possible to add one or more CustomDocumentProperty objects to a workbook.
 These require a unique name (string) and can be one of 6 types:
 

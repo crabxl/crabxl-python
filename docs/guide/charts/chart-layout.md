@@ -3,8 +3,6 @@ title: Chart layout
 description: Chart layout with CrabXL.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 The layout of the chart within the canvas can be set by using the layout
 property of an instance of a layout class.
 

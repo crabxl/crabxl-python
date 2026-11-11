@@ -40,3 +40,7 @@ book.close()
   different.
 - [Supported features](support.md): the features that CrabXL can read, create
   and edit.
+
+The user guide is adapted from the
+[openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT
+license).

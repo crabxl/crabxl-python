@@ -3,8 +3,6 @@ title: Formulas
 description: Write formulas and read their cached results.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 ## Using formulae
 
 Formualae may be parsed and modified as well.

@@ -3,8 +3,6 @@ title: Protection
 description: Workbook and worksheet protection.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 > **Warning:** 
 > Password protecting a workbook or worksheet only provides a quite basic level of security.
 > The data is not encrypted, so can be modified by any number of freely available tools. In

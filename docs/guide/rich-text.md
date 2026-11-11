@@ -3,8 +3,6 @@ title: Rich text
 description: Cells with more than one text format.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 ## Introduction
 
 Normally styles apply to everything in an individual cell. However, rich text

@@ -3,8 +3,6 @@ title: Bar and column charts
 description: Bar and column charts with CrabXL.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 In bar charts values are plotted as either horizontal bars or vertical columns.
 
 ## Vertical, Horizontal and Stacked Bar Charts

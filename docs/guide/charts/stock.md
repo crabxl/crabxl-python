@@ -3,8 +3,6 @@ title: Stock charts
 description: Stock charts with CrabXL.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 Data that is arranged in columns or rows in a specific order on a worksheet
 can be plotted in a stock chart. As its name implies, a stock chart is most
 often used to illustrate the fluctuation of stock prices. However, this chart

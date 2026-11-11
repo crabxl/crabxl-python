@@ -3,8 +3,6 @@ title: Area charts
 description: Area charts with CrabXL.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 ## 2D Area Charts
 
 Area charts are similar to line charts with the addition that the area underneath the plotted line is filled.

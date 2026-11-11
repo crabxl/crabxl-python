@@ -3,8 +3,6 @@ title: Charts
 description: Create charts from worksheet data.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 ## Chart types
 
 The following charts are available:

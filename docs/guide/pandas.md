@@ -3,8 +3,6 @@ title: pandas and NumPy
 description: Convert between worksheets and pandas data frames.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 CrabXL can work with the popular libraries [pandas](https://pandas.pydata.org)
 and [NumPy](https://numpy.org).
 

@@ -3,8 +3,6 @@ title: Simple usage
 description: Short examples of common workbook tasks.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 ## Example: Creating a simple spreadsheet and bar chart
 
 In this example we're going to create a sheet from scratch and add some data and then plot it.

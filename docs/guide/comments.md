@@ -3,8 +3,6 @@ title: Comments
 description: Read and write cell comments.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 > **Warning:** 
 > Openpyxl currently supports the reading and writing of comment text only.
 > Formatting information is lost. Comment dimensions are lost upon reading,

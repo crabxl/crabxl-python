@@ -3,8 +3,6 @@ title: Chart anchors
 description: Chart anchors with CrabXL.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 You can position charts using one of three different kinds of anchor:
 
     * OneCell – where the top-left of a chart is anchored to a single cell. This is the default for CrabXL and corresponds to the layout option "Move but don't size with cells".

@@ -3,8 +3,6 @@ title: Scatter charts
 description: Scatter charts with CrabXL.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 Scatter, or xy, charts are similar to some line charts. The main difference
 is that one series of values is plotted against another. This is useful where
 values are unordered.

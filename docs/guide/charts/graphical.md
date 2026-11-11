@@ -3,8 +3,6 @@ title: Graphical properties
 description: Graphical properties with CrabXL.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 Many advanced options require using the Graphical Properties of OOXML. This
 is a much more abstract API than the chart API itself and may require
 considerable studying of the OOXML specification to get right. It is often

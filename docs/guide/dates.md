@@ -3,8 +3,6 @@ title: Dates and times
 description: How dates, times and durations are stored and converted.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 Dates and times can be stored in two distinct ways in XLSX files: as an
 ISO 8601 formatted string or as a single number. CrabXL supports
 both representations and translates between them and Python's datetime

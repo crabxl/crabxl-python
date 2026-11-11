@@ -3,8 +3,6 @@ title: Pie charts
 description: Pie charts with CrabXL.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 ## Pie Charts
 
 Pie charts plot data as slices of a circle with each slice representing the

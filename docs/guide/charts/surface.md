@@ -3,8 +3,6 @@ title: Surface charts
 description: Surface charts with CrabXL.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 Data that is arranged in columns or rows on a worksheet can be plotted in a
 surface chart. A surface chart is useful when you want to find optimum
 combinations between two sets of data. As in a topographic map, colors and

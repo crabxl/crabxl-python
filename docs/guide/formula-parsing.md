@@ -3,8 +3,6 @@ title: Formula parsing
 description: Tokenize and translate formulas.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 CrabXL supports limited parsing of formulas embedded in cells. The
 `crabxl.formula` package contains a `Tokenizer` class to break
 formulas into their constituent tokens. Usage is as follows:

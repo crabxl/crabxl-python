@@ -3,8 +3,6 @@ title: Gauge charts
 description: Gauge charts with CrabXL.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 Gauge charts combine a pie chart and a doughnut chart to create a "gauge". The first chart is a doughnut chart with four slices. The first three slices correspond to the colours of the gauge; the fourth slice, which is half of the doughnut, is made invisible.
 
 A pie chart containing three slices is added. The first and third slice are invisible so that the second slice can act as the needle on the gauge.

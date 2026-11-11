@@ -3,8 +3,6 @@ title: Worksheet properties
 description: Tab color, outline and page setup properties.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 These are advanced properties for particular behaviours, the most used ones
 are the "fitTopage" page setup property and the tabColor that define the
 background color of the worksheet tab.

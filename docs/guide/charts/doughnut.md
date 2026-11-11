@@ -3,8 +3,6 @@ title: Doughnut charts
 description: Doughnut charts with CrabXL.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 Doughnut charts are similar to pie charts except that they use a ring instead
 of a circle. They can also plot several series of data as concentric rings.
 

@@ -3,8 +3,6 @@ title: Data validation
 description: Restrict the values that users can enter in cells.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 Data validators can be applied to ranges of cells but are not enforced or evaluated. Ranges do not have to be contiguous: eg. "A1 B2:B5" is contains A1 and the cells B2 to B5 but not A2 or B2.
 
 ## Examples

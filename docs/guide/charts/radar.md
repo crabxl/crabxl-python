@@ -3,8 +3,6 @@ title: Radar charts
 description: Radar charts with CrabXL.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 Data that is arranged in columns or rows on a worksheet can be plotted in a
 radar chart. Radar charts compare the aggregate values of multiple data
 series. It is effectively a projection of an area chart on a circular x-axis.

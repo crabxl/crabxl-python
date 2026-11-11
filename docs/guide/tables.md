@@ -3,8 +3,6 @@ title: Tables
 description: Add and edit worksheet tables.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 Worksheet tables are references to groups of cells. This makes
 certain operations such as styling the cells in a table easier.
 

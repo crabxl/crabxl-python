@@ -3,8 +3,6 @@ title: Line charts
 description: Line charts with CrabXL.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 ## Line Charts
 
 Line charts allow data to be plotted against a fixed axis. They are similar

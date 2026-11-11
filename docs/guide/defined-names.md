@@ -3,8 +3,6 @@ title: Defined names
 description: Workbook and worksheet defined names.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 The specification has the following to say about defined names:
 
     "Defined names are descriptive text that is used to represents a cell, range

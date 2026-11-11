@@ -3,8 +3,6 @@ title: Pivot tables
 description: Read and preserve pivot tables.
 ---
 
-This page is adapted from the [openpyxl 3.1.5 documentation](https://openpyxl.readthedocs.io/en/3.1/) (MIT license). The calls are the same in CrabXL.
-
 CrabXL provides read-support for pivot tables so that they will be
 preserved in existing files. The specification for pivot tables, while
 extensive, is not very clear and it is not intended that client code should
