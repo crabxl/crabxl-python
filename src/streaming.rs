@@ -211,16 +211,8 @@ impl NativeReadStream {
         })
     }
 }
-#[pymethods]
 impl NativeReadStream {
-    fn next_values_row(&self, py: Python<'_>) -> PyResult<Option<(u32, Vec<Py<PyAny>>)>> {
-        let Some((index, tagged, _)) = self.next_row(py, false)? else {
-            return Ok(None);
-        };
-        let (values, _) = decode_values(py, tagged, false)?;
-        Ok(Some((index, values)))
-    }
-    fn next_row(&self, py: Python<'_>, include_styles: bool) -> PyResult<Option<DenseRow>> {
+    fn fetch(&self, py: Python<'_>) -> PyResult<Option<Row>> {
         if !self.alive.load(Ordering::Relaxed) {
             return Err(closed());
         }
@@ -231,13 +223,44 @@ impl NativeReadStream {
             .try_lock()
             .ok()
             .and_then(|mut state| state.rows.next());
-        let row = if let Some(row) = cached {
-            Some(row)
-        } else {
-            let state = Arc::clone(&self.state);
-            py.detach(move || lock(&state)?.next())?
-        };
-        let Some(row) = row else {
+        if cached.is_some() {
+            return Ok(cached);
+        }
+        let state = Arc::clone(&self.state);
+        py.detach(move || lock(&state)?.next())
+    }
+}
+#[pymethods]
+impl NativeReadStream {
+    /// Up to `limit` rows of values as `(index, values)` pairs. Fewer rows
+    /// mean the sheet ended.
+    fn next_values_rows<'py>(&self, py: Python<'py>, limit: usize) -> PyResult<Bound<'py, PyList>> {
+        let rows = PyList::empty(py);
+        let mut decoder = None;
+        while rows.len() < limit {
+            let Some(row) = self.fetch(py)? else { break };
+            let end = self
+                .last_column
+                .or_else(|| row.cells.last().map(|cell| cell.address.column.get()));
+            let mut values = Vec::new();
+            if let Some(end) = end.filter(|end| *end >= self.first_column) {
+                values.reserve((end - self.first_column + 1) as usize);
+                let mut cells = row.cells.iter().peekable();
+                for column in self.first_column..=end {
+                    let cell = cells.next_if(|cell| cell.address.column.get() == column);
+                    values.push(read_value(
+                        py,
+                        cell.map_or(&CellValue::Empty, |cell| &cell.value),
+                        &mut decoder,
+                    )?);
+                }
+            }
+            rows.append((row.index.get(), pyo3::types::PyTuple::new(py, values)?))?;
+        }
+        Ok(rows)
+    }
+    fn next_row(&self, py: Python<'_>, include_styles: bool) -> PyResult<Option<DenseRow>> {
+        let Some(row) = self.fetch(py)? else {
             return Ok(None);
         };
         let end = self

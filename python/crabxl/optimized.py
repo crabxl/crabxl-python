@@ -294,43 +294,42 @@ class ReadOnlyWorksheet(Worksheet):
             )
             self.parent._streams.add(stream)
             expected = min_row
+            width = max(0, max_col - min_col + 1) if max_col is not None else None
             try:
-                while True:
+                while values_only:
                     self.parent._check_open()
-                    native = (
-                        stream.next_values_row()
-                        if values_only
-                        else stream.next_row(True)
-                    )
+                    batch = stream.next_values_rows(256)
+                    for index, values in batch:
+                        if expected <= index:
+                            empty = (None,) * (len(values) if width is None else width)
+                            while expected <= index:
+                                yield empty
+                                expected += 1
+                        yield values
+                        expected = index + 2
+                        self.parent._check_open()
+                    if len(batch) < 256:
+                        break
+                while not values_only:
+                    self.parent._check_open()
+                    native = stream.next_row(True)
                     if native is None:
                         break
-                    if values_only:
-                        index, tagged = native
-                        styles = ()
-                    else:
-                        index, tagged, styles = native
-                    width = (
-                        max(0, max_col - min_col + 1)
-                        if max_col is not None
-                        else len(tagged)
-                    )
-                    empty = (None if values_only else EMPTY_CELL,) * width
+                    index, tagged, styles = native
+                    empty = (EMPTY_CELL,) * (len(tagged) if width is None else width)
                     while expected < index + 1:
                         yield empty
                         expected += 1
-                    if values_only:
-                        yield tuple(tagged)
-                    else:
-                        yield tuple(
-                            EMPTY_CELL
-                            if style is None
-                            else ReadOnlyCell._from_native(
-                                self, index + 1, column, value, style
-                            )
-                            for column, value, style in zip(
-                                range(min_col, min_col + len(tagged)), tagged, styles
-                            )
+                    yield tuple(
+                        EMPTY_CELL
+                        if style is None
+                        else ReadOnlyCell._from_native(
+                            self, index + 1, column, value, style
                         )
+                        for column, value, style in zip(
+                            range(min_col, min_col + len(tagged)), tagged, styles
+                        )
+                    )
                     expected = index + 2
                 if max_row is not None:
                     empty = (None if values_only else EMPTY_CELL,) * max(

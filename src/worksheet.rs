@@ -909,7 +909,9 @@ impl NativeSheet {
         last: u32,
         create_missing: bool,
     ) -> PyResult<Vec<EncodedValue>> {
-        rows::tagged(self, py, row, first, last, create_missing, false)
+        rows::map(self, row, first, last, create_missing, |value| {
+            encode(py, value)
+        })
     }
     pub(crate) fn row_values_only(
         &self,
@@ -919,11 +921,7 @@ impl NativeSheet {
         last: u32,
         create_missing: bool,
     ) -> PyResult<DecodedValues> {
-        decode_values(
-            py,
-            rows::tagged(self, py, row, first, last, create_missing, true)?,
-            true,
-        )
+        rows::values(self, py, row, first, last, create_missing)
     }
     pub(crate) fn set(
         &self,

@@ -267,61 +267,79 @@ fn encode_raw(py: Python<'_>, value: &CellValue) -> PyResult<EncodedValue> {
     Ok((kind, object))
 }
 
-// Scalar rows reach Python without per-cell tagged tuples or Python decode
-// calls. Editable structured formulas remain live cell views, identified by
-// relative column positions; read-only formulas keep their detached projection.
-pub(crate) fn decode_values(
-    py: Python<'_>,
-    tagged: Vec<EncodedValue>,
-    bound_formulas: bool,
-) -> PyResult<DecodedValues> {
-    let mut values = Vec::with_capacity(tagged.len());
-    let mut formulas = None;
-    let mut decoder = None;
-    for (column, (kind, value)) in tagged.into_iter().enumerate() {
-        if bound_formulas && kind == "typed" {
-            let raw = value
-                .bind(py)
-                .get_item(1)?
-                .get_item(0)?
-                .extract::<String>()?;
-            if matches!(raw.as_str(), "array" | "table" | "rich") {
-                formulas.get_or_insert_with(Vec::new).push(column as u32);
-                values.push(py.None());
-                continue;
+/// One cell value as `_decode(encode(value))` returns it. Common types are
+/// built here; the rare ones go through the Python decoder.
+pub(crate) fn read_value<'py>(
+    py: Python<'py>,
+    value: &CellValue,
+    decoder: &mut Option<Bound<'py, PyAny>>,
+) -> PyResult<Py<PyAny>> {
+    use chrono::{Datelike, Timelike};
+    use pyo3::types::{PyDate, PyDateTime, PyTime};
+    match value.unannotated() {
+        CellValue::Empty => return Ok(py.None()),
+        CellValue::Number(value) => return value.into_py_any(py),
+        CellValue::Integer(value) => return value.into_py_any(py),
+        CellValue::Boolean(value) => return value.into_py_any(py),
+        CellValue::Text(value) => return value.as_str().into_py_any(py),
+        CellValue::Error(value) => return value.as_str().into_py_any(py),
+        CellValue::DateTime(value) => match value.kind() {
+            DateKind::Date => {
+                let date = value.to_date().map_err(failure)?;
+                return Ok(
+                    PyDate::new(py, date.year(), date.month() as u8, date.day() as u8)?
+                        .into_any()
+                        .unbind(),
+                );
             }
-        }
-        if bound_formulas && matches!(kind, "array" | "table" | "rich") {
-            formulas.get_or_insert_with(Vec::new).push(column as u32);
-            values.push(py.None());
-        } else if matches!(
-            kind,
-            "typed"
-                | "bigint"
-                | "date"
-                | "datetime"
-                | "time"
-                | "duration"
-                | "array"
-                | "table"
-                | "rich"
-        ) {
-            if decoder.is_none() {
-                decoder = Some(py.import("crabxl")?.getattr("_decode")?);
+            DateKind::DateTime => {
+                let at = value.to_datetime().map_err(failure)?;
+                return Ok(PyDateTime::new(
+                    py,
+                    at.year(),
+                    at.month() as u8,
+                    at.day() as u8,
+                    at.hour() as u8,
+                    at.minute() as u8,
+                    at.second() as u8,
+                    at.nanosecond() / 1000,
+                    None,
+                )?
+                .into_any()
+                .unbind());
             }
-            values.push(
-                decoder
-                    .as_ref()
-                    .ok_or_else(closed)?
-                    .call1(((kind, value),))?
-                    .unbind(),
-            );
-        } else {
-            values.push(value);
+            DateKind::Time => {
+                let at = value.to_time().map_err(failure)?;
+                return Ok(PyTime::new(
+                    py,
+                    at.hour() as u8,
+                    at.minute() as u8,
+                    at.second() as u8,
+                    at.nanosecond() / 1000,
+                    None,
+                )?
+                .into_any()
+                .unbind());
+            }
+            DateKind::Duration => {}
+        },
+        CellValue::Formula(formula)
+            if !matches!(
+                formula.formula_type(),
+                FormulaType::Array | FormulaType::DataTable
+            ) =>
+        {
+            return format!("={}", formula.expression()).into_py_any(py);
         }
+        _ => {}
     }
-    Ok((values, formulas))
+    if decoder.is_none() {
+        *decoder = Some(py.import("crabxl")?.getattr("_decode")?);
+    }
+    let decode = decoder.as_ref().ok_or_else(closed)?;
+    Ok(decode.call1((encode_raw(py, value)?,))?.unbind())
 }
+
 const ERROR_LITERALS: [&str; 8] = [
     "#NULL!",
     "#DIV/0!",

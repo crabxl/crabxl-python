@@ -12,6 +12,10 @@ Each release uses a pinned revision of the Rust core. The core has its own
 
 - `import crabxl` takes about half as long. Style classes, charts and the XML
   support load on first use, so reading cell values never imports them.
+- Reading values is faster, most of all in read-only mode. Numbers, text,
+  booleans and dates become Python objects in Rust, and read-only sheets hand
+  rows to Python in batches. A 1,000,001-row sheet reads in read-only mode in
+  about 13 s instead of 15.5 s on one CPU.
 
 ## [0.1.1]
 
