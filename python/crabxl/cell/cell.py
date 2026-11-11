@@ -5,7 +5,6 @@ from datetime import date, datetime, time, timedelta
 from typing import TYPE_CHECKING
 
 from .._values import _data_type, _decode, _encode, _letters
-from ..styles import Alignment, Border, Font, GradientFill, PatternFill, Protection
 from ..styles._base import cell_component
 
 if TYPE_CHECKING:
@@ -64,11 +63,11 @@ class Cell:
         "__weakref__",
     )
 
-    font = cell_component("font", Font)
-    fill = cell_component("fill", (PatternFill, GradientFill))
-    border = cell_component("border", Border)
-    alignment = cell_component("alignment", Alignment)
-    protection = cell_component("protection", Protection)
+    font = cell_component("font", "Font")
+    fill = cell_component("fill", ("PatternFill", "GradientFill"))
+    border = cell_component("border", "Border")
+    alignment = cell_component("alignment", "Alignment")
+    protection = cell_component("protection", "Protection")
 
     def __init__(self, worksheet, row=None, column=None, value=None):
         self.parent, self.row, self.column = worksheet, row, column

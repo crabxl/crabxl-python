@@ -2,8 +2,6 @@
 
 from os import PathLike
 from pathlib import Path
-from shutil import copyfileobj
-from tempfile import TemporaryDirectory
 
 from .._native import (
     NativeEditor,
@@ -44,6 +42,8 @@ def load_workbook(
         else:
             if not callable(getattr(filename, "read", None)):
                 raise TypeError("Expected a path or readable binary stream")
+            from tempfile import TemporaryDirectory
+
             workbook._input_spool = TemporaryDirectory(prefix="crabxl-input-")
             path = Path(workbook._input_spool.name) / "workbook.xlsx"
             seekable = getattr(filename, "seekable", lambda: False)()
@@ -52,6 +52,8 @@ def load_workbook(
                 filename.seek(0)
             try:
                 with path.open("wb") as target:
+                    from shutil import copyfileobj
+
                     copyfileobj(filename, target, length=1024 * 1024)
             finally:
                 if seekable:
@@ -82,9 +84,10 @@ def load_workbook(
         if workbook._editor is not None and not keep_links:
             workbook._editor.remove_external_links(bool(data_only))
         workbook.data_only = data_only
-        from ..chartsheet import Chartsheet
-
         chartsheets = set(workbook._reader.chartsheet_names())
+        if chartsheets:
+            # Chartsheet pulls in the drawing and XML modules; most files have none.
+            from ..chartsheet import Chartsheet
         if read_only:
             from ..optimized import ReadOnlyWorksheet
 

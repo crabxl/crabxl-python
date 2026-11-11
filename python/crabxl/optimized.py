@@ -4,17 +4,15 @@ from weakref import WeakValueDictionary
 
 from . import Worksheet, _decode, _encode, _letters
 from .cell.cell import Cell
-from .chartsheet import Chartsheet
-from .styles import Alignment, Border, Font, GradientFill, PatternFill, Protection
-from .styles._base import StyleProxy
+from .styles._base import StyleProxy, _style_types
 from .utils.exceptions import WorkbookAlreadySaved
 
 _STYLE_COMPONENT_TYPES = {
-    "font": Font,
-    "fill": (PatternFill, GradientFill),
-    "border": Border,
-    "alignment": Alignment,
-    "protection": Protection,
+    "font": "Font",
+    "fill": ("PatternFill", "GradientFill"),
+    "border": "Border",
+    "alignment": "Alignment",
+    "protection": "Protection",
 }
 
 
@@ -595,7 +593,7 @@ class WriteOnlyCell:
 
     def __setattr__(self, name, value):
         if name in ("font", "fill", "border", "alignment", "protection"):
-            expected = _STYLE_COMPONENT_TYPES[name]
+            expected = _style_types(_STYLE_COMPONENT_TYPES[name])
             if isinstance(value, StyleProxy):
                 value = value._target
             if not isinstance(value, expected):
@@ -916,21 +914,35 @@ _absent(
 )
 
 
-class WriteOnlyChartsheet(Chartsheet, WriteOnlyWorksheet):
-    __slots__ = ()
+def _write_only_chartsheet():
+    # Chartsheet pulls in the drawing and XML modules, which reading does not need.
+    from .chartsheet import Chartsheet
 
-    def add_image(self, img, anchor=None):
-        raise TypeError("A streaming chartsheet accepts charts")
+    class WriteOnlyChartsheet(Chartsheet, WriteOnlyWorksheet):
+        __slots__ = ()
 
-    def close(self):
-        if not self._finished:
-            self.parent._check_open()
-            self.parent._stream_writer.close_chartsheet(
-                self._id,
-                [chart._native_input() for chart in self._charts],
-                self._chartsheet_xml(),
-            )
-            self._finished = True
+        def add_image(self, img, anchor=None):
+            raise TypeError("A streaming chartsheet accepts charts")
+
+        def close(self):
+            if not self._finished:
+                self.parent._check_open()
+                self.parent._stream_writer.close_chartsheet(
+                    self._id,
+                    [chart._native_input() for chart in self._charts],
+                    self._chartsheet_xml(),
+                )
+                self._finished = True
+
+    WriteOnlyChartsheet.__module__ = __name__
+    return WriteOnlyChartsheet
+
+
+def __getattr__(name):
+    if name == "WriteOnlyChartsheet":
+        value = globals()[name] = _write_only_chartsheet()
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def _style_payload_bytes(value):

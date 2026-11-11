@@ -1,9 +1,9 @@
 """Workbook compatibility facade over canonical native handles."""
 
+import sys
 from datetime import datetime
 from os import PathLike
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from weakref import WeakSet, WeakValueDictionary
 
 from .._native import (
@@ -17,6 +17,16 @@ from ..resources import AutoMemory, ResourceOptions
 from ..worksheet.worksheet import Worksheet
 
 INTEGER_TYPES = (int,)
+
+
+_CHARTSHEET_MODULE = __name__.rsplit(".", 2)[0] + ".chartsheet.chartsheet"
+
+
+def _is_chartsheet(sheet):
+    # Without the chartsheet module loaded, no sheet can be a chartsheet. This
+    # keeps the drawing and XML modules out of plain reads.
+    module = sys.modules.get(_CHARTSHEET_MODULE)
+    return module is not None and isinstance(sheet, module.Chartsheet)
 
 
 class Workbook:
@@ -381,15 +391,11 @@ class Workbook:
 
     @property
     def worksheets(self):
-        from ..chartsheet import Chartsheet
-
-        return [sheet for sheet in self._sheets if not isinstance(sheet, Chartsheet)]
+        return [sheet for sheet in self._sheets if not _is_chartsheet(sheet)]
 
     @property
     def chartsheets(self):
-        from ..chartsheet import Chartsheet
-
-        return [sheet for sheet in self._sheets if isinstance(sheet, Chartsheet)]
+        return [sheet for sheet in self._sheets if _is_chartsheet(sheet)]
 
     @property
     def sheetnames(self):
@@ -634,6 +640,8 @@ class Workbook:
         if not isinstance(filename, (str, PathLike)):
             if not callable(getattr(filename, "write", None)):
                 raise TypeError("Expected a path or writable binary stream")
+            from tempfile import TemporaryDirectory
+
             with TemporaryDirectory(prefix="crabxl-output-") as directory:
                 path = Path(directory) / "workbook.xlsx"
                 self.save(path, compression_level=compression_level)

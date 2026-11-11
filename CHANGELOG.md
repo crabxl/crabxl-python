@@ -6,6 +6,13 @@ Before version 1.0, a minor version can change the API.
 Each release uses a pinned revision of the Rust core. The core has its own
 [changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).
 
+## [Unreleased]
+
+### Changed
+
+- `import crabxl` takes about half as long. Style classes, charts and the XML
+  support load on first use, so reading cell values never imports them.
+
 ## [0.1.1]
 
 It uses the Rust core 0.1.1.

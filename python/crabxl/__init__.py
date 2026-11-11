@@ -30,24 +30,6 @@ from .resources import AutoMemory as AutoMemory
 from .resources import ResourceLimits as ResourceLimits
 from .resources import ResourceOptions as ResourceOptions
 from .resources import SharedStringOptions as SharedStringOptions
-from .styles import (
-    Alignment as Alignment,
-)
-from .styles import (
-    Border as Border,
-)
-from .styles import (
-    Font as Font,
-)
-from .styles import (
-    GradientFill as GradientFill,
-)
-from .styles import (
-    PatternFill as PatternFill,
-)
-from .styles import (
-    Protection as Protection,
-)
 from .workbook.loader import load_workbook as load_workbook
 from .workbook.workbook import Workbook as Workbook
 from .worksheet.worksheet import Worksheet as Worksheet
@@ -57,7 +39,17 @@ LXML = False
 DEFUSEDXML = False
 
 
+_STYLES = ("Alignment", "Border", "Font", "GradientFill", "PatternFill", "Protection")
+
+
 def __getattr__(name):
+    # Style classes load on first use, so that reading values stays fast.
+    if name in _STYLES:
+        from . import styles
+
+        value = getattr(styles, name)
+        globals()[name] = value
+        return value
     if name == "NUMPY":
         from .compat.numbers import NUMPY
 

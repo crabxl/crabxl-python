@@ -272,12 +272,24 @@ def component(name, values):
     raise ValueError("Unknown style component")
 
 
+def _style_types(expected):
+    """Resolve style class names, such as "Font" or ("PatternFill", "GradientFill")."""
+    from .. import styles
+
+    if isinstance(expected, str):
+        return getattr(styles, expected)
+    return tuple(getattr(styles, item) for item in expected)
+
+
 def cell_component(name, expected):
+    """A cell style property. `expected` names the accepted style classes."""
+
     def get(cell):
         if cell._detached is not None:
             values = cell._detached[4] if len(cell._detached) > 4 else {}
+            kinds = _style_types(expected)
             value = values.get(name) or (
-                expected[0]() if isinstance(expected, tuple) else expected()
+                kinds[0]() if isinstance(kinds, tuple) else kinds()
             )
         else:
             value = component(
@@ -291,7 +303,7 @@ def cell_component(name, expected):
     def set(cell, value):
         if isinstance(value, StyleProxy):
             value = value._target
-        if not isinstance(value, expected):
+        if not isinstance(value, _style_types(expected)):
             raise TypeError(f"Invalid {name} component")
         if cell._detached is not None:
             values = dict(cell._detached[4]) if len(cell._detached) > 4 else {}
