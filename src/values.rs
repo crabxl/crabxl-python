@@ -401,14 +401,13 @@ fn plain_value(value: &Bound<'_, PyAny>) -> PyResult<Option<(CellValue, usize)>>
         return Ok(Some((CellValue::Number(value.extract()?), 0)));
     }
     if value.is_exact_instance_of::<PyString>() {
-        let text = value.cast::<PyString>()?.to_cow()?;
-        let text = match text.char_indices().nth(32_767) {
-            Some((end, _)) => &text[..end],
-            None => &text[..],
-        };
-        if text
-            .chars()
-            .any(|c| (c as u32) < 32 && !matches!(c, '\t' | '\n' | '\r'))
+        let owned = value.cast::<PyString>()?.to_cow()?;
+        let text = &owned[..];
+        // Longer text takes the Python path, which raises the cell-limit error.
+        if text.chars().nth(32_767).is_some()
+            || text
+                .chars()
+                .any(|c| (c as u32) < 32 && !matches!(c, '\t' | '\n' | '\r'))
         {
             return Ok(None);
         }

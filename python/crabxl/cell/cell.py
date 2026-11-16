@@ -213,7 +213,6 @@ class Cell:
             return None
         if not isinstance(value, str):
             value = str(value, self.encoding)
-        value = value[:32767]
         _encode(value)
         return value
 

@@ -418,8 +418,6 @@ class WriteOnlyCell:
     def value(self, value):
         if isinstance(value, bytes):
             value = value.decode(self.encoding)
-        if isinstance(value, str):
-            value = value[:32767]
         tagged = _encode(value)
         if tagged[0] in ("date", "datetime", "time", "duration"):
             from .cell.cell import get_time_format
@@ -727,7 +725,9 @@ class WriteOnlyWorksheet(Worksheet):
         hyperlinks = None
         comments = None
         retained = 0
-        allowance = min(self.parent._max_bytes, 1024 * 1024)
+        allowance = (
+            self.parent._max_bytes
+        )  # must match the native writer's row allowance
         for column, value in enumerate(iterable):
             if column >= 16384:
                 raise ValueError("Row exceeds Excel column limits")

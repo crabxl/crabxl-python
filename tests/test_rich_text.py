@@ -64,7 +64,8 @@ def test_shared_string_xml_projection_matches_reference(rich):
         assert not stream.closed
         assert len(value) == 4 and value[2] == ""
         results.append(repr(value).replace(engine.__name__, "backend"))
-    assert results[0] == results[1]
+    # openpyxl leaves _x0041_ in a rich run undecoded; Excel shows "A" (#2328).
+    assert results[1] == results[0].replace("'_x005F', '_x0041_'", "'_x005F', 'A'")
 
 
 @pytest.mark.parametrize("engine", [openpyxl, crabxl])

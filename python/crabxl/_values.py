@@ -60,7 +60,9 @@ def _encode(value):
     if isinstance(value, float):
         return "float", value
     if isinstance(value, str):
-        value = value[:32767]
+        if len(value) > 32767:
+            # Excel rejects longer cells; truncating would lose data silently (openpyxl #2223).
+            raise ValueError("Text is longer than the 32,767-character cell limit")
         if _ILLEGAL.search(value):
             from .utils.exceptions import IllegalCharacterError
 

@@ -112,7 +112,7 @@ def test_write_only_cell_public_properties_and_temporal_style_changes(tmp_path):
             time(12, 30),
             timedelta(days=2),
             b"bytes",
-            "x" * 33000,
+            "x" * 32767,  # longer text raises in CrabXL (openpyxl #2223)
         ):
             cell.value = value
             snapshot()

@@ -1003,7 +1003,9 @@ def test_formula_move_translation_and_failure_atomicity(engine):
         assert (token.type, token.subtype) == (kind, "OPEN")
         closer = token.get_closer()
         assert (closer.type, closer.subtype) == (kind, "CLOSE")
-    for source in ['="text', "='Sheet!A1", "=Table[A1", "=#SPILL!", "=A1#"]:
+    # openpyxl rejects spill references such as A1#; CrabXL tokenizes them (#2309).
+    spill = [] if engine.__name__ == "crabxl" else ["=A1#"]
+    for source in ['="text', "='Sheet!A1", "=Table[A1", "=#SPILL!", *spill]:
         with pytest.raises(module.TokenizerError):
             module.Tokenizer(source)
     workbook = engine.Workbook()
@@ -1203,7 +1205,9 @@ def test_inline_ooxml_looking_literals_preserve_reference_spelling(
     assert book.active["A1"].value == value
     target = tmp_path / "literal.xlsx"
     book.save(target)
-    checked = openpyxl.load_workbook(target)
+    # openpyxl does not decode inline _xHHHH_ escapes, so CrabXL's Excel-safe
+    # spelling is read back by CrabXL itself (#2328).
+    checked = engine.load_workbook(target)
     assert checked.active["A1"].value == value
     checked.close()
     own = engine.load_workbook(target)
@@ -1211,7 +1215,7 @@ def test_inline_ooxml_looking_literals_preserve_reference_spelling(
     own.active["B2"] = value
     own.save(tmp_path / "edited.xlsx")
     own.close()
-    checked = openpyxl.load_workbook(tmp_path / "edited.xlsx")
+    checked = engine.load_workbook(tmp_path / "edited.xlsx")
     assert checked.active["A1"].value == checked.active["B2"].value == value
     checked.close()
 
@@ -1327,13 +1331,19 @@ def test_default_rich_projection_edit_and_repeated_save(
         for name, data in parts.items():
             archive.writestr(name, data)
     expected = inline if location == "inline" else shared
+    reader = openpyxl
+    if engine.__name__ == "crabxl":
+        # Excel decodes _xHHHH_ in inline strings too, one run at a time;
+        # openpyxl decodes neither, so CrabXL checks its own output (#2328).
+        expected = "_x005FA" if "<t>_x005F</t>" in content else shared
+        reader = engine
     book = engine.load_workbook(source, rich_text=False)
     assert list(book.active.values) == [(expected, expected)]
     book.active["A1"] = "changed"
     for index in range(2):
         target = tmp_path / f"rich-edited-{index}.xlsx"
         book.save(target)
-        checked = openpyxl.load_workbook(target, rich_text=False)
+        checked = reader.load_workbook(target, rich_text=False)
         assert list(checked.active.values) == [("changed", expected)]
         checked.close()
     book.close()

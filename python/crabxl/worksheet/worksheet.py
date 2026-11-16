@@ -756,13 +756,26 @@ class Worksheet:
         if topLeftCell == "A1":
             topLeftCell = None
 
+        view = self.sheet_view
+        # Keep one selection, from the active pane. Selections for panes that no
+        # longer exist make Excel repair the file (openpyxl #2334).
+        active = view.pane.activePane if view.pane is not None else None
+        kept = next((s for s in view.selection if s.pane == active), None)
+        if kept is None and view.selection:
+            kept = view.selection[-1]
+        view.selection = [
+            Selection(
+                activeCell=kept.activeCell if kept is not None else "A1",
+                sqref=kept.sqref if kept is not None else "A1",
+            )
+        ]
+
         if not topLeftCell:
-            self.sheet_view.pane = None
+            view.pane = None
             return
 
         row, column = _address(topLeftCell)
 
-        view = self.sheet_view
         view.pane = Pane(topLeftCell=topLeftCell, activePane="topRight", state="frozen")
         view.selection[0].pane = "topRight"
 
@@ -842,6 +855,25 @@ class Worksheet:
         else:
             raise ValueError("A range or all four row/column bounds are required")
         first_row, first_col, last_row, last_col = bounds
+        if merge and declare:
+            # Excel removes overlapping merges as damaged content (openpyxl #2302).
+            for other in self.merged_cells.ranges:
+                same = (
+                    other.min_row,
+                    other.min_col,
+                    other.max_row,
+                    other.max_col,
+                ) == bounds
+                if not same and (
+                    other.min_row <= last_row
+                    and first_row <= other.max_row
+                    and other.min_col <= last_col
+                    and first_col <= other.max_col
+                ):
+                    raise ValueError(
+                        f"Range {_letters(first_col)}{first_row}:{_letters(last_col)}{last_row} "
+                        f"overlaps merged range {other.coord}"
+                    )
         aliases = [
             (key, cell, cell._snapshot(), cell.hyperlink)
             for key, cell in list(self._cells.items())

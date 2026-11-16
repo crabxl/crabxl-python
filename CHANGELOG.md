@@ -6,6 +6,29 @@ Before version 1.0, a minor version can change the API.
 Each release names the Rust core version it uses. The core has its own
 [changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).
 
+## [Unreleased]
+
+It needs the Rust core fixes listed under Unreleased in the core changelog.
+
+### Fixed
+
+- Freezing panes again, or unfreezing them, left selections for panes that no
+  longer exist, and Excel repaired the file.
+- `merge_cells` raises `ValueError` when the range overlaps another merged
+  range. Excel removed such merges as damaged content.
+- Write-only rows could hold at most about 8,000 cells or 1 MiB of text. They
+  now take all 16,384 columns, limited only by the memory budget.
+- Hyperlinks move with their cells on `insert_rows`, `insert_cols`,
+  `delete_rows` and `delete_cols`.
+- Excel's `_xHHHH_` escapes are decoded when reading, and literal text that
+  looks like one is escaped when writing.
+- `Tokenizer` accepts spill references such as `A1#`.
+
+### Changed
+
+- Text longer than 32,767 characters raises `ValueError`. openpyxl cuts it
+  off without a warning.
+
 ## [0.2.1]
 
 It uses the Rust core 0.2.1.

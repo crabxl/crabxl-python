@@ -432,7 +432,9 @@ impl NativeWriteBook {
     ) -> PyResult<Self> {
         let options = WriteOptions {
             max_metadata_bytes: maximum,
-            max_row_bytes: maximum.min(1024 * 1024),
+            // A row the program writes is bounded only by the memory budget; a full
+            // 16,384-cell row is valid Excel and needs more than 1 MiB.
+            max_row_bytes: maximum,
             iso_dates,
             date_1904,
             temp_directory,
