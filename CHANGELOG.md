@@ -26,6 +26,7 @@ It needs the Rust core fixes listed under Unreleased in the core changelog.
 
 ### Changed
 
+- `sheet.cell()` and `iter_rows()` with cell objects are about 35% faster.
 - Text longer than 32,767 characters raises `ValueError`. openpyxl cuts it
   off without a warning.
 

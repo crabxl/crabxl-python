@@ -959,7 +959,11 @@ class Worksheet:
             value = self.parent._editor.pending(self.title, row - 1, column - 1)
             if value is not None:
                 return value
-        return self._model().get(row - 1, column - 1)
+        # The per-cell path: skip _model's second open check once loaded.
+        native = self._native
+        if native is None:
+            native = self._model()
+        return native.get(row - 1, column - 1)
 
     def _set(self, row, column, value):
         if isinstance(value, bytes):
@@ -1030,11 +1034,15 @@ class Worksheet:
                 if self._existing and self._native is None
                 else None
             )
-            present, merged = (
-                (True, False)
-                if pending is not None
-                else self._model().cell_state(row - 1, column - 1)
-            )
+            if pending is not None:
+                present, merged = True, False
+            else:
+                native = self._native
+                if native is None:
+                    native = self._model()
+                else:
+                    self.parent._check_open()
+                present, merged = native.cell_state(row - 1, column - 1)
             cell = (MergedCell if merged else Cell)(self, row, column)
             self._cells[key] = cell
             # A given value creates the cell itself.
