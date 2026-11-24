@@ -6,7 +6,9 @@ Before version 1.0, a minor version can change the API.
 Each release names the Rust core version it uses. The core has its own
 [changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).
 
-## [Unreleased]
+## [0.2.2]
+
+It uses the Rust core 0.2.2.
 
 It needs the Rust core fixes listed under Unreleased in the core changelog.
 
@@ -183,6 +185,7 @@ First release. It uses the Rust core 0.1.0.
 - The user guide, adapted from the openpyxl documentation, and pages for
   memory limits, migration, supported features and compatibility.
 
+[0.2.2]: https://github.com/crabxl/crabxl-python/releases/tag/0.2.2
 [0.2.1]: https://github.com/crabxl/crabxl-python/releases/tag/0.2.1
 [0.2.0]: https://github.com/crabxl/crabxl-python/releases/tag/0.2.0
 [0.1.3]: https://github.com/crabxl/crabxl-python/releases/tag/0.1.3
