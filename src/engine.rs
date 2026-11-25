@@ -75,7 +75,7 @@ pub use crabxl_core::{
     CellFormat, NamedStyle, NamedStyleOptions, NumberFormat, StyleCatalog, StyleView,
 };
 
-pub use crabxl_core::DateReadPolicy;
+pub use crabxl_core::{DateReadPolicy, TemporalKindPolicy};
 
 pub use crabxl_core::{
     DataTableOptions, FormulaAnnotations, FormulaFlag, FormulaFlags, FormulaMetadata, FormulaRange,

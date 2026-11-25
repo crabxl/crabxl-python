@@ -385,6 +385,8 @@ impl NativeReader {
                         data_only,
                         rich_text,
                         date_policy: crate::engine::DateReadPolicy::ErrorOutOfRange,
+                        // openpyxl picks time or datetime from the value alone.
+                        temporal_kinds: crate::engine::TemporalKindPolicy::FromValue,
                         ..ReadOptions::default()
                     },
                 )
@@ -579,6 +581,8 @@ fn open_loaded(
                 data_only,
                 rich_text,
                 date_policy: crate::engine::DateReadPolicy::ErrorOutOfRange,
+                // openpyxl picks time or datetime from the value alone.
+                temporal_kinds: crate::engine::TemporalKindPolicy::FromValue,
                 ..Default::default()
             },
             editor: config.editor_options(Some(operation)),
