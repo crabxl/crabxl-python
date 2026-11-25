@@ -228,6 +228,7 @@ def test_sheets_copy_move_rename_hide() -> None:
     assert [sheet.name for sheet in again.worksheets] == ["Data"]
 
 
+@pytest.mark.skipif(os.name == "nt", reason="Windows files have no POSIX mode bits")
 def test_saves_are_atomic_and_keep_permissions(tmp_path: os.PathLike[str]) -> None:
     path = os.path.join(tmp_path, "book.xlsx")
     sample().save(path)

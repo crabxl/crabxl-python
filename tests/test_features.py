@@ -1195,7 +1195,9 @@ def test_default_properties(tmp_path):
 
 def test_import_paths():
     from crabxl.openpyxl.comments import Comment  # noqa: F401
-    from crabxl.openpyxl.formatting.formatting import ConditionalFormattingList  # noqa: F401
+    from crabxl.openpyxl.formatting.formatting import (
+        ConditionalFormattingList,  # noqa: F401
+    )
     from crabxl.openpyxl.formatting.rule import (  # noqa: F401
         CellIsRule,
         ColorScale,
