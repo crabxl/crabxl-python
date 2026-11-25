@@ -40,10 +40,12 @@ header = xl.Style(font=xl.Font(bold=True), fill=xl.Fill("DDEBF7"))
 with xl.Workbook() as book:
     sheet = book.worksheets.add("Sales")
     sheet.append(["Region", "Q1", "Q2", "Total"], style=header)
-    sheet.extend([
-        ["North", 120.5, 98, xl.Formula("B2+C2")],
-        ["South", 80, 95, xl.Formula("B3+C3")],
-    ])
+    sheet.extend(
+        [
+            ["North", 120.5, 98, xl.Formula("B2+C2")],
+            ["South", 80, 95, xl.Formula("B3+C3")],
+        ]
+    )
     sheet.columns("A:D").width = 14
     sheet.freeze_panes = "A2"
     book.save("sales.xlsx")
@@ -56,10 +58,10 @@ import crabxl as xl
 
 with xl.Workbook.open("sales.xlsx") as book:
     sheet = book.worksheets["Sales"]
-    total = sheet["D2"].value          # The cached result of the formula.
-    sheet.rows("3").insert()           # D4 now reads =B4+C4.
+    total = sheet["D2"].value  # The cached result of the formula.
+    sheet.rows("3").insert()  # D4 now reads =B4+C4.
     sheet["A3:C3"].values = [["East", 60, 70]]
-    book.save("sales.xlsx")            # Atomic, even over the source.
+    book.save("sales.xlsx")  # Atomic, even over the source.
 ```
 
 A save copies every part you did not change. When a save would remove content

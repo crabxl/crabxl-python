@@ -71,10 +71,10 @@ with xl.Workbook() as book:
 ```python
 with xl.Workbook.open("sales.xlsx") as book:
     sheet = book.worksheets["Sales"]
-    sheet.rows("2").insert()            # The formula now reads =B3+C3.
+    sheet.rows("2").insert()  # The formula now reads =B3+C3.
     sheet["A2:C2"].values = [["South", 80, 95]]
     sheet["B2:C3"].map_style(lambda s: s.replace(number_format="#,##0.00"))
-    book.save("sales.xlsx")             # Atomic, even over the source.
+    book.save("sales.xlsx")  # Atomic, even over the source.
 ```
 
 ### Stream rows

@@ -39,7 +39,9 @@ to case) or by position.
 
 ```python
 sales = book.worksheets.add("Sales")
-copy = book.worksheets.copy("Sales", "Sales copy")   # Everything, including notes and tables.
+copy = book.worksheets.copy(
+    "Sales", "Sales copy"
+)  # Everything, including notes and tables.
 book.worksheets.move("Sales copy", 0)
 copy.name = "Backup"
 copy.visibility = "hidden"
@@ -54,12 +56,12 @@ it reads nothing, and reading never creates cells.
 
 ```python
 sheet = book.worksheets["Sales"]
-sheet["B2"].value = 12.5                    # One cell.
-sheet["B2:B10"].value = 0                   # Every cell of the range.
-sheet["A1:C2"].values = [["a", "b", "c"], [1, 2, 3]]   # The exact shape.
-rows = sheet["A1:C10"].values               # A tuple of row tuples.
-price = sheet["B2"].value_as(float)         # Raises ConversionError for other types.
-sheet["A1:C10"].clear()                     # Values and formulas; styles stay.
+sheet["B2"].value = 12.5  # One cell.
+sheet["B2:B10"].value = 0  # Every cell of the range.
+sheet["A1:C2"].values = [["a", "b", "c"], [1, 2, 3]]  # The exact shape.
+rows = sheet["A1:C10"].values  # A tuple of row tuples.
+price = sheet["B2"].value_as(float)  # Raises ConversionError for other types.
+sheet["A1:C10"].clear()  # Values and formulas; styles stay.
 ```
 
 `append(row)` and `extend(rows)` add rows after the last row that has cells.
@@ -71,14 +73,14 @@ sheet["A1:C10"].clear()                     # Values and formulas; styles stay.
 sheet.columns("A:C").width = 16
 sheet.rows("1").height = 24
 sheet.columns("D").hide()
-sheet.freeze_panes = "B2"      # Freeze the first row and column. None unfreezes.
+sheet.freeze_panes = "B2"  # Freeze the first row and column. None unfreezes.
 sheet.merges.add("E1:G1")
 ```
 
 ## Insert and delete rows and columns
 
 ```python
-sheet.rows("5:7").insert()      # Three rows before row 5.
+sheet.rows("5:7").insert()  # Three rows before row 5.
 sheet.columns("B").delete()
 ```
 
@@ -94,7 +96,9 @@ changes.
 sheet.tables.add(xl.Table("Sales", "A1:D100"))
 sheet.validations.add(xl.DataValidation.list(["North", "South"], ranges="A2:A100"))
 sheet.conditional_formats.add(
-    xl.ConditionalFormat.cell("D2:D100", ">", 1000, style=xl.PartialStyle(fill=xl.Fill("FFC7CE")))
+    xl.ConditionalFormat.cell(
+        "D2:D100", ">", 1000, style=xl.PartialStyle(fill=xl.Fill("FFC7CE"))
+    )
 )
 sheet["B2"].note = xl.Note("Preliminary", author="Finance")
 sheet["A1"].hyperlink = xl.Hyperlink.url("https://example.com")

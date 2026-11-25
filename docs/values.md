@@ -41,9 +41,9 @@ A cell's `value` is the cached result of its formula. `formula` returns the
 `Formula` or `None`.
 
 ```python
-sheet["C1"].value = xl.Formula("A1+B1")   # The leading = is optional.
-sheet["C1"].formula                        # Formula(text='A1+B1')
-sheet["D1"].value = "=A1"                  # Text, not a formula.
+sheet["C1"].value = xl.Formula("A1+B1")  # The leading = is optional.
+sheet["C1"].formula  # Formula(text='A1+B1')
+sheet["D1"].value = "=A1"  # Text, not a formula.
 ```
 
 Text never becomes a formula. A new formula has no cached result: its value

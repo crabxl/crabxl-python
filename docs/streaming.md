@@ -41,7 +41,7 @@ import crabxl as xl
 
 with xl.Writer.create("export.xlsx", compression=1) as writer:
     sheet = writer.worksheets.add("Events")
-    sheet.freeze_panes = "A2"            # Set before the first row.
+    sheet.freeze_panes = "A2"  # Set before the first row.
     sheet.columns("A:C").width = 16
     sheet.append(["id", "kind", "amount"], style=xl.Style(font=xl.Font(bold=True)))
     sheet.extend((n, "sale", n * 1.5) for n in range(1_000_000))
