@@ -1,6 +1,6 @@
 //! Thin conversion of sparse canonical dimension records.
+use crate::engine::{ColumnDimension, ColumnIndex, RowDimension, RowIndex, StyleId};
 use crate::{failure, styles::field};
-use crabxl::{ColumnDimension, ColumnIndex, RowDimension, RowIndex, StyleId};
 use pyo3::{prelude::*, types::PyDict};
 
 pub(crate) fn row(value: &Bound<'_, PyDict>, index: u32) -> PyResult<RowDimension> {
@@ -81,7 +81,7 @@ pub(crate) fn encode_column<'py>(
 }
 pub(crate) fn encode<'py>(
     py: Python<'py>,
-    dimensions: &crabxl::SheetDimensions,
+    dimensions: &crate::engine::SheetDimensions,
     rows: bool,
     index: u32,
 ) -> PyResult<Option<Bound<'py, PyDict>>> {
@@ -97,7 +97,7 @@ pub(crate) fn encode<'py>(
             .transpose()
     }
 }
-pub(crate) fn keys(dimensions: &crabxl::SheetDimensions, rows: bool) -> Vec<u32> {
+pub(crate) fn keys(dimensions: &crate::engine::SheetDimensions, rows: bool) -> Vec<u32> {
     if rows {
         dimensions
             .rows()
@@ -119,7 +119,7 @@ pub(crate) enum Dimension {
 }
 impl Dimension {
     pub(crate) fn snapshot(
-        dimensions: &crabxl::SheetDimensions,
+        dimensions: &crate::engine::SheetDimensions,
         rows: bool,
         index: u32,
     ) -> PyResult<Self> {
@@ -154,7 +154,10 @@ impl Dimension {
             Self::Column(column) => column.style = Some(style),
         }
     }
-    pub(crate) fn apply(self, sheet: &mut crabxl::WorksheetEditor<'_>) -> crabxl::Result<()> {
+    pub(crate) fn apply(
+        self,
+        sheet: &mut crate::engine::WorksheetEditor<'_>,
+    ) -> crate::engine::Result<()> {
         match self {
             Self::Row(row) => sheet.set_row_dimension(row),
             Self::Column(column) => sheet.set_column_dimension(column),
@@ -162,9 +165,9 @@ impl Dimension {
     }
     pub(crate) fn apply_loaded<R: std::io::Read + std::io::Seek>(
         self,
-        book: &mut crabxl::LoadedWorkbook<R>,
-        id: crabxl::SheetId,
-    ) -> crabxl::Result<()> {
+        book: &mut crate::engine::LoadedWorkbook<R>,
+        id: crate::engine::SheetId,
+    ) -> crate::engine::Result<()> {
         match self {
             Self::Row(row) => book.set_row_dimension(id, row),
             Self::Column(column) => book.set_column_dimension(id, column),
@@ -172,9 +175,9 @@ impl Dimension {
     }
     pub(crate) fn apply_writer(
         self,
-        book: &mut crabxl::WorkbookWriter,
+        book: &mut crate::engine::WorkbookWriter,
         id: usize,
-    ) -> crabxl::Result<()> {
+    ) -> crate::engine::Result<()> {
         match self {
             Self::Row(row) => book.set_interleaved_row_dimension(id, row),
             Self::Column(column) => book.set_interleaved_column_dimension(id, column),

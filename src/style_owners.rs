@@ -1,9 +1,9 @@
 //! Named-style coordination over canonical Rust owners.
-use crate::{failure, styles};
-use crabxl::{
+use crate::engine::{
     Error, ErrorKind, LoadedWorkbook, NamedStyleOptions, Result, StyleCatalog, StyleComponent,
     StyleId, Workbook, WorkbookWriter,
 };
+use crate::{failure, styles};
 use pyo3::{prelude::*, types::PyDict};
 
 /// Style directive keys that carry a `NativeStyleComponent`.
@@ -332,8 +332,8 @@ pub(crate) fn collection<'py>(
     let catalog = match catalog {
         Some(value) => value,
         None => {
-            defaults =
-                crabxl::StyleRegistry::new(crabxl::StyleLimits::default()).map_err(failure)?;
+            defaults = crate::engine::StyleRegistry::new(crate::engine::StyleLimits::default())
+                .map_err(failure)?;
             defaults.catalog()
         }
     };
@@ -433,7 +433,7 @@ pub(crate) fn collection_add(
 fn collection_value<'py>(
     py: Python<'py>,
     name: &str,
-    view: crabxl::StyleView<'_>,
+    view: crate::engine::StyleView<'_>,
 ) -> PyResult<Bound<'py, PyDict>> {
     let component = match name {
         "font" => StyleComponent::Font(Box::new(view.font.clone())),

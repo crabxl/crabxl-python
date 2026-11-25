@@ -97,7 +97,7 @@ pub(crate) fn decode(py: Python<'_>, value: TaggedValue) -> PyResult<CellValue> 
         "typed" => {
             let (kind, raw): (String, TaggedValue) = value.extract()?;
             decode(py, raw)?
-                .with_storage_type(crabxl::CellStorageType::parse(&kind).map_err(failure)?)
+                .with_storage_type(crate::engine::CellStorageType::parse(&kind).map_err(failure)?)
                 .map_err(failure)?
         }
         "empty" => CellValue::Empty,

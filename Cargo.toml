@@ -13,11 +13,14 @@ crate-type = ["cdylib"]
 
 [features]
 default = ["deflate-zlib-rs"]
-deflate-zlib-rs = ["crabxl/deflate-zlib-rs"]
-deflate-zlib = ["crabxl/deflate-zlib"]
+deflate-zlib-rs = ["crabxl/deflate-zlib-rs", "crabxl-xlsx/deflate-zlib-rs"]
+deflate-zlib = ["crabxl/deflate-zlib", "crabxl-xlsx/deflate-zlib"]
 
 [dependencies]
 crabxl = { version = "=0.2.2", default-features = false, features = ["calc"] }
+crabxl-core = { version = "=0.2.2" }
+crabxl-xlsx = { version = "=0.2.2", default-features = false, features = ["calc"] }
+crabxl-calc = { version = "=0.2.2" }
 chrono = { version = "0.4", default-features = false }
 pyo3 = { version = "0.30.1", features = ["extension-module"] }
 tempfile = "3.27"

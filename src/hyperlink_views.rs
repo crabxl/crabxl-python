@@ -126,7 +126,7 @@ impl Projection {
             strings_available: strings,
         })
     }
-    fn visit(&mut self, value: crabxl::HyperlinkOutput<'_>) -> Result<(), Error> {
+    fn visit(&mut self, value: crate::engine::HyperlinkOutput<'_>) -> Result<(), Error> {
         let key = (
             value.sheet.serial(),
             value.owner.row.get(),
@@ -171,7 +171,7 @@ pub(crate) fn owned(
         let mut projection =
             Projection::prepare(&book, requests, book.remaining_bytes()).map_err(failure)?;
         for (sheet, model) in book.sheets() {
-            crabxl::visit_owned_hyperlink_ids(sheet, model.hyperlinks(), |value| {
+            crate::engine::visit_owned_hyperlink_ids(sheet, model.hyperlinks(), |value| {
                 projection.visit(value)
             })
             .map_err(failure)?;

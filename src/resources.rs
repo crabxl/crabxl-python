@@ -1,6 +1,6 @@
 //! Validated language configuration mapped to canonical resource policies.
 use super::*;
-use crabxl::{AutoMemory, SharedStringOptions, SharedStringStorage};
+use crate::engine::{AutoMemory, SharedStringOptions, SharedStringStorage};
 use std::collections::HashMap;
 
 #[derive(Clone, Default)]
@@ -32,13 +32,14 @@ impl ResourceConfig {
         &self,
         maximum: usize,
         limits: ResourceLimits,
-    ) -> crabxl::Result<SharedStringOptions> {
+    ) -> crate::engine::Result<SharedStringOptions> {
         let mut options = self.strings.clone();
         let budget = if let Some(budget) = self.string_memory_bytes {
             budget
         } else {
-            let working = crabxl::memory_allowance(MemoryPolicy::Budget(usize::MAX), limits)?
-                .working_reserve_bytes;
+            let working =
+                crate::engine::memory_allowance(MemoryPolicy::Budget(usize::MAX), limits)?
+                    .working_reserve_bytes;
             maximum.checked_add(working).ok_or_else(|| {
                 Error::new(ErrorKind::InvalidData, "Shared-string allowance overflows")
             })?
@@ -50,9 +51,9 @@ impl ResourceConfig {
         let mut options = EditorOptions {
             resources: self.limits,
             memory_policy: maximum.map_or(self.memory_policy, MemoryPolicy::Budget),
-            non_finite: crabxl::NonFiniteWritePolicy::Blank,
+            non_finite: crate::engine::NonFiniteWritePolicy::Blank,
             // openpyxl saves without content it cannot model.
-            data_loss: crabxl::DataLossPolicy::Allow,
+            data_loss: crate::engine::DataLossPolicy::Allow,
             ..Default::default()
         };
         if let Some(value) = self.patch_bytes {

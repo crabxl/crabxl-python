@@ -1,6 +1,7 @@
 //! Python module registration; canonical models remain in crabxl.
 mod dimensions;
 mod editor;
+mod engine;
 mod features;
 mod functions;
 mod hyperlink_views;

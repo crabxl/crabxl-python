@@ -1,6 +1,6 @@
 //! Rich display runs and pronunciation metadata adapt canonical core records.
+use crate::engine::{PhoneticProperties, PhoneticRun, RichText, RichTextRun, StyleComponent};
 use crate::{failure, styles};
-use crabxl::{PhoneticProperties, PhoneticRun, RichText, RichTextRun, StyleComponent};
 use pyo3::{
     exceptions::PyValueError,
     prelude::*,
@@ -14,12 +14,14 @@ pub(crate) fn rich_text_from_xml<'py>(
     xml: &[u8],
     unprotect: bool,
 ) -> PyResult<Bound<'py, PyDict>> {
-    let mut value =
-        crabxl::read_rich_text(std::io::Cursor::new(xml), crabxl::ResourceLimits::default())
-            .map_err(failure)?;
+    let mut value = crate::engine::read_rich_text(
+        std::io::Cursor::new(xml),
+        crate::engine::ResourceLimits::default(),
+    )
+    .map_err(failure)?;
     if unprotect {
         for run in &mut value.runs {
-            crabxl::unprotect_rich_text_literal(&mut run.text);
+            crate::engine::unprotect_rich_text_literal(&mut run.text);
         }
     }
     encode(py, &value)
@@ -32,8 +34,12 @@ pub(crate) fn rich_text_to_xml<'py>(
 ) -> PyResult<Bound<'py, PyBytes>> {
     let value = decode(fields)?;
     let mut output = Vec::new();
-    crabxl::write_rich_text(&mut output, &value, crabxl::ResourceLimits::default())
-        .map_err(failure)?;
+    crate::engine::write_rich_text(
+        &mut output,
+        &value,
+        crate::engine::ResourceLimits::default(),
+    )
+    .map_err(failure)?;
     Ok(PyBytes::new(py, &output))
 }
 

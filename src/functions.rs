@@ -10,7 +10,7 @@ pub(crate) fn resolve_relationship_targets(
         .iter()
         .map(|(target, external)| (target.as_str(), *external))
         .collect::<Vec<_>>();
-    crabxl::resolve_relationship_targets(part, &borrowed).map_err(failure)
+    crate::engine::resolve_relationship_targets(part, &borrowed).map_err(failure)
 }
 
 #[pyfunction]
@@ -19,7 +19,7 @@ pub(crate) fn tokenize_formula<'py>(
     expression: &str,
     max_bytes: usize,
 ) -> PyResult<Bound<'py, PyList>> {
-    let tokens = crabxl::tokenize_formula(expression, max_bytes).map_err(failure)?;
+    let tokens = crate::engine::tokenize_formula(expression, max_bytes).map_err(failure)?;
     PyList::new(
         py,
         tokens.iter().map(|token| {
@@ -41,7 +41,7 @@ pub(crate) fn scan_formula_fragment(
     top: Option<&str>,
     max_bytes: usize,
 ) -> PyResult<(String, &'static str, &'static str, usize)> {
-    use crabxl::{FormulaScan, TokenKind};
+    use crate::engine::{FormulaScan, TokenKind};
     let operation = match operation {
         "string" => FormulaScan::Quoted,
         "brackets" => FormulaScan::Brackets,
@@ -60,7 +60,7 @@ pub(crate) fn scan_formula_fragment(
         Some("PAREN") => Some(TokenKind::Parenthesis),
         _ => return Err(PyValueError::new_err("Unknown formula opening token")),
     };
-    let (token, consumed) = crabxl::scan_formula_fragment(
+    let (token, consumed) = crate::engine::scan_formula_fragment(
         source,
         offset,
         operation,
@@ -80,12 +80,12 @@ pub(crate) fn scan_formula_fragment(
 
 #[pyfunction]
 pub(crate) fn formula_scientific_prefix(value: &str) -> bool {
-    crabxl::formula_scientific_prefix(value)
+    crate::engine::formula_scientific_prefix(value)
 }
 
 #[pyfunction]
 pub(crate) fn classify_formula_operand(value: &str) -> &'static str {
-    crabxl::classify_formula_operand(value).as_str()
+    crate::engine::classify_formula_operand(value).as_str()
 }
 #[pyfunction]
 pub(crate) fn translate_formula(
@@ -94,15 +94,15 @@ pub(crate) fn translate_formula(
     columns: i64,
     max_bytes: usize,
 ) -> PyResult<String> {
-    crabxl::translate_expression(expression, rows, columns, max_bytes).map_err(failure)
+    crate::engine::translate_expression(expression, rows, columns, max_bytes).map_err(failure)
 }
 #[pyfunction]
 pub(crate) fn translate_axis(reference: &str, delta: i64, row: bool) -> PyResult<String> {
-    crabxl::translate_axis(reference, delta, row).map_err(failure)
+    crate::engine::translate_axis(reference, delta, row).map_err(failure)
 }
 #[pyfunction]
 pub(crate) fn formula_position(reference: &str) -> PyResult<(u64, u32)> {
-    crabxl::formula_position(reference).map_err(failure)
+    crate::engine::formula_position(reference).map_err(failure)
 }
 #[pyfunction]
 pub(crate) fn cell_address(reference: &str) -> PyResult<(u32, u32)> {
@@ -193,7 +193,7 @@ pub(crate) fn resolve_model_budget(
         let config = resources.map_or_else(resources::ResourceConfig::default, |value| {
             value.config.clone()
         });
-        crabxl::memory_allowance(config.memory_policy, config.limits)
+        crate::engine::memory_allowance(config.memory_policy, config.limits)
             .map(|allowance| allowance.retained_data_bytes)
             .map_err(failure)
     }
@@ -229,13 +229,14 @@ pub(crate) fn save_models(
             iso_dates,
             date_1904,
             // openpyxl writes NaN and infinity as blank cells.
-            non_finite: crabxl::NonFiniteWritePolicy::Blank,
+            non_finite: crate::engine::NonFiniteWritePolicy::Blank,
             ..WriteOptions::default()
         };
         let mut writer = if let Some(book) = &book {
             let mut book = lock(book)?;
             if calculate {
-                crabxl::calculate(&mut book, crabxl::max_threads()).map_err(failure)?;
+                crate::engine::calculate(&mut book, crate::engine::max_threads())
+                    .map_err(failure)?;
             }
             let mut writer = if let Some(catalog) = book.style_catalog() {
                 WorkbookWriter::from_canonical_style_catalog(options, catalog.clone())

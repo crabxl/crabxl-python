@@ -2,11 +2,11 @@
 //!
 //! The Python classes copied from openpyxl serialise to and parse from XML.
 //! The Rust core owns the model and the package codecs; this module only moves
-//! bytes through `crabxl::feature_xml`. Comments are built directly.
+//! bytes through `crate::engine::feature_xml`. Comments are built directly.
+use crate::engine::feature_xml;
+use crate::engine::features::Comment;
+use crate::engine::{SheetFeatures, WorkbookFeatures};
 use crate::*;
-use crabxl::feature_xml;
-use crabxl::features::Comment;
-use crabxl::{SheetFeatures, WorkbookFeatures};
 use std::collections::BTreeMap;
 
 pub(crate) type PivotInput = (usize, Vec<u8>, Vec<u8>, Option<Vec<u8>>);
@@ -216,7 +216,7 @@ pub(crate) fn sheet_chartsheet_write(
 
 pub(crate) fn native_pivots(
     inputs: Vec<PivotInput>,
-) -> PyResult<Vec<crabxl::features::PivotTable>> {
+) -> PyResult<Vec<crate::engine::features::PivotTable>> {
     let mut added = Vec::with_capacity(inputs.len());
     let mut caches = BTreeMap::new();
     for (identity, table, cache, records) in inputs {
@@ -338,7 +338,7 @@ pub(crate) type WorkbookOut = (
 
 fn sheet_out(
     features: Option<&SheetFeatures>,
-    catalog: Option<&crabxl::StyleCatalog>,
+    catalog: Option<&crate::engine::StyleCatalog>,
 ) -> PyResult<Option<SheetOut>> {
     let Some(features) = features else {
         return Ok(None);
@@ -513,7 +513,9 @@ pub(crate) enum ImageInput {
 }
 pub(crate) type ChartInput = (Vec<u8>, AnchorInput, ClientDataInput);
 
-pub(crate) fn native_images(images: Vec<ImageInput>) -> crabxl::Result<Vec<crabxl::Image>> {
+pub(crate) fn native_images(
+    images: Vec<ImageInput>,
+) -> crate::engine::Result<Vec<crate::engine::Image>> {
     images
         .into_iter()
         .map(|input| {
@@ -525,9 +527,9 @@ pub(crate) fn native_images(images: Vec<ImageInput>) -> crabxl::Result<Vec<crabx
                     (data, format, anchor, client_data, Some(prototype.image))
                 }
             };
-            let mut image = crabxl::Image::new(
+            let mut image = crate::engine::Image::new(
                 data,
-                crabxl::ImageFormat::from_content_type(&format)?,
+                crate::engine::ImageFormat::from_content_type(&format)?,
                 anchor.into_native()?,
             )?;
             if let Some(original) = prototype {
@@ -556,7 +558,9 @@ pub(crate) fn native_images(images: Vec<ImageInput>) -> crabxl::Result<Vec<crabx
         .collect()
 }
 
-pub(crate) fn native_charts(charts: Vec<ChartInput>) -> crabxl::Result<Vec<crabxl::Chart>> {
+pub(crate) fn native_charts(
+    charts: Vec<ChartInput>,
+) -> crate::engine::Result<Vec<crate::engine::Chart>> {
     charts
         .into_iter()
         .map(|(xml, anchor, client_data)| {
@@ -569,11 +573,11 @@ pub(crate) fn native_charts(charts: Vec<ChartInput>) -> crabxl::Result<Vec<crabx
 
 type ClientDataInput = (Option<bool>, Option<bool>);
 
-fn client_data_xml((locks, prints): ClientDataInput) -> Option<crabxl::drawing::XmlElement> {
+fn client_data_xml((locks, prints): ClientDataInput) -> Option<crate::engine::drawing::XmlElement> {
     if locks.is_none() && prints.is_none() {
         return None;
     }
-    let mut element = crabxl::drawing::XmlElement::new("xdr:clientData");
+    let mut element = crate::engine::drawing::XmlElement::new("xdr:clientData");
     element.set_attribute(
         "xmlns:xdr",
         "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
@@ -597,8 +601,8 @@ pub(crate) enum AnchorInput {
 }
 
 impl AnchorInput {
-    fn into_native(self) -> crabxl::Result<crabxl::drawing::DrawingAnchor> {
-        use crabxl::drawing::{DrawingAnchor, DrawingExtent, DrawingMarker};
+    fn into_native(self) -> crate::engine::Result<crate::engine::drawing::DrawingAnchor> {
+        use crate::engine::drawing::{DrawingAnchor, DrawingExtent, DrawingMarker};
         let marker = |(row, col, row_off, col_off)| DrawingMarker {
             row,
             col,
@@ -650,7 +654,10 @@ fn replace_drawing_suffix<T>(
 
 fn update_sheet_features(
     storage: &Mutex<SheetStorage>,
-    prepare: impl FnOnce(&mut LoadedWorkbook<streaming::SharedFile>, SheetId) -> crabxl::Result<()>,
+    prepare: impl FnOnce(
+        &mut LoadedWorkbook<streaming::SharedFile>,
+        SheetId,
+    ) -> crate::engine::Result<()>,
     update: impl FnOnce(&mut SheetFeatures) -> PyResult<usize>,
 ) -> PyResult<usize> {
     let mut storage = lock(storage)?;
@@ -895,7 +902,7 @@ pub(crate) fn workbook_default_properties(book: &NativeBook, now_iso: &str) -> P
     let mut book = lock(&book.book)?;
     let mut features = book.features().cloned().unwrap_or_default();
     if features.properties == Default::default() {
-        features.properties = crabxl::features::DocumentProperties::for_new_document(
+        features.properties = crate::engine::features::DocumentProperties::for_new_document(
             now_iso,
             Some("openpyxl"),
             Some(("Microsoft Excel Compatible / Openpyxl 3.1.5", "3.1")),
@@ -905,8 +912,8 @@ pub(crate) fn workbook_default_properties(book: &NativeBook, now_iso: &str) -> P
     Ok(())
 }
 
-pub(crate) fn default_calculation() -> crabxl::XmlElement {
-    let mut value = crabxl::XmlElement::new("calcPr");
+pub(crate) fn default_calculation() -> crate::engine::XmlElement {
+    let mut value = crate::engine::XmlElement::new("calcPr");
     value.set_attribute(
         "xmlns",
         "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
@@ -918,11 +925,11 @@ pub(crate) fn default_calculation() -> crabxl::XmlElement {
 
 #[pyfunction]
 pub(crate) fn normalized_active_view(index: i64, states: Vec<String>) -> PyResult<Option<i64>> {
-    let states: Vec<crabxl::SheetVisibility> = states
+    let states: Vec<crate::engine::SheetVisibility> = states
         .iter()
         .map(|state| crate::values::visibility(state))
         .collect::<PyResult<_>>()?;
-    crabxl::normalize_active_view(index, states.len(), |index| states[index])
+    crate::engine::normalize_active_view(index, states.len(), |index| states[index])
         .map(|selection| selection.serialized_index)
         .map_err(failure)
 }

@@ -1,5 +1,5 @@
 //! Shared adapter imports; no engine implementation belongs here.
-pub(crate) use crabxl::{
+pub(crate) use crate::engine::{
     Cell, CellAddress, CellRange, CellValue, ColumnIndex, DataTableOptions, DateEpoch, DateKind,
     EditLimits, EditorOptions, Error, ErrorKind, ExactInteger, ExcelDateTime, Formula, FormulaFlag,
     FormulaFlags, FormulaMetadata, FormulaRange, FormulaType, LoadOptions, LoadedWorkbook,

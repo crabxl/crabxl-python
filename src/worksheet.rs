@@ -29,7 +29,7 @@ impl SheetStorage {
             ..WorkbookLimits::default()
         })
         .map_err(failure)?;
-        let limits = crabxl::StyleLimits::default();
+        let limits = crate::engine::StyleLimits::default();
         match source.and_then(Workbook::style_catalog) {
             Some(catalog) => book.import_style_catalog(catalog.clone(), limits),
             None => book.initialize_style_catalog(limits),
@@ -83,7 +83,7 @@ impl NativeSheet {
     }
     pub(crate) fn with_style_catalog<T>(
         &self,
-        action: impl FnOnce(&Worksheet, Option<&crabxl::StyleCatalog>) -> PyResult<T>,
+        action: impl FnOnce(&Worksheet, Option<&crate::engine::StyleCatalog>) -> PyResult<T>,
     ) -> PyResult<T> {
         let storage = lock(&self.storage)?;
         match &*storage {
@@ -103,7 +103,10 @@ impl NativeSheet {
         &self,
         rows: bool,
         index: u32,
-        change: impl FnOnce(&mut dyn style_owners::StyleOwner, StyleId) -> crabxl::Result<StyleId>,
+        change: impl FnOnce(
+            &mut dyn style_owners::StyleOwner,
+            StyleId,
+        ) -> crate::engine::Result<StyleId>,
     ) -> PyResult<()> {
         let storage = self.styled()?;
         match &*storage {
@@ -462,7 +465,7 @@ impl NativeSheet {
         }
     }
     pub(crate) fn is_date_format(&self, row: u32, column: u32) -> PyResult<bool> {
-        Ok(crabxl::classify_number_format(&self.number_format(row, column)?).is_some())
+        Ok(crate::engine::classify_number_format(&self.number_format(row, column)?).is_some())
     }
     pub(crate) fn number_format(&self, row: u32, column: u32) -> PyResult<String> {
         let address = CellAddress::new(row, column).map_err(failure)?;
@@ -666,7 +669,7 @@ impl NativeSheet {
         let ranges: Vec<CellRange> = coordinates
             .iter()
             .map(|value| value.parse())
-            .collect::<crabxl::Result<_>>()
+            .collect::<crate::engine::Result<_>>()
             .map_err(failure)?;
         let mut storage = lock(&self.storage)?;
         match &mut *storage {
@@ -759,10 +762,10 @@ impl NativeSheet {
             SheetStorage::Standalone(sheet) => {
                 if sheet.get(range.start).is_none() {
                     sheet
-                        .set(crabxl::Cell {
+                        .set(crate::engine::Cell {
                             address: range.start,
-                            value: crabxl::CellValue::Empty,
-                            style: crabxl::StyleId::new(0),
+                            value: crate::engine::CellValue::Empty,
+                            style: crate::engine::StyleId::new(0),
                         })
                         .map_err(failure)?;
                 }
@@ -814,9 +817,9 @@ impl NativeSheet {
                     .map_err(failure)
                 }
                 SheetStorage::Standalone(sheet) => if merge {
-                    let style = crabxl::StyleId::new(0);
+                    let style = crate::engine::StyleId::new(0);
                     let prepared =
-                        crabxl::MergedCellRange::new(range, [style; 16]).map_err(failure)?;
+                        crate::engine::MergedCellRange::new(range, [style; 16]).map_err(failure)?;
                     if declare {
                         sheet.edit().merge_prepared(prepared, style)
                     } else {
@@ -849,10 +852,10 @@ impl NativeSheet {
                 .sheet_views(*id)
                 .map_err(failure)?,
         };
-        crabxl::feature_xml::sheet_views_to_xml(&views).map_err(failure)
+        crate::engine::feature_xml::sheet_views_to_xml(&views).map_err(failure)
     }
     pub(crate) fn set_views_xml(&self, xml: &[u8]) -> PyResult<()> {
-        let views = crabxl::feature_xml::sheet_views_from_xml(xml).map_err(failure)?;
+        let views = crate::engine::feature_xml::sheet_views_from_xml(xml).map_err(failure)?;
         let mut storage = lock(&self.storage)?;
         match &mut *storage {
             SheetStorage::Standalone(sheet) => sheet.set_sheet_views(Some(views)),
@@ -883,10 +886,10 @@ impl NativeSheet {
                 .print_settings(*id)
                 .map_err(failure)?,
         };
-        crabxl::feature_xml::print_settings_to_xml(&views).map_err(failure)
+        crate::engine::feature_xml::print_settings_to_xml(&views).map_err(failure)
     }
     pub(crate) fn set_printing_xml(&self, xml: &[u8]) -> PyResult<()> {
-        let views = crabxl::feature_xml::print_settings_from_xml(xml).map_err(failure)?;
+        let views = crate::engine::feature_xml::print_settings_from_xml(xml).map_err(failure)?;
         let mut storage = lock(&self.storage)?;
         match &mut *storage {
             SheetStorage::Standalone(sheet) => sheet.set_print_settings(Some(views)),
@@ -951,7 +954,7 @@ impl NativeSheet {
         kind: &str,
     ) -> PyResult<()> {
         let address = CellAddress::new(row, column).map_err(failure)?;
-        let kind = crabxl::CellStorageType::parse(kind).map_err(failure)?;
+        let kind = crate::engine::CellStorageType::parse(kind).map_err(failure)?;
         let storage = Arc::clone(&self.storage);
         py.detach(move || {
             let retype = |sheet: &Worksheet| {
@@ -1128,7 +1131,7 @@ impl NativeSheet {
                     let mut book = lock(book)?;
                     let book = book.as_mut().ok_or_else(closed)?;
                     // openpyxl moves cells only; references keep their text.
-                    let keep = crabxl::ReferenceUpdate::CellsOnly;
+                    let keep = crate::engine::ReferenceUpdate::CellsOnly;
                     return match (rows, insert) {
                         (true, true) => book.insert_rows_with(
                             *id,

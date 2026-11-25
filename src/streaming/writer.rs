@@ -1,7 +1,7 @@
 //! Sequential writer bindings, separate from read-only worker lifetimes.
 use super::*;
-use crabxl::WriteStats;
-use crabxl::feature_xml;
+use crate::engine::WriteStats;
+use crate::engine::feature_xml;
 type OutputIdentities = Vec<(u64, Option<String>)>;
 
 pub(crate) struct WriteState {
@@ -274,8 +274,10 @@ impl NativeWriteBook {
             .map(|theme| PyBytes::new(py, theme.bytes())))
     }
     fn set_theme(&self, value: Option<Vec<u8>>) -> PyResult<()> {
-        let theme = value.map_or_else(crabxl::ThemeWritePolicy::default, |bytes| {
-            crabxl::ThemeWritePolicy::Custom(crabxl::Theme::from_bytes(bytes.into_boxed_slice()))
+        let theme = value.map_or_else(crate::engine::ThemeWritePolicy::default, |bytes| {
+            crate::engine::ThemeWritePolicy::Custom(crate::engine::Theme::from_bytes(
+                bytes.into_boxed_slice(),
+            ))
         });
         lock(&self.state)?
             .writer
@@ -438,12 +440,12 @@ impl NativeWriteBook {
             iso_dates,
             date_1904,
             temp_directory,
-            non_finite: crabxl::NonFiniteWritePolicy::Blank,
+            non_finite: crate::engine::NonFiniteWritePolicy::Blank,
             ..Default::default()
         };
         let maximum_row = options.max_row_bytes;
         let mut writer = WorkbookWriter::new(options).map_err(failure)?;
-        writer.set_workbook_features(Some(crabxl::WorkbookFeatures {
+        writer.set_workbook_features(Some(crate::engine::WorkbookFeatures {
             calculation: Some(crate::features::default_calculation()),
             ..Default::default()
         }));
@@ -778,7 +780,7 @@ impl NativeWriteBook {
                     let refs = tables.iter().map(Vec::as_slice).collect::<Vec<_>>();
                     feature_xml::sheet_features_from_xml(worksheet, &refs).map_err(failure)?
                 }
-                None => crabxl::SheetFeatures::default(),
+                None => crate::engine::SheetFeatures::default(),
             };
             sheet.images = Some(images);
             sheet.charts = Some(charts);
@@ -791,8 +793,8 @@ impl NativeWriteBook {
             let merges = merges
                 .unwrap_or_default()
                 .iter()
-                .map(|range| range.parse::<crabxl::CellRange>())
-                .collect::<crabxl::Result<Vec<_>>>()
+                .map(|range| range.parse::<crate::engine::CellRange>())
+                .collect::<crate::engine::Result<Vec<_>>>()
                 .map_err(failure)?;
             lock(&state)?
                 .writer
@@ -864,7 +866,7 @@ impl NativeWriteBook {
                 .map_err(failure)?;
             if template {
                 let mut features = writer.workbook_features().cloned().unwrap_or_default();
-                features.format = Some(crabxl::features::WorkbookFormat::Xltx);
+                features.format = Some(crate::engine::features::WorkbookFormat::Xltx);
                 writer.set_workbook_features(Some(features));
             }
             state.stats = writer.stats();

@@ -16,7 +16,7 @@ type Anchor = (
 #[pyclass(frozen, from_py_object)]
 #[derive(Clone)]
 pub(crate) struct NativeImage {
-    pub(crate) image: Box<crabxl::Image>,
+    pub(crate) image: Box<crate::engine::Image>,
 }
 
 #[pymethods]
@@ -33,9 +33,10 @@ impl NativeImage {
     }
 
     fn anchor(&self) -> Anchor {
-        use crabxl::DrawingAnchor;
-        let marker =
-            |value: &crabxl::DrawingMarker| (value.row, value.col, value.row_off, value.col_off);
+        use crate::engine::DrawingAnchor;
+        let marker = |value: &crate::engine::DrawingMarker| {
+            (value.row, value.col, value.row_off, value.col_off)
+        };
         let zero = (0, 0, 0, 0);
         let flags = |name| {
             self.image

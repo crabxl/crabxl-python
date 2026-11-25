@@ -46,7 +46,7 @@ impl NativeBook {
     }
     pub(crate) fn set_template(&self, template: bool) -> PyResult<()> {
         let mut book = lock(&self.book)?;
-        let format = template.then_some(crabxl::features::WorkbookFormat::Xltx);
+        let format = template.then_some(crate::engine::features::WorkbookFormat::Xltx);
         if book.features().and_then(|features| features.format) == format {
             return Ok(());
         }
@@ -70,7 +70,9 @@ impl NativeBook {
     }
     pub(crate) fn set_theme(&self, value: Option<Vec<u8>>) -> PyResult<()> {
         lock(&self.book)?
-            .set_theme(value.map(|bytes| crabxl::Theme::from_bytes(bytes.into_boxed_slice())))
+            .set_theme(
+                value.map(|bytes| crate::engine::Theme::from_bytes(bytes.into_boxed_slice())),
+            )
             .map_err(failure)
     }
     #[pyo3(signature = (name, new_name, builtin_id=None, hidden=false))]
@@ -141,7 +143,7 @@ impl NativeBook {
             ..WorkbookLimits::default()
         })
         .map_err(failure)?;
-        book.set_features(Some(crabxl::WorkbookFeatures {
+        book.set_features(Some(crate::engine::WorkbookFeatures {
             calculation: Some(crate::features::default_calculation()),
             ..Default::default()
         }));
@@ -154,19 +156,22 @@ impl NativeBook {
         let mut book = lock(&self.book)?;
         let id = book.create_sheet(name).map_err(failure)?;
         if chartsheet {
-            let mut root = crabxl::XmlElement::new("chartsheet");
+            let mut root = crate::engine::XmlElement::new("chartsheet");
             root.set_attribute(
                 "xmlns",
                 "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
             );
-            let mut views = crabxl::XmlElement::new("sheetViews");
-            let mut view = crabxl::XmlElement::new("sheetView");
+            let mut views = crate::engine::XmlElement::new("sheetViews");
+            let mut view = crate::engine::XmlElement::new("sheetView");
             view.set_attribute("workbookViewId", "0");
             view.set_attribute("zoomToFit", "1");
-            views.children.push(crabxl::XmlContent::Element(view));
-            root.children.push(crabxl::XmlContent::Element(views));
+            views
+                .children
+                .push(crate::engine::XmlContent::Element(view));
+            root.children
+                .push(crate::engine::XmlContent::Element(views));
             let result = book.sheet_mut(id).and_then(|mut sheet| {
-                sheet.set_features(Some(crabxl::SheetFeatures {
+                sheet.set_features(Some(crate::engine::SheetFeatures {
                     chartsheet: Some(root),
                     ..Default::default()
                 }))

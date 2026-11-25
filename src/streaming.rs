@@ -1,6 +1,6 @@
 //! Bounded optimized-mode handles; all spreadsheet codecs remain in CrabXL.
 use super::*;
-use crabxl::RowBatch;
+use crate::engine::RowBatch;
 mod writer;
 use std::{
     io::{self, Read, Seek, SeekFrom},
@@ -74,7 +74,7 @@ impl Seek for SharedFile {
 }
 
 struct ReadState {
-    receiver: Option<Receiver<crabxl::Result<RowBatch>>>,
+    receiver: Option<Receiver<crate::engine::Result<RowBatch>>>,
     rows: std::vec::IntoIter<Row>,
     worker: Option<JoinHandle<()>>,
     cancel: Arc<AtomicBool>,
@@ -152,7 +152,7 @@ impl NativeReadStream {
         let worker = thread::Builder::new()
             .name("crabxl-stream".into())
             .spawn(move || {
-                let work = || -> crabxl::Result<()> {
+                let work = || -> crate::engine::Result<()> {
                     let limits = config.reader_limits(maximum, true);
                     let strings = config.string_options(maximum, limits)?;
                     let mut book = WorkbookReader::with_limits(source, limits)?;
@@ -176,7 +176,7 @@ impl NativeReadStream {
                         // shared-string catalog honors the rich_text flag.
                         inline_rich_text: Some(false),
                         // openpyxl returns #VALUE! for dates Python cannot represent.
-                        date_policy: crabxl::DateReadPolicy::ErrorOutOfRange,
+                        date_policy: crate::engine::DateReadPolicy::ErrorOutOfRange,
                         ..Default::default()
                     };
                     let mut rows = book.rows_with_options(&name, options)?;

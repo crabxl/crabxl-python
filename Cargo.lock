@@ -412,6 +412,9 @@ version = "0.2.2"
 dependencies = [
  "chrono",
  "crabxl",
+ "crabxl-calc",
+ "crabxl-core",
+ "crabxl-xlsx",
  "pyo3",
  "tempfile",
 ]

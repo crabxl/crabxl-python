@@ -10,7 +10,7 @@ pub(crate) type LinkFields = (
     Option<String>,
 );
 
-fn fields(links: &crabxl::Hyperlinks, address: CellAddress) -> PyResult<Option<LinkFields>> {
+fn fields(links: &crate::engine::Hyperlinks, address: CellAddress) -> PyResult<Option<LinkFields>> {
     let Some(link) = links.get(address) else {
         return Ok(None);
     };
@@ -21,7 +21,7 @@ fn fields(links: &crabxl::Hyperlinks, address: CellAddress) -> PyResult<Option<L
     Ok(Some(fields))
 }
 
-pub(crate) fn owned_fields(link: &crabxl::Hyperlink) -> LinkFields {
+pub(crate) fn owned_fields(link: &crate::engine::Hyperlink) -> LinkFields {
     (
         link.target.as_deref().map(str::to_owned),
         link.location.as_deref().map(str::to_owned),
@@ -32,9 +32,9 @@ pub(crate) fn owned_fields(link: &crabxl::Hyperlink) -> LinkFields {
     )
 }
 
-pub(crate) fn decode(fields: LinkFields) -> crabxl::Hyperlink {
+pub(crate) fn decode(fields: LinkFields) -> crate::engine::Hyperlink {
     let (target, location, tooltip, display, relationship_id, reference) = fields;
-    crabxl::Hyperlink {
+    crate::engine::Hyperlink {
         reference: reference.map(String::into_boxed_str),
         target: target.map(String::into_boxed_str),
         location: location.map(String::into_boxed_str),

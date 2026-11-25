@@ -55,7 +55,9 @@ impl NativeReader {
         lock(loaded)?
             .as_mut()
             .ok_or_else(closed)?
-            .set_theme(value.map(|bytes| crabxl::Theme::from_bytes(bytes.into_boxed_slice())))
+            .set_theme(
+                value.map(|bytes| crate::engine::Theme::from_bytes(bytes.into_boxed_slice())),
+            )
             .map_err(failure)
     }
     #[pyo3(signature = (name, new_name, builtin_id=None, hidden=false))]
@@ -246,7 +248,9 @@ impl NativeReader {
             return Ok(loaded
                 .model()
                 .sheets()
-                .filter(|(id, _)| loaded.sheet_kind(*id) == Some(crabxl::SheetKind::ChartSheet))
+                .filter(|(id, _)| {
+                    loaded.sheet_kind(*id) == Some(crate::engine::SheetKind::ChartSheet)
+                })
                 .map(|(_, sheet)| sheet.name().to_owned())
                 .collect());
         }
@@ -255,7 +259,7 @@ impl NativeReader {
             .ok_or_else(closed)?
             .sheets()
             .iter()
-            .filter(|sheet| sheet.kind() == crabxl::SheetKind::ChartSheet)
+            .filter(|sheet| sheet.kind() == crate::engine::SheetKind::ChartSheet)
             .map(|sheet| sheet.name().to_owned())
             .collect())
     }
@@ -380,7 +384,7 @@ impl NativeReader {
                     ReadOptions {
                         data_only,
                         rich_text,
-                        date_policy: crabxl::DateReadPolicy::ErrorOutOfRange,
+                        date_policy: crate::engine::DateReadPolicy::ErrorOutOfRange,
                         ..ReadOptions::default()
                     },
                 )
@@ -424,7 +428,7 @@ impl NativeReader {
             }))
     }
     pub(crate) fn style_array(&self, style: u32) -> PyResult<[u32; 9]> {
-        let resolve = |catalog: Option<&crabxl::StyleCatalog>| match catalog {
+        let resolve = |catalog: Option<&crate::engine::StyleCatalog>| match catalog {
             Some(catalog) => catalog.style_array(StyleId::new(style)).map_err(failure),
             None if style == 0 => Ok([0; 9]),
             None => Err(PyValueError::new_err("Unknown cell style identity")),
@@ -480,7 +484,7 @@ impl NativeReader {
         style: u32,
         name: &str,
     ) -> PyResult<Bound<'py, PyDict>> {
-        let resolve = |catalog: Option<&crabxl::StyleCatalog>| {
+        let resolve = |catalog: Option<&crate::engine::StyleCatalog>| {
             if let Some(catalog) = catalog {
                 styles::encode(
                     py,
@@ -551,7 +555,7 @@ fn open_loaded(
     // max_bytes is the already resolved retained-model allowance.
     // Add back only the canonical working reserve so resolving the
     // joint loaded budget does not subtract it a second time.
-    let working = crabxl::memory_allowance(MemoryPolicy::Budget(usize::MAX), limits)
+    let working = crate::engine::memory_allowance(MemoryPolicy::Budget(usize::MAX), limits)
         .map_err(failure)?
         .working_reserve_bytes;
     let operation = max_bytes
@@ -574,7 +578,7 @@ fn open_loaded(
             read: ReadOptions {
                 data_only,
                 rich_text,
-                date_policy: crabxl::DateReadPolicy::ErrorOutOfRange,
+                date_policy: crate::engine::DateReadPolicy::ErrorOutOfRange,
                 ..Default::default()
             },
             editor: config.editor_options(Some(operation)),

@@ -22,7 +22,7 @@ impl NativeEditor {
     }
 
     pub(crate) fn set_template(&self, template: bool, keep_vba: bool) -> PyResult<()> {
-        use crabxl::features::WorkbookFormat;
+        use crate::engine::features::WorkbookFormat;
         let format = match (template, keep_vba) {
             (false, false) => WorkbookFormat::Xlsx,
             (false, true) => WorkbookFormat::Xlsm,
@@ -41,7 +41,7 @@ impl NativeEditor {
     }
 
     pub(crate) fn set_vba(&self, keep: bool) -> PyResult<()> {
-        use crabxl::features::MacroPolicy;
+        use crate::engine::features::MacroPolicy;
         let loaded = self
             .loaded
             .as_ref()
@@ -67,9 +67,9 @@ impl NativeEditor {
             .ok_or_else(closed)?
             .set_date_options(
                 if date_1904 {
-                    crabxl::DateEpoch::Mac1904
+                    crate::engine::DateEpoch::Mac1904
                 } else {
-                    crabxl::DateEpoch::Windows1900
+                    crate::engine::DateEpoch::Windows1900
                 },
                 iso_dates,
             )
@@ -370,7 +370,7 @@ impl NativeEditor {
                 .sheet_id(&source)
                 .ok_or_else(|| PyKeyError::new_err(source))?;
             // openpyxl's copy_worksheet omits views and the header/footer.
-            let scope = crabxl::CopySheetOptions {
+            let scope = crate::engine::CopySheetOptions {
                 views: false,
                 header_footer: false,
             };
