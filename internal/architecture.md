@@ -3,18 +3,21 @@
 Update this file only when the architecture changes.
 
 The Rust core (https://github.com/crabxl/crabxl) is the only spreadsheet
-engine. This package adapts it to the openpyxl 3.1.5 API. `Cargo.toml` pins
-the core to an exact Git revision.
+engine. This package has two interfaces over it: the native `crabxl` API and
+the openpyxl 3.1.5 interface `crabxl.openpyxl`. `Cargo.toml` pins the core to
+an exact version.
 
 ## Layers
 
 | Layer | Responsibility |
 |---|---|
-| `python/crabxl` | Public package. Its modules follow the openpyxl module layout. Compatible objects are views over native handles. |
-| `src/` (`crabxl._native`) | PyO3 handles for the owned bank, the loaded reader and editor, the streaming reader and the streaming writer. Converts values in batches and releases the GIL for native work. |
+| `python/crabxl` | The native API: typed classes (`workbook.py`, `read.py`, `write.py`) and frozen value, style and feature types. |
+| `python/crabxl/openpyxl` | The openpyxl interface. Its modules follow the openpyxl module layout. Compatible objects are views over native handles. |
+| `src/api/` (`crabxl._native.Api*`) | The native API's engine, built on the `crabxl` crate: `ApiWorkbook`, `ApiReader` (row streams on a background thread with a bounded channel) and `ApiWriter`. Converts values in bulk and releases the GIL for file work. |
+| `src/` (other modules) | The openpyxl interface's PyO3 handles, built on `crabxl-xlsx` and `crabxl-core` through `src/engine.rs`. |
 | Rust core | Models, validation, resources and every XLSX codec. |
 
-## Workbook modes
+## openpyxl workbook modes
 
 | Python mode | Native owner |
 |---|---|
@@ -36,15 +39,19 @@ access, and only changed features are pushed back before save.
 ## Rules
 
 - Never fall back to openpyxl at run time.
-- An unsupported property or call raises an explicit error; nothing is lost on
-  save.
+- The native API never creates one Python object per cell unless it returns
+  values; bulk reads and writes convert in one native call.
+- The openpyxl interface selects openpyxl's behavior through core options
+  (cells-only row edits, value-based date kinds, `DataLossPolicy::Allow`,
+  openpyxl's copy scope). These are never core defaults.
 - Do not create one Python object per cell unless the openpyxl API returns one.
 
 ## Source modules
 
-- `python/crabxl/__init__.py` only composes exports.
-- `cell/cell.py`, `worksheet/worksheet.py` and `workbook/workbook.py` hold the
-  compatible objects. `workbook/loader.py` selects the loading mode.
+- `python/crabxl/__init__.py` and `python/crabxl/openpyxl/__init__.py` only
+  compose exports.
+- In `crabxl.openpyxl`, `cell/cell.py`, `worksheet/worksheet.py` and
+  `workbook/workbook.py` hold the compatible objects. `workbook/loader.py` selects the loading mode.
   `optimized.py` holds the read-only and write-only views.
 - `src/lib.rs` registers classes. `workbook.rs`, `worksheet.rs`, `reader.rs`,
   `editor.rs` and `streaming/` implement the handles. `values.rs` shares value

@@ -2,7 +2,7 @@
 
 # CrabXL for Python
 
-**A Rust-powered XLSX library with an openpyxl-compatible interface.**
+**Read, write and edit Excel XLSX files in Python, with a Rust core.**
 
 [![PyPI](https://img.shields.io/pypi/v/crabxl)](https://pypi.org/project/crabxl/)
 [![Python](https://img.shields.io/badge/Python-3.11–3.15-blue?logo=python&logoColor=white)](https://pypi.org/project/crabxl/#files)
@@ -15,16 +15,22 @@
 
 ## About
 
-CrabXL supports reading, creating, and editing XLSX files, including streaming
-`read_only` and `write_only` modes. Supported calls follow openpyxl conventions:
-use `import crabxl as openpyxl` to migrate compatible code. Processing runs in the
-shared Rust engine; openpyxl is not a runtime dependency.
+CrabXL reads, writes and edits XLSX files. The Rust core does the work, so it
+is fast and uses little memory. The API is fully typed and checked with mypy
+and pyright in strict mode.
 
-The public openpyxl 3.1.5 API is supported and the unchanged openpyxl test
-suite passes for it. Before version 1.0, a minor version can change the API. Invalid input raises
-explicit errors. `wb.save(path, calculate=True)` also calculates formulas and
-saves their results, which openpyxl cannot do. See the
-[migration guide](docs/migration.md) and [supported features](docs/support.md).
+- `Workbook` creates a workbook, or opens one to change and save it.
+  `Reader` and `Writer` stream rows of files of any size in bounded memory.
+- Saves are lossless: they copy every part you did not change, and they raise
+  an error instead of dropping content. Saves to a path are atomic.
+- Inserting or deleting rows or columns updates every reference to the moved
+  cells.
+- Numbers keep their precision, and text never turns into a formula.
+- `crabxl.openpyxl` runs openpyxl 3.1.5 code unchanged:
+  `import crabxl.openpyxl as openpyxl`. openpyxl is not a runtime dependency.
+
+Before version 1.0, a minor version can change the API. See the
+[documentation](docs/index.md) and the [migration guide](docs/openpyxl/migration.md).
 
 ## Installation
 
@@ -44,86 +50,68 @@ release candidate. Source builds require Rust 1.99 or newer and Maturin.
 
 ## Usage
 
-### Create and edit
+### Create a workbook
 
 ```python
-from crabxl import Workbook, load_workbook
+import crabxl as xl
 
-book = Workbook()
-sheet = book.active
-sheet["A1"] = "Hello"
-sheet.append([1, 2, 3])
-book.save("example.xlsx")
-book.close()
+header = xl.Style(font=xl.Font(bold=True), fill=xl.Fill("DDEBF7"))
 
-book = load_workbook("example.xlsx")
-try:
-    book.active["A1"] = "Updated"
-    book.save("updated.xlsx")
-finally:
-    book.close()
+with xl.Workbook() as book:
+    sheet = book.worksheets.add("Sales")
+    sheet.append(["Region", "Q1", "Q2", "Total"], style=header)
+    sheet.append(["North", 120.5, 98, xl.Formula("B2+C2")])
+    sheet.columns("A:D").width = 14
+    sheet.freeze_panes = "A2"
+    book.save("sales.xlsx")
 ```
 
-### Streaming modes
+### Edit a file
 
 ```python
-from crabxl import Workbook, load_workbook
+with xl.Workbook.open("sales.xlsx") as book:
+    sheet = book.worksheets["Sales"]
+    sheet.rows("2").insert()            # The formula now reads =B3+C3.
+    sheet["A2:C2"].values = [["South", 80, 95]]
+    sheet["B2:C3"].map_style(lambda s: s.replace(number_format="#,##0.00"))
+    book.save("sales.xlsx")             # Atomic, even over the source.
+```
 
-book = load_workbook("input.xlsx", read_only=True)
-try:
-    for row in book.active.iter_rows(values_only=True):
-        print(row)
-finally:
-    book.close()
+### Stream rows
 
-book = Workbook(write_only=True)
-sheet = book.create_sheet("Values")
-sheet.append([1, "hello", "=A1+1"])
+```python
+with xl.Reader.open("events.xlsx") as reader:
+    for row in reader.worksheets["Events"].iter_rows(columns="A:C", skip=1):
+        event_id, kind, amount = row
+
+with xl.Writer.create("export.xlsx") as writer:
+    sheet = writer.worksheets.add("Events")
+    sheet.extend((n, "sale", n * 1.5) for n in range(1_000_000))
+```
+
+### openpyxl code
+
+```python
+import crabxl.openpyxl as openpyxl
+
+book = openpyxl.load_workbook("input.xlsx")
+book.active["A1"] = "Updated"
 book.save("output.xlsx")
 book.close()
 ```
 
-Read-only mode streams bounded batches. Write-only mode spools rows to disk and
-can be saved once; it does not support random cell access.
-
-### Memory and compression
-
-All save modes accept `compression_level`: **0** stores without compression,
-**1–9** use Deflate, and the default is **6**.
-
-```python
-from crabxl import AutoMemory, ResourceOptions, SharedStringOptions, load_workbook
-
-options = ResourceOptions(
-    auto_memory=AutoMemory(maximum_bytes=64 * 1024**2),
-    shared_strings=SharedStringOptions(storage="auto", cache_bytes=1024**2),
-)
-book = load_workbook("input.xlsx", resource_options=options)
-try:
-    book.active["A1"] = 42
-    book.save("output.xlsx", compression_level=3)
-finally:
-    book.close()
-```
-
-Use `max_memory_bytes` for an explicit managed allowance, or `AutoMemory` to tune
-Auto selection. `ResourceOptions` also exposes input limits, SST RAM/disk
-strategies, cache and temporary-storage limits, and edit-overlay bounds.
-Ordinary loaded workbooks share one retained allowance across source catalogs,
-models, overlays and SST/cache; I/O working space remains additional. These
-settings do not cap process RSS. See [memory limits](docs/guide/memory.md).
-
-Loading guards against ZIP bombs, deeply nested XML and huge XML tokens; the
-default opens every file Excel writes. Pass `limits="strict"` for uploads from
-strangers or `limits="unlimited"` for files you trust, or set the
-`CRABXL_LIMITS` environment variable.
+The openpyxl 3.1.5 public API is supported, and the unchanged openpyxl test
+suite passes for it. `wb.save(path, calculate=True)` also calculates formulas
+and saves their results. See [the openpyxl interface](docs/openpyxl/index.md)
+and [supported features](docs/openpyxl/support.md).
 
 ## Documentation
 
-- [Quick start](docs/quick-start.md)
-- [Migration from openpyxl](docs/migration.md)
-- [Guide](docs/guide/tutorial.md), adapted from the openpyxl documentation
-- [Compatibility](docs/compatibility.md): the openpyxl test suite results
+- [Documentation](docs/index.md): workbooks, values, styles, streaming and errors
+- [openpyxl interface](docs/openpyxl/index.md), with a
+  [guide](docs/openpyxl/guide/tutorial.md) adapted from the openpyxl documentation
+- [Migration from openpyxl](docs/openpyxl/migration.md)
+- [Compatibility](docs/openpyxl/compatibility.md): the openpyxl test suite results
 - [Project status](internal/STATUS.md)
 - [Changelog](CHANGELOG.md)
 

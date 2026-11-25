@@ -5,8 +5,8 @@
 - **Report a bug.** Use the [issue forms](https://github.com/crabxl/crabxl-python/issues/new/choose).
   Give the CrabXL version, the Python version and the smallest code or `.xlsx`
   file that shows the problem. Remove confidential data first.
-- **Report a difference from openpyxl.** CrabXL must behave like openpyxl
-  3.1.5. Give the code, the openpyxl result and the CrabXL result.
+- **Report a difference from openpyxl.** `crabxl.openpyxl` must behave like
+  openpyxl 3.1.5. Give the code, the openpyxl result and the CrabXL result.
 - **Improve the documentation.** User documentation is in [docs](docs). The
   documentation site is built from it by
   [crabxl-docs](https://github.com/crabxl/crabxl-docs).
@@ -18,21 +18,26 @@ Do not report security problems in public issues. Read [SECURITY.md](SECURITY.md
 ## How this package works
 
 This package does not implement spreadsheet features itself. The Rust core in
-[crabxl](https://github.com/crabxl/crabxl) implements them. This package adapts
-the core to the openpyxl API.
+[crabxl](https://github.com/crabxl/crabxl) implements them. This package offers
+the native `crabxl` API and the openpyxl interface `crabxl.openpyxl` over it.
 
 - If a feature is missing in the core, add it to the core first.
 - `Cargo.toml` pins the core to an exact Git revision. A change that needs a
   new core feature also updates this revision.
-- Calls follow openpyxl: content the core does not model is dropped, not
-  refused. Never raise `NotImplementedError`. The package never falls back to
-  openpyxl.
+- The native API follows the core's lossless defaults: a save refuses to drop
+  content unless the caller allows it.
+- `crabxl.openpyxl` follows openpyxl: content the core does not model is
+  dropped, not refused, and it selects that behavior through core options.
+  Never raise `NotImplementedError`. The package never falls back to openpyxl.
+- Keep the native API typed: run `mypy` and `pyright` (configured in
+  `pyproject.toml`) before you push.
 
 ## Repository layout
 
 | Path | Contents |
 |---|---|
-| `python/crabxl` | Public Python package. Its modules follow the openpyxl module layout. |
+| `python/crabxl` | The native, typed Python API. |
+| `python/crabxl/openpyxl` | The openpyxl interface. Its modules follow the openpyxl module layout. |
 | `src/` | PyO3 bindings to the Rust core. |
 | `tests/` | Tests. Files named `test_upstream_*.py` contain selected openpyxl tests. |
 | `third_party/` | Provenance and licenses of the selected openpyxl tests. |

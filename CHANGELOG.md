@@ -6,6 +6,36 @@ Before version 1.0, a minor version can change the API.
 Each release names the Rust core version it uses. The core has its own
 [changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).
 
+## [0.3.0] - unreleased
+
+It uses the Rust core 0.3.0.
+
+### Changed
+
+- `crabxl` has its own, fully typed API. `Workbook` creates a workbook or
+  opens one to change it; `Reader` and `Writer` stream rows with bounded
+  memory. See the [documentation](docs/index.md).
+- The openpyxl interface moved to `crabxl.openpyxl`. Change
+  `import crabxl as openpyxl` to `import crabxl.openpyxl as openpyxl`. Its
+  behavior is unchanged: the openpyxl 3.1.5 suite gives the same results.
+
+### Added
+
+- Lossless saves: a save raises `UnsupportedError` instead of dropping
+  content CrabXL cannot keep. Open with `data_loss="allow"` to permit it.
+- Row and column inserts and deletes update formulas on every sheet,
+  defined names, tables, rules, merges, row heights, charts, anchors and
+  internal hyperlinks.
+- Atomic saves to paths. An existing file keeps its permissions.
+- `numbers="exact"` returns non-integers as `Decimal`; integers of any size
+  are exact `int` values.
+- Date formats read by the parts they show: `datetime.date` for date-only
+  formats and `datetime.time` for time-only formats.
+- A typed exception hierarchy under `CrabXLError`, with `sheet`, `cell` and
+  `part` attributes.
+- `py.typed` and a stub for the native module. The public package passes
+  mypy and pyright in strict mode.
+
 ## [0.2.2]
 
 It uses the Rust core 0.2.2.
