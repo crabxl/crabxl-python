@@ -196,6 +196,8 @@ fn encode_raw(py: Python<'_>, value: &CellValue) -> PyResult<EncodedValue> {
         CellValue::Number(value) => ("n", value.into_py_any(py)?),
         CellValue::Integer(value) => ("n", value.into_py_any(py)?),
         CellValue::BigInteger(value) => ("bigint", value.as_str().into_py_any(py)?),
+        // openpyxl reads every non-integer number as a float.
+        CellValue::Decimal(value) => ("n", value.to_f64().into_py_any(py)?),
         CellValue::Boolean(value) => ("b", value.into_py_any(py)?),
         CellValue::Text(value) => ("s", value.as_str().into_py_any(py)?),
         CellValue::Error(value) => ("e", value.as_str().into_py_any(py)?),
