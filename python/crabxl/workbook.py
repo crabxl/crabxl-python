@@ -47,6 +47,8 @@ Limits: TypeAlias = Literal["default", "strict", "unlimited"]
 T = TypeVar("T")
 
 _CELL = re.compile(r"^\$?([A-Za-z]{1,3})\$?([0-9]{1,7})$")
+# A reference already in normal form: one cell, uppercase, no $, no leading zero.
+_NORMAL_CELL = re.compile(r"[A-Z]{1,3}[1-9][0-9]{0,6}")
 
 
 def _split(ref: str) -> tuple[int, int]:
@@ -78,6 +80,8 @@ def _bounds(ref: str) -> tuple[int, int, int, int]:
 
 
 def _normalize(ref: str) -> str:
+    if _NORMAL_CELL.fullmatch(ref):
+        return ref
     top, left, bottom, right = _bounds(ref)
     start, end = _name(top, left), _name(bottom, right)
     return start if start == end else f"{start}:{end}"
