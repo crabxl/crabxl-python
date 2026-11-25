@@ -47,7 +47,7 @@ from .styles import (
 from .workbook import Columns, Range, Rows, Workbook, Worksheet, Worksheets
 from .write import WorksheetWriter, Writer
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"
 
 __all__ = [
     "Alignment",

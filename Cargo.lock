@@ -381,7 +381,7 @@ dependencies = [
 
 [[package]]
 name = "crabxl"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "chrono",
  "crabxl-calc",
@@ -391,7 +391,7 @@ dependencies = [
 
 [[package]]
 name = "crabxl-calc"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "crabxl-core",
  "formualizer-common",
@@ -402,14 +402,14 @@ dependencies = [
 
 [[package]]
 name = "crabxl-core"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "chrono",
 ]
 
 [[package]]
 name = "crabxl-python"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "chrono",
  "crabxl",
@@ -422,7 +422,7 @@ dependencies = [
 
 [[package]]
 name = "crabxl-xlsx"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "core_affinity",
  "crabxl-calc",
