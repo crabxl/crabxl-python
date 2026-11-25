@@ -6,7 +6,7 @@ Before version 1.0, a minor version can change the API.
 Each release names the Rust core version it uses. The core has its own
 [changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).
 
-## [0.3.0] - unreleased
+## [0.3.0]
 
 It uses the Rust core 0.3.0.
 

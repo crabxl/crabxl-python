@@ -34,10 +34,3 @@ expect_used = "deny"
 
 [profile.release]
 lto = "thin"
-
-# Development against the core branch. Replace with the released version.
-[patch.crates-io]
-crabxl = { path = "../crabxl/crates/crabxl" }
-crabxl-core = { path = "../crabxl/crates/crabxl-core" }
-crabxl-xlsx = { path = "../crabxl/crates/crabxl-xlsx" }
-crabxl-calc = { path = "../crabxl/crates/crabxl-calc" }
