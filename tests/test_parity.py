@@ -5,7 +5,7 @@ import zipfile
 from contextlib import nullcontext
 from datetime import date, datetime, time, timedelta
 
-import crabxl
+import crabxl.openpyxl as crabxl
 import openpyxl
 import pytest
 
@@ -767,7 +767,7 @@ def test_values_iteration_observes_edits_between_rows(engine, loaded, tmp_path):
 
 
 def test_values_iteration_retains_live_structured_formula_identity(tmp_path):
-    from crabxl.worksheet.formula import ArrayFormula
+    from crabxl.openpyxl.worksheet.formula import ArrayFormula
 
     path = tmp_path / "values-formula.xlsx"
     book = crabxl.Workbook()
@@ -1004,7 +1004,7 @@ def test_formula_move_translation_and_failure_atomicity(engine):
         closer = token.get_closer()
         assert (closer.type, closer.subtype) == (kind, "CLOSE")
     # openpyxl rejects spill references such as A1#; CrabXL tokenizes them (#2309).
-    spill = [] if engine.__name__ == "crabxl" else ["=A1#"]
+    spill = [] if engine.__name__ == "crabxl.openpyxl" else ["=A1#"]
     for source in ['="text', "='Sheet!A1", "=Table[A1", "=#SPILL!", *spill]:
         with pytest.raises(module.TokenizerError):
             module.Tokenizer(source)
@@ -1332,7 +1332,7 @@ def test_default_rich_projection_edit_and_repeated_save(
             archive.writestr(name, data)
     expected = inline if location == "inline" else shared
     reader = openpyxl
-    if engine.__name__ == "crabxl":
+    if engine.__name__ == "crabxl.openpyxl":
         # Excel decodes _xHHHH_ in inline strings too, one run at a time;
         # openpyxl decodes neither, so CrabXL checks its own output (#2328).
         expected = "_x005FA" if "<t>_x005F</t>" in content else shared
@@ -1567,7 +1567,7 @@ def test_replacing_temporal_value_retains_format_across_repeated_save(engine, tm
     streamed = engine.Workbook(write_only=True)
     stream_sheet = streamed.create_sheet()
     if engine is crabxl:
-        from crabxl.cell.cell import WriteOnlyCell
+        from crabxl.openpyxl.cell.cell import WriteOnlyCell
     else:
         from openpyxl.cell.cell import WriteOnlyCell
     stream_date = WriteOnlyCell(stream_sheet, date(2024, 1, 2))
@@ -1757,9 +1757,9 @@ def test_replacing_temporal_value_retains_format_across_repeated_save(engine, tm
 
 
 def test_append_detached_cell_preserves_identity_value_and_style():
-    import crabxl
-    from crabxl.cell import Cell
-    from crabxl.styles import Font
+    import crabxl.openpyxl as crabxl
+    from crabxl.openpyxl.cell import Cell
+    from crabxl.openpyxl.styles import Font
 
     book = crabxl.Workbook()
     try:
@@ -2025,7 +2025,7 @@ def test_loaded_calculation_retains_opaque_attributes_on_repeated_metadata_saves
                 assert len(calculations) == 1
                 assert calculations[0].get(f"{{{vendor}}}marker") == "retain"
                 assert calculations[0].get(f"{{{mc}}}Ignorable") == "proof"
-                from crabxl.xml._preserve import (
+                from crabxl.openpyxl.xml._preserve import (
                     inherit_namespace_context,
                     preserving_fromstring,
                 )
@@ -2140,7 +2140,10 @@ def test_reordered_workbook_views_keep_their_own_opaque_namespace_metadata(tmp_p
     from io import BytesIO
     from xml.etree import ElementTree as ET
 
-    from crabxl.xml._preserve import inherit_namespace_context, preserving_fromstring
+    from crabxl.openpyxl.xml._preserve import (
+        inherit_namespace_context,
+        preserving_fromstring,
+    )
 
     source = tmp_path / "opaque-views-source.xlsx"
     book = openpyxl.Workbook()
@@ -2268,7 +2271,10 @@ def test_code_name_edits_keep_opaque_workbook_properties_and_mac_epoch(tmp_path)
     from io import BytesIO
     from xml.etree import ElementTree as ET
 
-    from crabxl.xml._preserve import inherit_namespace_context, preserving_fromstring
+    from crabxl.openpyxl.xml._preserve import (
+        inherit_namespace_context,
+        preserving_fromstring,
+    )
 
     source = tmp_path / "opaque-workbook-properties.xlsx"
     book = openpyxl.Workbook()

@@ -5,7 +5,7 @@ import os
 import zipfile
 from pathlib import Path
 
-import crabxl
+import crabxl.openpyxl as crabxl
 import openpyxl
 import pytest
 

@@ -59,7 +59,7 @@ def test_loaded_images_match_reference_after_edits(tmp_path, action, anchor_kind
     source = tmp_path / "source.xlsx"
     source_image(source, anchor_kind)
     snapshots = []
-    for name in ("openpyxl", "crabxl"):
+    for name in ("openpyxl", "crabxl.openpyxl"):
         engine = import_module(name)
         book = engine.load_workbook(source)
         picture = book.active._images[0]
@@ -107,7 +107,7 @@ def test_loaded_images_match_reference_after_edits(tmp_path, action, anchor_kind
 
 
 def test_loaded_image_list_replacement_removes_images_without_reading_them(tmp_path):
-    import crabxl
+    import crabxl.openpyxl as crabxl
 
     source = tmp_path / "source.xlsx"
     source_image(source, "one")
@@ -126,8 +126,8 @@ def test_loaded_image_list_replacement_removes_images_without_reading_them(tmp_p
 def test_adding_images_keeps_loaded_prefix_lazy_and_preserves_new_view_identity(
     tmp_path, monkeypatch, save_before_access
 ):
-    import crabxl
-    from crabxl.drawing.image import Image
+    import crabxl.openpyxl as crabxl
+    from crabxl.openpyxl.drawing.image import Image
 
     source = tmp_path / "source.xlsx"
     source_image(source, "one")
@@ -161,7 +161,7 @@ def test_adding_images_keeps_loaded_prefix_lazy_and_preserves_new_view_identity(
 
 @pytest.mark.parametrize("action", ["move", "copy", "stream_copy"])
 def test_loaded_image_edits_keep_picture_metadata_and_related_parts(tmp_path, action):
-    import crabxl
+    import crabxl.openpyxl as crabxl
     from openpyxl.packaging.relationship import get_dependents, get_rels_path
 
     source = tmp_path / "source.xlsx"

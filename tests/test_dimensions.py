@@ -12,7 +12,7 @@ def test_dimension_metadata_matches_reference(tmp_path, loaded, write_only):
     if loaded and write_only:
         pytest.skip("Loaded workbooks cannot be write-only")
     snapshots = []
-    for engine in ("openpyxl", "crabxl"):
+    for engine in ("openpyxl", "crabxl.openpyxl"):
         module = importlib.import_module(engine)
         dimensions = importlib.import_module(f"{engine}.worksheet.dimensions")
         styles = importlib.import_module(f"{engine}.styles")
@@ -55,7 +55,7 @@ def test_dimension_metadata_matches_reference(tmp_path, loaded, write_only):
 
 def test_grouped_column_xml_matches_reference():
     snapshots = []
-    for engine in ("openpyxl", "crabxl"):
+    for engine in ("openpyxl", "crabxl.openpyxl"):
         book = importlib.import_module(engine).Workbook()
         dimensions = book.active.column_dimensions
         assert dimensions.to_tree() is None
@@ -72,7 +72,7 @@ def test_grouped_column_xml_matches_reference():
 @pytest.mark.parametrize("row", [False, True])
 def test_dimension_copy_is_independent(tmp_path, row):
     snapshots = []
-    for engine in ("openpyxl", "crabxl"):
+    for engine in ("openpyxl", "crabxl.openpyxl"):
         module = importlib.import_module(engine)
         styles = importlib.import_module(f"{engine}.styles")
         book = module.Workbook()

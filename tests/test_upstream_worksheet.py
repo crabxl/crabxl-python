@@ -4,8 +4,8 @@
 # See third_party/python-tests.json and third_party/licenses/openpyxl-MIT.txt.
 import pytest
 from itertools import islice
-from crabxl import Workbook, Worksheet as NativeWorksheet, Cell
-from crabxl.worksheet.cell_range import CellRange
+from crabxl.openpyxl import Workbook, Worksheet as NativeWorksheet, Cell
+from crabxl.openpyxl.worksheet.cell_range import CellRange
 
 @pytest.fixture
 def Worksheet():

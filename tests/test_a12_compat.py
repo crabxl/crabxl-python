@@ -3,12 +3,12 @@
 import importlib
 import warnings
 
-import crabxl
+import crabxl.openpyxl as crabxl
 import openpyxl
 import pytest
-from crabxl.cell import WriteOnlyCell
-from crabxl.worksheet.datavalidation import DataValidation
-from crabxl.worksheet.formula import ArrayFormula
+from crabxl.openpyxl.cell import WriteOnlyCell
+from crabxl.openpyxl.worksheet.datavalidation import DataValidation
+from crabxl.openpyxl.worksheet.formula import ArrayFormula
 
 
 def _apply_sheet_settings(ws):
@@ -197,7 +197,7 @@ def test_legacy_workbook_worksheet_and_cell_api():
 
 
 def test_scenarios_are_read_kept_edited_and_written(tmp_path):
-    from crabxl.worksheet.scenario import InputCells, Scenario, ScenarioList
+    from crabxl.openpyxl.worksheet.scenario import InputCells, Scenario, ScenarioList
     from openpyxl.worksheet.scenario import InputCells as RefInput
     from openpyxl.worksheet.scenario import Scenario as RefScenario
     from openpyxl.worksheet.scenario import ScenarioList as RefList
@@ -280,7 +280,7 @@ PUBLIC_NAMES = {
 
 @pytest.mark.parametrize("module", sorted(PUBLIC_NAMES))
 def test_public_module_names_match_openpyxl(module):
-    ours = importlib.import_module(f"crabxl.{module}")
+    ours = importlib.import_module(f"crabxl.openpyxl.{module}")
     reference = importlib.import_module(f"openpyxl.{module}")
     for name in PUBLIC_NAMES[module]:
         value = getattr(ours, name)
@@ -304,6 +304,6 @@ def test_missing_file_raises_file_not_found(tmp_path):
 
 
 def test_border_accepts_legacy_diagonal_direction():
-    from crabxl.styles import Border
+    from crabxl.openpyxl.styles import Border
 
     assert Border(diagonal_direction=0) == Border()

@@ -3,7 +3,7 @@
 import math
 import zipfile
 
-import crabxl
+import crabxl.openpyxl as crabxl
 import openpyxl
 import pytest
 

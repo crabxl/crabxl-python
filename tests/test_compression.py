@@ -2,7 +2,7 @@
 
 from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
-import crabxl
+import crabxl.openpyxl as crabxl
 import openpyxl
 import pytest
 

@@ -1,6 +1,6 @@
 import gc
 
-import crabxl
+import crabxl.openpyxl as crabxl
 
 
 def test_cell_cache_keeps_held_cells_and_sweeps_released_ones():

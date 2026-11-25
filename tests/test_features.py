@@ -6,7 +6,7 @@ from xml.etree import ElementTree as ET
 from xml.etree.ElementTree import canonicalize
 from zipfile import ZipFile
 
-import crabxl
+import crabxl.openpyxl as crabxl
 import openpyxl
 import pytest
 
@@ -22,7 +22,7 @@ import pytest
                 reason="openpyxl 3.1.5 repeated shared-cache saves reference missing pivotCacheRecords2.xml",
             ),
         ),
-        "crabxl",
+        "crabxl.openpyxl",
     ],
 )
 @pytest.mark.parametrize("mode", ["new", "loaded", "write_only"])
@@ -128,7 +128,7 @@ def test_create_pivots_with_shared_cache_and_repeat_save(tmp_path, backend, mode
         assert pivots[0].cacheId == pivots[1].cacheId
         assert pivots[0].cache.records.count == 3
         assert pivots[0].cache.records.r[0]._fields[1].v == 12
-        if backend == "crabxl":
+        if backend == "crabxl.openpyxl":
             assert pivots[0].cache.cacheFields[1].sharedItems is not None
         assert verified["Data"]["B2"].value == 12
     finally:
@@ -152,7 +152,7 @@ def test_create_pivots_with_shared_cache_and_repeat_save(tmp_path, backend, mode
 
 @pytest.mark.parametrize("loaded", [False, True])
 def test_printing_properties_and_breaks_round_trip(tmp_path, loaded):
-    from crabxl.worksheet.pagebreak import Break
+    from crabxl.openpyxl.worksheet.pagebreak import Break
 
     source = tmp_path / "source.xlsx"
     target = tmp_path / "output.xlsx"
@@ -282,7 +282,7 @@ def test_binary_stream_round_trip(write_only):
         readonly.close()
 
 
-@pytest.mark.parametrize("backend", ["openpyxl", "crabxl"])
+@pytest.mark.parametrize("backend", ["openpyxl", "crabxl.openpyxl"])
 @pytest.mark.parametrize("data_only", [False, True])
 def test_unused_external_link_removal_keeps_local_formulas_and_structured_names(
     tmp_path, backend, data_only
@@ -336,8 +336,8 @@ def test_unused_external_link_removal_keeps_local_formulas_and_structured_names(
 def test_external_links_can_be_removed_from_cached_value_output(
     tmp_path, external_rule
 ):
-    from crabxl.chart import BarChart, Reference
-    from crabxl.workbook.defined_name import DefinedName
+    from crabxl.openpyxl.chart import BarChart, Reference
+    from crabxl.openpyxl.workbook.defined_name import DefinedName
     from openpyxl.packaging.relationship import Relationship
     from openpyxl.workbook.external_link.external import ExternalBook, ExternalLink
 
@@ -491,13 +491,13 @@ def loaded_pivot_source(tmp_path, separate_sheets):
     return source
 
 
-@pytest.mark.parametrize("backend", ["openpyxl", "crabxl"])
+@pytest.mark.parametrize("backend", ["openpyxl", "crabxl.openpyxl"])
 @pytest.mark.parametrize("separate_sheets", [False, True])
 def test_loaded_pivot_full_objects_and_shared_cache_edits(
     tmp_path, backend, separate_sheets, loaded_pivot_source
 ):
     source = loaded_pivot_source
-    if backend == "crabxl":
+    if backend == "crabxl.openpyxl":
         ET.register_namespace("probe", "urn:crabxl:test:pivot-preservation")
         ET.register_namespace(
             "mc", "http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -574,7 +574,7 @@ def test_loaded_pivot_full_objects_and_shared_cache_edits(
         assert actual[0].cache.records.r[0]._fields[3].v == 2
         assert actual[0].cache.records.r[1]._fields[1].v == 7
         check.close()
-        if backend == "crabxl":
+        if backend == "crabxl.openpyxl":
             with ZipFile(output) as archive:
                 for name in archive.namelist():
                     if name.startswith(
@@ -594,7 +594,7 @@ def test_loaded_pivot_full_objects_and_shared_cache_edits(
                                     )
                                     == "number"
                                 )
-    if backend == "crabxl":
+    if backend == "crabxl.openpyxl":
         from copy import deepcopy
 
         records = deepcopy(pivots[0].cache.records)
@@ -638,7 +638,7 @@ def test_loaded_pivot_full_objects_and_shared_cache_edits(
     book.close()
 
 
-@pytest.mark.parametrize("backend", ["openpyxl", "crabxl"])
+@pytest.mark.parametrize("backend", ["openpyxl", "crabxl.openpyxl"])
 @pytest.mark.parametrize("separate_sheets", [False, True])
 def test_added_pivot_reuses_loaded_cache(
     tmp_path, backend, separate_sheets, loaded_pivot_source
@@ -648,7 +648,7 @@ def test_added_pivot_reuses_loaded_cache(
     engine = importlib.import_module(backend)
     book = engine.load_workbook(loaded_pivot_source)
     original = book["Report"]._pivots[0]
-    if backend == "crabxl":
+    if backend == "crabxl.openpyxl":
         cloned = copy(original)
         assert cloned.cache is not original.cache
         assert cloned.cache.records.r[0]._fields[1].v == 4
@@ -895,8 +895,8 @@ def test_data_only_template_save_writes_cached_values(tmp_path):
 
 
 def test_images_match_openpyxl_and_survive_loaded_feature_edits(tmp_path):
-    from crabxl.comments import Comment
-    from crabxl.drawing.image import Image
+    from crabxl.openpyxl.comments import Comment
+    from crabxl.openpyxl.drawing.image import Image
     from openpyxl.drawing.image import Image as ReferenceImage
     from PIL import Image as PillowImage
 
@@ -951,16 +951,16 @@ def test_images_match_openpyxl_and_survive_loaded_feature_edits(tmp_path):
 
 
 def test_image_anchor_variants_round_trip(tmp_path):
-    from crabxl.chart import BarChart, Reference
-    from crabxl.drawing.image import Image
-    from crabxl.drawing.spreadsheet_drawing import (
+    from crabxl.openpyxl.chart import BarChart, Reference
+    from crabxl.openpyxl.drawing.image import Image
+    from crabxl.openpyxl.drawing.spreadsheet_drawing import (
         AbsoluteAnchor,
         AnchorClientData,
         AnchorMarker,
         OneCellAnchor,
         TwoCellAnchor,
     )
-    from crabxl.drawing.xdr import XDRPoint2D, XDRPositiveSize2D
+    from crabxl.openpyxl.drawing.xdr import XDRPoint2D, XDRPositiveSize2D
     from PIL import Image as PillowImage
 
     picture = BytesIO()
@@ -1194,28 +1194,28 @@ def test_default_properties(tmp_path):
 
 
 def test_import_paths():
-    from crabxl.comments import Comment  # noqa: F401
-    from crabxl.formatting.formatting import ConditionalFormattingList  # noqa: F401
-    from crabxl.formatting.rule import (  # noqa: F401
+    from crabxl.openpyxl.comments import Comment  # noqa: F401
+    from crabxl.openpyxl.formatting.formatting import ConditionalFormattingList  # noqa: F401
+    from crabxl.openpyxl.formatting.rule import (  # noqa: F401
         CellIsRule,
         ColorScale,
         DataBar,
         IconSet,
         Rule,
     )
-    from crabxl.packaging.core import DocumentProperties  # noqa: F401
-    from crabxl.worksheet.datavalidation import (  # noqa: F401
+    from crabxl.openpyxl.packaging.core import DocumentProperties  # noqa: F401
+    from crabxl.openpyxl.worksheet.datavalidation import (  # noqa: F401
         DataValidation,
         DataValidationList,
     )
-    from crabxl.worksheet.filters import (  # noqa: F401
+    from crabxl.openpyxl.worksheet.filters import (  # noqa: F401
         AutoFilter,
         FilterColumn,
         SortState,
     )
-    from crabxl.worksheet.header_footer import HeaderFooter  # noqa: F401
-    from crabxl.worksheet.protection import SheetProtection  # noqa: F401
-    from crabxl.worksheet.table import (  # noqa: F401
+    from crabxl.openpyxl.worksheet.header_footer import HeaderFooter  # noqa: F401
+    from crabxl.openpyxl.worksheet.protection import SheetProtection  # noqa: F401
+    from crabxl.openpyxl.worksheet.table import (  # noqa: F401
         Table,
         TableColumn,
         TableList,
@@ -1230,7 +1230,7 @@ def test_protection_hash_matches_openpyxl():
 
 
 def test_comment_binding_semantics():
-    from crabxl.comments import Comment
+    from crabxl.openpyxl.comments import Comment
 
     ws = crabxl.Workbook().active
     c = Comment("t", "a")
@@ -1244,7 +1244,7 @@ def test_comment_binding_semantics():
 
 
 def test_duplicate_table_name():
-    from crabxl.worksheet.table import Table
+    from crabxl.openpyxl.worksheet.table import Table
 
     ws = crabxl.Workbook().active
     ws.add_table(Table(displayName="T", ref="A1:B2"))
@@ -1325,9 +1325,9 @@ def test_loaded_untouched_features_survive(made_by_openpyxl, tmp_path):
 
 
 def test_loaded_created_sheet_features(made_by_openpyxl, tmp_path):
-    from crabxl.comments import Comment
-    from crabxl.worksheet.datavalidation import DataValidation
-    from crabxl.worksheet.table import Table
+    from crabxl.openpyxl.comments import Comment
+    from crabxl.openpyxl.worksheet.datavalidation import DataValidation
+    from crabxl.openpyxl.worksheet.table import Table
 
     wb = crabxl.load_workbook(made_by_openpyxl)
     ws = wb.create_sheet("Created")

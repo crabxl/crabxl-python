@@ -4,14 +4,14 @@ import zipfile
 from datetime import datetime
 from xml.etree.ElementTree import fromstring
 
-import crabxl
+import crabxl.openpyxl as crabxl
 import openpyxl
 import pytest
-from crabxl.cell.cell import Cell
-from crabxl.styles import Font, NamedStyle
-from crabxl.styles.cell_style import StyleArray
-from crabxl.worksheet.dimensions import ColumnDimension, RowDimension
-from crabxl.worksheet.hyperlink import Hyperlink, HyperlinkList
+from crabxl.openpyxl.cell.cell import Cell
+from crabxl.openpyxl.styles import Font, NamedStyle
+from crabxl.openpyxl.styles.cell_style import StyleArray
+from crabxl.openpyxl.worksheet.dimensions import ColumnDimension, RowDimension
+from crabxl.openpyxl.worksheet.hyperlink import Hyperlink, HyperlinkList
 
 MAC = datetime(1904, 1, 1)
 
@@ -195,8 +195,8 @@ def test_optimized_sheets_have_the_openpyxl_attributes(tmp_path):
 
 @pytest.mark.parametrize("loaded", [False, True])
 def test_removed_and_unattached_sheets_keep_working(tmp_path, loaded):
-    from crabxl.formatting.rule import CellIsRule
-    from crabxl.worksheet.worksheet import Worksheet
+    from crabxl.openpyxl.formatting.rule import CellIsRule
+    from crabxl.openpyxl.worksheet.worksheet import Worksheet
 
     source = tmp_path / "in.xlsx"
     dated(source)

@@ -21,7 +21,7 @@ import pytest
 @pytest.mark.parametrize("qualifier", ["", "Sheet1!", "'Sheet 1'!", "[1]Sheet1!"])
 def test_error_tokens_match_reference(error, qualifier):
     snapshots = []
-    for engine in ("openpyxl", "crabxl"):
+    for engine in ("openpyxl", "crabxl.openpyxl"):
         tokenizer = import_module(engine + ".formula.tokenizer").Tokenizer
         parsed = tokenizer(f"={qualifier}{error}+A1")
         snapshots.append(
@@ -35,7 +35,7 @@ def test_error_tokens_match_reference(error, qualifier):
 
 @pytest.mark.parametrize("prefix", ["A1", "1", "TRUE", "'Sheet 1'"])
 def test_unqualified_error_cannot_follow_unfinished_operand(prefix):
-    for engine in ("openpyxl", "crabxl"):
+    for engine in ("openpyxl", "crabxl.openpyxl"):
         module = import_module(engine + ".formula.tokenizer")
         with pytest.raises(module.TokenizerError):
             module.Tokenizer(f"={prefix}#REF!")
@@ -46,7 +46,7 @@ def test_unqualified_error_cannot_follow_unfinished_operand(prefix):
 )
 def test_mixed_whitespace_matches_reference(formula):
     snapshots = []
-    for engine in ("openpyxl", "crabxl"):
+    for engine in ("openpyxl", "crabxl.openpyxl"):
         parsed = import_module(engine + ".formula.tokenizer").Tokenizer(formula)
         snapshots.append(
             [(token.value, token.type, token.subtype) for token in parsed.items]
@@ -56,7 +56,7 @@ def test_mixed_whitespace_matches_reference(formula):
 
 @pytest.mark.parametrize("formula", ["=A1'S'", '=1\n"a"', "=A1{", "=[1]'S'"])
 def test_unfinished_operands_reject_invalid_transitions(formula):
-    for engine in ("openpyxl", "crabxl"):
+    for engine in ("openpyxl", "crabxl.openpyxl"):
         module = import_module(engine + ".formula.tokenizer")
         with pytest.raises(module.TokenizerError):
             module.Tokenizer(formula)
@@ -68,14 +68,14 @@ def test_unfinished_operands_reject_invalid_transitions(formula):
 )
 def test_operand_factory_numeric_literals_match_reference(literal):
     snapshots = []
-    for engine in ("openpyxl", "crabxl"):
+    for engine in ("openpyxl", "crabxl.openpyxl"):
         token = import_module(engine + ".formula.tokenizer").Token.make_operand(literal)
         snapshots.append((token.value, token.type, token.subtype))
     assert snapshots[0] == snapshots[1]
 
 
 def test_render_literal_keeps_reference_behavior_after_items_mutation():
-    for engine in ("openpyxl", "crabxl"):
+    for engine in ("openpyxl", "crabxl.openpyxl"):
         module = import_module(engine + ".formula.tokenizer")
         parsed = module.Tokenizer("literal")
         parsed.items.append(module.Token("extra", module.Token.LITERAL))
@@ -94,7 +94,7 @@ def test_render_literal_keeps_reference_behavior_after_items_mutation():
 )
 def test_fragment_offsets_and_buffers_match_reference(formula, offset, operation):
     snapshots = []
-    for engine in ("openpyxl", "crabxl"):
+    for engine in ("openpyxl", "crabxl.openpyxl"):
         parsed = import_module(engine + ".formula.tokenizer").Tokenizer(formula)
         parsed.items.clear()
         parsed.offset = offset

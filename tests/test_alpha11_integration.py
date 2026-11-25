@@ -3,7 +3,7 @@
 import importlib
 from copy import copy
 
-import crabxl
+import crabxl.openpyxl as crabxl
 import openpyxl
 import pytest
 
@@ -262,7 +262,7 @@ def test_write_only_shared_hyperlink_tracks_closed_sheet_and_saved_ids(
 
 
 def test_shared_hyperlink_budget_failure_rolls_back_all_live_owners():
-    from crabxl.worksheet.hyperlink import Hyperlink
+    from crabxl.openpyxl.worksheet.hyperlink import Hyperlink
 
     large = crabxl.Workbook(max_memory_bytes=256 * 1024)
     small = crabxl.Workbook(max_memory_bytes=32 * 1024)

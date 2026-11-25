@@ -8,7 +8,7 @@ Source: openpyxl 3.1.5, revision `13627b03ca25a1a98becf40e533b955615b13429`
 
 Copied or adapted code:
 
-- The Serialisable descriptor classes in `python/crabxl`: `descriptors`,
+- The Serialisable descriptor classes in `python/crabxl/openpyxl`: `descriptors`,
   `compat`, `xml`, `packaging`, `formatting`, `comments`, `chart`,
   `chartsheet`, `drawing`, `pivot`, `styles` (except the native style
   bridge), most of `utils`, and the feature modules of `worksheet` and

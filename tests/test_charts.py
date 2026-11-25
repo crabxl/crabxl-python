@@ -4,7 +4,7 @@ import importlib
 from xml.etree.ElementTree import canonicalize, fromstring
 from zipfile import ZipFile
 
-import crabxl
+import crabxl.openpyxl as crabxl
 import openpyxl
 import pytest
 
@@ -31,7 +31,7 @@ CHARTS = (
 def test_chartsheet_edits_preserve_unmodelled_properties(tmp_path):
     from xml.etree.ElementTree import Element, SubElement, tostring
 
-    from crabxl.styles import Color
+    from crabxl.openpyxl.styles import Color
     from openpyxl.chartsheet.properties import ChartsheetProperties
 
     source = tmp_path / "source.xlsx"
@@ -92,7 +92,7 @@ def test_chartsheet_edits_preserve_unmodelled_properties(tmp_path):
     book.close()
 
 
-@pytest.mark.parametrize("backend", ["openpyxl", "crabxl"])
+@pytest.mark.parametrize("backend", ["openpyxl", "crabxl.openpyxl"])
 @pytest.mark.parametrize("mode", ["new", "loaded", "write_only"])
 def test_chartsheet_properties_survive_save_and_reload(backend, mode, tmp_path):
     engine = importlib.import_module(backend)
@@ -202,8 +202,8 @@ def test_write_only_chartsheet_between_streamed_worksheets(tmp_path, engine):
 
 
 def test_chartsheet_creation_and_loaded_round_trip(tmp_path):
-    from crabxl.chart import BarChart, Reference
-    from crabxl.chartsheet import Chartsheet
+    from crabxl.openpyxl.chart import BarChart, Reference
+    from crabxl.openpyxl.chartsheet import Chartsheet
 
     source = tmp_path / "chartsheet.xlsx"
     output = tmp_path / "chartsheet-edited.xlsx"
@@ -325,8 +325,8 @@ def test_chart_families_match_openpyxl(tmp_path, monkeypatch):
 
 
 def test_combined_chart_on_loaded_sheet_can_be_edited_and_resaved(tmp_path):
-    from crabxl.chart import BarChart, LineChart, Reference
-    from crabxl.comments import Comment
+    from crabxl.openpyxl.chart import BarChart, LineChart, Reference
+    from crabxl.openpyxl.comments import Comment
 
     source = tmp_path / "source.xlsx"
     output = tmp_path / "output.xlsx"

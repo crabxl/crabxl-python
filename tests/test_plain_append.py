@@ -2,9 +2,9 @@
 
 from datetime import date, datetime, time, timedelta, timezone
 
-import crabxl
+import crabxl.openpyxl as crabxl
 import pytest
-from crabxl.utils.exceptions import IllegalCharacterError
+from crabxl.openpyxl.utils.exceptions import IllegalCharacterError
 
 ROW = [
     None,

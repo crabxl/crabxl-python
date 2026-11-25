@@ -345,7 +345,7 @@ pub(crate) fn read_value<'py>(
         _ => {}
     }
     if decoder.is_none() {
-        *decoder = Some(py.import("crabxl")?.getattr("_decode")?);
+        *decoder = Some(py.import("crabxl.openpyxl")?.getattr("_decode")?);
     }
     let decode = decoder.as_ref().ok_or_else(closed)?;
     Ok(decode.call1((encode_raw(py, value)?,))?.unbind())

@@ -4,9 +4,9 @@ import io
 import re
 import zipfile
 
-import crabxl
+import crabxl.openpyxl as crabxl
 import pytest
-from crabxl.formula.tokenizer import Tokenizer
+from crabxl.openpyxl.formula.tokenizer import Tokenizer
 
 
 def _sheet_xml(book, name="xl/worksheets/sheet1.xml"):

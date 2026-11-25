@@ -2,7 +2,7 @@
 
 Test modules (``tests`` packages, ``test_*`` and ``conftest`` files) load from the
 reference checkout. Every other ``openpyxl.*`` import resolves to the matching
-``crabxl.*`` module, so upstream assertions run unchanged against crabxl.
+``crabxl.openpyxl.*`` module, so upstream assertions run unchanged against crabxl.
 
 With ``--expected``, the run passes only when the failing tests match the tracked
 list of expected failures: tests of openpyxl internals and deliberate differences.
@@ -54,7 +54,7 @@ class _Finder(importlib.abc.MetaPathFinder):
                     name, base.with_suffix(".py")
                 )
             return None
-        target_name = "crabxl" + name[len("openpyxl") :]
+        target_name = "crabxl.openpyxl" + name[len("openpyxl") :]
         try:
             module = importlib.import_module(target_name)
         except ModuleNotFoundError as error:

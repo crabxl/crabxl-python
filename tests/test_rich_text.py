@@ -3,7 +3,7 @@
 import importlib
 import zipfile
 
-import crabxl
+import crabxl.openpyxl as crabxl
 import openpyxl
 import pytest
 
@@ -226,8 +226,8 @@ def test_rich_runs_live_mutation_loading_and_repeat_output(
 
 
 def test_rich_mutation_budget_failure_keeps_all_owners_and_view_atomic():
-    from crabxl.cell.rich_text import CellRichText, TextBlock
-    from crabxl.cell.text import InlineFont
+    from crabxl.openpyxl.cell.rich_text import CellRichText, TextBlock
+    from crabxl.openpyxl.cell.text import InlineFont
 
     large = crabxl.Workbook(max_memory_bytes=256 * 1024)
     small = crabxl.Workbook(max_memory_bytes=32 * 1024)

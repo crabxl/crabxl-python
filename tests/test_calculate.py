@@ -1,6 +1,6 @@
 """Workbook.save(calculate=True) stores formula results as cached values."""
 
-import crabxl
+import crabxl.openpyxl as crabxl
 import openpyxl
 import pytest
 

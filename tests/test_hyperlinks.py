@@ -5,8 +5,8 @@ from xml.etree.ElementTree import tostring
 
 import openpyxl
 import pytest
-from crabxl import Workbook, load_workbook
-from crabxl.worksheet.hyperlink import Hyperlink, HyperlinkList
+from crabxl.openpyxl import Workbook, load_workbook
+from crabxl.openpyxl.worksheet.hyperlink import Hyperlink, HyperlinkList
 
 
 def test_live_point_hyperlinks_preserve_values_and_source_copy_graphs(tmp_path):

@@ -3,7 +3,7 @@
 from copy import deepcopy
 from xml.etree import ElementTree as ET
 
-from crabxl.xml._preserve import (
+from crabxl.openpyxl.xml._preserve import (
     _merge_descriptor,
     inherit_namespace_context,
     preserving_fromstring,

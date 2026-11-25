@@ -5,7 +5,7 @@ import zipfile
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
-import crabxl
+import crabxl.openpyxl as crabxl
 import openpyxl
 import pytest
 
@@ -529,7 +529,7 @@ def test_read_only_close_cancels_live_iterator_and_modes_reject_unsupported_feat
     with pytest.raises(ValueError, match="closed"):
         next(rows)
     assert list(book._streams) == []
-    from crabxl.cell.cell import WriteOnlyCell
+    from crabxl.openpyxl.cell.cell import WriteOnlyCell
 
     cell = WriteOnlyCell()
     cell.number_format = "0.00"

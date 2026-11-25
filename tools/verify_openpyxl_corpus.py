@@ -14,7 +14,7 @@ from tempfile import TemporaryDirectory
 from xml.etree.ElementTree import canonicalize, tostring
 from zipfile import BadZipFile
 
-import crabxl
+import crabxl.openpyxl as crabxl
 import openpyxl
 
 

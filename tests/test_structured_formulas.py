@@ -5,7 +5,7 @@ import weakref
 import zipfile
 from importlib import import_module
 
-import crabxl
+import crabxl.openpyxl as crabxl
 import openpyxl
 import pytest
 
@@ -94,7 +94,7 @@ def test_shared_and_empty_caches_match_public_reference(engine, cached, tmp_path
 
 
 def test_adapter_formula_views_do_not_keep_workbooks_alive():
-    from crabxl.worksheet.formula import ArrayFormula
+    from crabxl.openpyxl.worksheet.formula import ArrayFormula
 
     book = crabxl.Workbook()
     sheet = book.active
