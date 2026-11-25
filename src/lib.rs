@@ -1,4 +1,5 @@
 //! Python module registration; canonical models remain in crabxl.
+mod api;
 mod dimensions;
 mod editor;
 mod engine;
@@ -32,6 +33,7 @@ fn default_style_component<'py>(py: Python<'py>, name: &str) -> PyResult<Bound<'
 
 #[pymodule]
 fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
+    api::register(module)?;
     module.add_class::<NativeSheet>()?;
     module.add(
         "LimitExceededError",

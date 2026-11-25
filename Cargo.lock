@@ -383,6 +383,7 @@ dependencies = [
 name = "crabxl"
 version = "0.2.2"
 dependencies = [
+ "chrono",
  "crabxl-calc",
  "crabxl-core",
  "crabxl-xlsx",

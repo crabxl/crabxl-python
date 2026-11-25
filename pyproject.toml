@@ -82,3 +82,24 @@ extend-exclude = [
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I"]
+
+# The redesigned API is fully typed; the openpyxl adapter mirrors openpyxl's
+# own untyped modules and is excluded.
+[tool.mypy]
+strict = true
+python_version = "3.11"
+mypy_path = "python"
+packages = ["crabxl"]
+
+[[tool.mypy.overrides]]
+module = "crabxl.openpyxl.*"
+ignore_errors = true
+follow_imports = "skip"
+
+[tool.pyright]
+include = ["python/crabxl"]
+exclude = ["python/crabxl/openpyxl"]
+typeCheckingMode = "strict"
+pythonVersion = "3.11"
+extraPaths = ["python"]
+reportPrivateUsage = false
