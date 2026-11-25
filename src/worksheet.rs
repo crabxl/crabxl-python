@@ -1127,22 +1127,32 @@ impl NativeSheet {
                 if let SheetStorage::Loaded { book, id } = &*held {
                     let mut book = lock(book)?;
                     let book = book.as_mut().ok_or_else(closed)?;
+                    // openpyxl moves cells only; references keep their text.
+                    let keep = crabxl::ReferenceUpdate::CellsOnly;
                     return match (rows, insert) {
-                        (true, true) => {
-                            book.insert_rows(*id, RowIndex::new(index).map_err(failure)?, count)
-                        }
-                        (true, false) => {
-                            book.delete_rows(*id, RowIndex::new(index).map_err(failure)?, count)
-                        }
-                        (false, true) => book.insert_columns(
+                        (true, true) => book.insert_rows_with(
                             *id,
-                            ColumnIndex::new(index).map_err(failure)?,
+                            RowIndex::new(index).map_err(failure)?,
                             count,
+                            keep,
                         ),
-                        (false, false) => book.delete_columns(
+                        (true, false) => book.delete_rows_with(
+                            *id,
+                            RowIndex::new(index).map_err(failure)?,
+                            count,
+                            keep,
+                        ),
+                        (false, true) => book.insert_columns_with(
                             *id,
                             ColumnIndex::new(index).map_err(failure)?,
                             count,
+                            keep,
+                        ),
+                        (false, false) => book.delete_columns_with(
+                            *id,
+                            ColumnIndex::new(index).map_err(failure)?,
+                            count,
+                            keep,
                         ),
                     }
                     .map_err(failure);
