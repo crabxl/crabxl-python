@@ -43,6 +43,9 @@ def check_history(version):
         )
 
 
+CORE_CRATES = ("crabxl", "crabxl-core", "crabxl-xlsx", "crabxl-calc")
+
+
 def validate(version, history=True):
     if not PATTERN.fullmatch(version):
         raise ValueError("Expected X.Y.Z without leading zeros")
@@ -53,13 +56,18 @@ def validate(version, history=True):
     source = (ROOT / "python/crabxl/__init__.py").read_text()
     if f'__version__ = "{version}"' not in source:
         raise ValueError("Update the public Python __version__")
-    core = cargo["dependencies"]["crabxl"]
-    if (
-        set(core) & {"git", "path", "rev", "branch", "tag"}
-        or not PATTERN.fullmatch(core.get("version", "").removeprefix("="))
-        or not core["version"].startswith("=")
-    ):
-        raise ValueError("Require an exact crates.io version of the Rust core")
+    pins = set()
+    for name in CORE_CRATES:
+        core = cargo["dependencies"][name]
+        if (
+            set(core) & {"git", "path", "rev", "branch", "tag"}
+            or not PATTERN.fullmatch(core.get("version", "").removeprefix("="))
+            or not core["version"].startswith("=")
+        ):
+            raise ValueError(f"Require an exact crates.io version of {name}")
+        pins.add(core["version"])
+    if len(pins) != 1:
+        raise ValueError("Pin every Rust core crate to the same version")
     if history:
         check_history(version)
     return version
@@ -104,11 +112,13 @@ def prepare(version, core=None):
         raise ValueError("Expected a core version X.Y.Z")
     name_changelog_section(version, core)
     path = ROOT / "Cargo.toml"
-    text, count = re.subn(
-        r'(?m)^(crabxl = \{ version = ")=[^"]+(")', rf"\g<1>={core}\2", path.read_text()
-    )
-    if count != 1:
-        raise ValueError("Expected one crabxl dependency in Cargo.toml")
+    text = path.read_text()
+    for name in CORE_CRATES:
+        text, count = re.subn(
+            rf'(?m)^({name} = \{{ version = ")=[^"]+(")', rf"\g<1>={core}\2", text
+        )
+        if count != 1:
+            raise ValueError(f"Expected one {name} dependency in Cargo.toml")
     path.write_text(text)
     path = ROOT / ".github/ISSUE_TEMPLATE/bug_report.yml"
     text, count = re.subn(
