@@ -228,6 +228,8 @@ pub(crate) fn save_models(
             compression_level,
             iso_dates,
             date_1904,
+            // openpyxl writes NaN and infinity as blank cells.
+            non_finite: crabxl::NonFiniteWritePolicy::Blank,
             ..WriteOptions::default()
         };
         let mut writer = if let Some(book) = &book {

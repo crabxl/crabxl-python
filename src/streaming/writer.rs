@@ -438,6 +438,7 @@ impl NativeWriteBook {
             iso_dates,
             date_1904,
             temp_directory,
+            non_finite: crabxl::NonFiniteWritePolicy::Blank,
             ..Default::default()
         };
         let maximum_row = options.max_row_bytes;

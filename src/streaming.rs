@@ -175,6 +175,8 @@ impl NativeReadStream {
                         // openpyxl read-only mode projects inline runs, while its
                         // shared-string catalog honors the rich_text flag.
                         inline_rich_text: Some(false),
+                        // openpyxl returns #VALUE! for dates Python cannot represent.
+                        date_policy: crabxl::DateReadPolicy::ErrorOutOfRange,
                         ..Default::default()
                     };
                     let mut rows = book.rows_with_options(&name, options)?;

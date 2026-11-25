@@ -380,6 +380,7 @@ impl NativeReader {
                     ReadOptions {
                         data_only,
                         rich_text,
+                        date_policy: crabxl::DateReadPolicy::ErrorOutOfRange,
                         ..ReadOptions::default()
                     },
                 )
@@ -573,6 +574,7 @@ fn open_loaded(
             read: ReadOptions {
                 data_only,
                 rich_text,
+                date_policy: crabxl::DateReadPolicy::ErrorOutOfRange,
                 ..Default::default()
             },
             editor: config.editor_options(Some(operation)),

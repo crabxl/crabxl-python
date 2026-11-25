@@ -895,7 +895,11 @@ pub(crate) fn workbook_default_properties(book: &NativeBook, now_iso: &str) -> P
     let mut book = lock(&book.book)?;
     let mut features = book.features().cloned().unwrap_or_default();
     if features.properties == Default::default() {
-        features.properties = crabxl::features::DocumentProperties::with_openpyxl_defaults(now_iso);
+        features.properties = crabxl::features::DocumentProperties::for_new_document(
+            now_iso,
+            Some("openpyxl"),
+            Some(("Microsoft Excel Compatible / Openpyxl 3.1.5", "3.1")),
+        );
         book.set_features(Some(features));
     }
     Ok(())
