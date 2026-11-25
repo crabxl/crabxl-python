@@ -51,6 +51,8 @@ impl ResourceConfig {
             resources: self.limits,
             memory_policy: maximum.map_or(self.memory_policy, MemoryPolicy::Budget),
             non_finite: crabxl::NonFiniteWritePolicy::Blank,
+            // openpyxl saves without content it cannot model.
+            data_loss: crabxl::DataLossPolicy::Allow,
             ..Default::default()
         };
         if let Some(value) = self.patch_bytes {

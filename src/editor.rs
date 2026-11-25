@@ -369,7 +369,14 @@ impl NativeEditor {
             let source = loaded
                 .sheet_id(&source)
                 .ok_or_else(|| PyKeyError::new_err(source))?;
-            let id = loaded.copy_sheet(source, name).map_err(failure)?;
+            // openpyxl's copy_worksheet omits views and the header/footer.
+            let scope = crabxl::CopySheetOptions {
+                views: false,
+                header_footer: false,
+            };
+            let id = loaded
+                .copy_sheet_with(source, name, scope)
+                .map_err(failure)?;
             loaded
                 .set_sheet_visibility(id, SheetVisibility::Visible)
                 .map_err(failure)?;
