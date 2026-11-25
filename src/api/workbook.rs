@@ -1,11 +1,12 @@
 //! `crabxl._native.ApiWorkbook`: the engine behind `crabxl.Workbook`.
 
 use super::convert::{
-    Modes, Phase, error, from_python, partial_style_from_python, raise, row_from_python,
-    style_from_python, style_to_python, to_python,
+    Modes, Phase, error, from_python, partial_style_from_python, partial_style_to_python, raise,
+    row_from_python, style_from_python, style_to_python, to_python,
 };
 use crabxl::features::{
-    Comparison, ConditionalFormat, DataValidation, DefinedName, Hyperlink, Image, Note, Table,
+    Comparison, ConditionalFormat, ConditionalKind, DataValidation, DefinedName, Hyperlink, Image,
+    Note, Table, ValidationKind,
 };
 use crabxl::{DataLossPolicy, Limits, Memory, OpenOptions, SaveOptions, Visibility, Workbook};
 use pyo3::prelude::*;
@@ -49,6 +50,21 @@ pub(crate) fn open_options(
         .with_memory(memory.map_or(Memory::Auto, Memory::Budget))
         .with_data_loss(data_loss)
         .with_exact_numbers(exact))
+}
+
+/// The Python spelling of a comparison.
+fn comparison_name(comparison: Comparison) -> &'static str {
+    match comparison {
+        Comparison::Between => "between",
+        Comparison::NotBetween => "not_between",
+        Comparison::Equal => "==",
+        Comparison::NotEqual => "!=",
+        Comparison::GreaterThan => ">",
+        Comparison::GreaterThanOrEqual => ">=",
+        Comparison::LessThan => "<",
+        Comparison::LessThanOrEqual => "<=",
+        _ => "between",
+    }
 }
 
 fn comparison(name: &str) -> PyResult<Comparison> {
@@ -496,11 +512,13 @@ impl ApiWorkbook {
                 table.name().to_owned(),
                 table.range().to_string(),
                 table.style().map(str::to_owned),
+                table.banded_rows(),
                 table.has_totals_row(),
             ))?;
         }
         Ok(list)
     }
+    #[allow(clippy::too_many_arguments)]
     fn add_table(
         &self,
         py: Python<'_>,
@@ -509,11 +527,13 @@ impl ApiWorkbook {
         range: &str,
         style: Option<&str>,
         banded_rows: bool,
+        totals_row: bool,
     ) -> PyResult<()> {
         self.sheet(py, sheet, |s| {
             let table = Table::new(name, range)?
                 .with_style(style)
-                .with_banded_rows(banded_rows);
+                .with_banded_rows(banded_rows)
+                .with_totals_row(totals_row);
             s.add_table(table)
         })
     }
@@ -525,7 +545,26 @@ impl ApiWorkbook {
         let list = PyList::empty(py);
         for rule in rules {
             let ranges: Vec<String> = rule.ranges().iter().map(ToString::to_string).collect();
-            list.append((ranges, rule.formula1().map(str::to_owned)))?;
+            let kind = match rule.kind() {
+                ValidationKind::WholeNumber => "whole",
+                ValidationKind::Decimal => "decimal",
+                ValidationKind::List => "list",
+                ValidationKind::Date => "date",
+                ValidationKind::Time => "time",
+                ValidationKind::TextLength => "text_length",
+                ValidationKind::Custom => "custom",
+                _ => "any",
+            };
+            list.append((
+                kind,
+                ranges,
+                rule.formula1().map(str::to_owned),
+                rule.formula2().map(str::to_owned),
+                rule.comparison().map(comparison_name),
+                rule.allows_blank(),
+                rule.prompt().map(|(t, m)| (t.to_owned(), m.to_owned())),
+                rule.error().map(|(t, m)| (t.to_owned(), m.to_owned())),
+            ))?;
         }
         Ok(list)
     }
@@ -605,17 +644,33 @@ impl ApiWorkbook {
         for format in formats {
             let ranges: Vec<String> = format.ranges().iter().map(ToString::to_string).collect();
             let formulas: Vec<String> = format.formulas().map(str::to_owned).collect();
-            list.append((ranges, formulas))?;
+            let kind = match format.kind() {
+                ConditionalKind::CellValue => "cell",
+                ConditionalKind::Formula => "formula",
+                _ => "other",
+            };
+            let style = match format.style() {
+                Some(style) => partial_style_to_python(py, style)?,
+                None => py.None(),
+            };
+            list.append((
+                ranges,
+                kind,
+                formulas,
+                format.comparison().map(comparison_name),
+                style,
+                format.stops_if_true(),
+            ))?;
         }
         Ok(list)
     }
-    #[pyo3(signature = (sheet, range, kind, style, formula, second=None, comparison=None, stop_if_true=false))]
+    #[pyo3(signature = (sheet, ranges, kind, style, formula, second=None, comparison=None, stop_if_true=false))]
     #[allow(clippy::too_many_arguments)]
     fn add_conditional_format(
         &self,
         py: Python<'_>,
         sheet: &str,
-        range: &str,
+        ranges: Vec<String>,
         kind: &str,
         style: &Bound<'_, PyAny>,
         formula: String,
@@ -625,13 +680,29 @@ impl ApiWorkbook {
     ) -> PyResult<()> {
         let style = partial_style_from_python(style)?;
         let comparison = comparison.map(self::comparison).transpose()?;
+        let (first, rest) = ranges.split_first().ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("A conditional format needs a range")
+        })?;
         self.sheet(py, sheet, |s| {
-            let format = match (kind, comparison) {
-                ("cell", Some(comparison)) => {
-                    ConditionalFormat::cell(range, comparison, formula, second.as_deref(), style)?
+            let mut format = match (kind, comparison) {
+                ("cell", Some(comparison)) => ConditionalFormat::cell(
+                    first.as_str(),
+                    comparison,
+                    formula,
+                    second.as_deref(),
+                    style,
+                )?,
+                ("formula", _) => ConditionalFormat::formula(first.as_str(), &formula, style)?,
+                _ => {
+                    return Err(crabxl::Error::new(
+                        crabxl::ErrorKind::InvalidData,
+                        format!("A {kind:?} conditional format cannot be added"),
+                    ));
                 }
-                _ => ConditionalFormat::formula(range, &formula, style)?,
             };
+            for range in rest {
+                format = format.with_range(range.as_str())?;
+            }
             s.add_conditional_format(format.with_stop_if_true(stop_if_true))
         })
     }

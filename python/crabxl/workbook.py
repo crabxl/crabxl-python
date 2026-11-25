@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import os
 import re
 from collections.abc import Callable, Iterable, Iterator, Sequence
-from typing import IO, TYPE_CHECKING, Literal, TypeAlias, TypeVar, cast, overload
+from typing import IO, TYPE_CHECKING, Any, Literal, TypeAlias, TypeVar, cast, overload
 
 from . import _native
 from ._features import (
@@ -17,6 +18,7 @@ from ._features import (
     Note,
     Properties,
     Table,
+    ValidationValue,
 )
 from ._native import ApiWorkbook
 from ._values import CellInput, Formula, Value
@@ -28,10 +30,16 @@ if TYPE_CHECKING:
 
 __all__ = [
     "Columns",
+    "ConditionalFormats",
+    "DefinedNames",
+    "Images",
+    "Merges",
     "Range",
     "Rows",
     "Source",
+    "Tables",
     "Target",
+    "Validations",
     "Visibility",
     "Workbook",
     "Worksheet",
@@ -49,6 +57,34 @@ T = TypeVar("T")
 _CELL = re.compile(r"^\$?([A-Za-z]{1,3})\$?([0-9]{1,7})$")
 # A reference already in normal form: one cell, uppercase, no $, no leading zero.
 _NORMAL_CELL = re.compile(r"[A-Z]{1,3}[1-9][0-9]{0,6}")
+
+
+def _date(text: str | None) -> dt.datetime | None:
+    if text is None:
+        return None
+    try:
+        value = dt.datetime.fromisoformat(text)
+    except ValueError:
+        # shortcut: unreadable dates read as None, upgrade if files need them kept
+        return None
+    return value if value.tzinfo else value.replace(tzinfo=dt.UTC)
+
+
+def _w3cdtf(value: dt.datetime | None) -> str | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        raise InvalidInputError("Document dates need a timezone, such as dt.UTC")
+    return value.astimezone(dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _number(text: str | None, kind: str) -> int | float | str | None:
+    if text is None:
+        return None
+    try:
+        return float(text) if kind == "decimal" else int(text)
+    except ValueError:
+        return text  # a formula, such as a cell reference
 
 
 def _split(ref: str) -> tuple[int, int]:
@@ -116,12 +152,21 @@ class Workbook:
     ...     data = book.to_bytes()
     """
 
-    __slots__ = ("_native",)
+    __slots__ = ("_native", "_sheets")
     _native: ApiWorkbook
+    _sheets: dict[str, Worksheet]
 
     def __init__(self, *, dates: Literal["native", "serial"] = "native") -> None:
         """A new workbook with no sheets. Add a worksheet before you save."""
         self._native = _native.ApiWorkbook.create(dates == "serial")
+        self._sheets = {}
+
+    def _sheet(self, name: str) -> Worksheet:
+        # One handle per sheet, so a rename through any handle reaches all.
+        sheet = self._sheets.get(name)
+        if sheet is None:
+            sheet = self._sheets[name] = Worksheet(self, name)
+        return sheet
 
     @classmethod
     def open(
@@ -147,6 +192,7 @@ class Workbook:
         """
         path, data = _open(cls, source)
         book = cls.__new__(cls)
+        book._sheets = {}
         if path is not None:
             book._native = _native.ApiWorkbook.open_path(
                 path, limits, memory, data_loss, numbers == "exact", dates == "serial"
@@ -249,16 +295,18 @@ class Workbook:
     @property
     def properties(self) -> Properties:
         """The document properties."""
-        return Properties(**self._native.properties())
+        text = self._native.properties()
+        created, modified = _date(text.pop("created")), _date(text.pop("modified"))
+        return Properties(**text, created=created, modified=modified)
 
     @properties.setter
     def properties(self, properties: Properties) -> None:
-        self._native.set_properties(
-            {
-                name: getattr(properties, name)
-                for name in Properties.__dataclass_fields__
-            }
-        )
+        values: dict[str, str | None] = {
+            name: getattr(properties, name) for name in Properties.__dataclass_fields__
+        }
+        values["created"] = _w3cdtf(properties.created)
+        values["modified"] = _w3cdtf(properties.modified)
+        self._native.set_properties(values)
 
     def __repr__(self) -> str:
         if self.closed:
@@ -284,7 +332,7 @@ class Worksheets:
         return len(self.names)
 
     def __iter__(self) -> Iterator[Worksheet]:
-        return (Worksheet(self._book, name) for name in self.names)
+        return (self._book._sheet(name) for name in self.names)
 
     def __contains__(self, name: object) -> bool:
         return isinstance(name, str) and any(
@@ -295,12 +343,12 @@ class Worksheets:
         names = self.names
         if isinstance(key, int):
             try:
-                return Worksheet(self._book, names[key])
+                return self._book._sheet(names[key])
             except IndexError:
                 raise NotFoundError(f"No worksheet at position {key}") from None
         for name in names:
             if name.casefold() == key.casefold():
-                return Worksheet(self._book, name)
+                return self._book._sheet(name)
         raise NotFoundError(f"No worksheet named {key!r}", sheet=key)
 
     def get(self, name: str) -> Worksheet | None:
@@ -313,16 +361,19 @@ class Worksheets:
         Names have 1 to 31 characters, cannot contain ``: \\ / ? * [ ]`` and are
         unique without regard to case.
         """
-        return Worksheet(self._book, self._book._native.add_worksheet(name, index))
+        return self._book._sheet(self._book._native.add_worksheet(name, index))
 
     def copy(self, source: str, name: str) -> Worksheet:
         """Copy a worksheet completely: cells, styles, layout, views, objects
         and notes. Table names get unique suffixes."""
-        return Worksheet(self._book, self._book._native.copy_worksheet(source, name))
+        return self._book._sheet(self._book._native.copy_worksheet(source, name))
 
     def remove(self, name: str) -> None:
         """Remove a sheet."""
         self._book._native.remove_sheet(name)
+        sheets = self._book._sheets
+        for key in [key for key in sheets if key.casefold() == name.casefold()]:
+            del sheets[key]
 
     def move(self, name: str, index: int) -> None:
         """Move a sheet to a zero-based tab position."""
@@ -357,6 +408,8 @@ class Worksheet:
     @name.setter
     def name(self, name: str) -> None:
         self._native.rename_sheet(self._name, name)
+        self._book._sheets.pop(self._name, None)
+        self._book._sheets[name] = self
         self._name = name
 
     @property
@@ -764,10 +817,7 @@ class Tables:
         self._sheet = sheet
 
     def _all(self) -> list[Table]:
-        return [
-            Table(name, ref, style, totals_row=totals)
-            for name, ref, style, totals in self._sheet._native.tables(self._sheet.name)
-        ]
+        return [Table(*entry) for entry in self._sheet._native.tables(self._sheet.name)]
 
     def __iter__(self) -> Iterator[Table]:
         return iter(self._all())
@@ -789,7 +839,12 @@ class Tables:
     def add(self, table: Table) -> None:
         """Add a table."""
         self._sheet._native.add_table(
-            self._sheet.name, table.name, table.ref, table.style, table.banded_rows
+            self._sheet.name,
+            table.name,
+            table.ref,
+            table.style,
+            table.banded_rows,
+            table.totals_row,
         )
 
     def remove(self, name: str) -> None:
@@ -805,12 +860,37 @@ class Validations:
     def __init__(self, sheet: Worksheet) -> None:
         self._sheet = sheet
 
-    def __iter__(self) -> Iterator[tuple[tuple[str, ...], str | None]]:
-        """Each rule as its ranges and its first formula or list."""
-        return (
-            (tuple(ranges), first)
-            for ranges, first in self._sheet._native.validations(self._sheet.name)
-        )
+    def __iter__(self) -> Iterator[DataValidation]:
+        for (
+            kind,
+            ranges,
+            first,
+            second,
+            comparison,
+            allow_blank,
+            prompt,
+            error,
+        ) in self._sheet._native.validations(self._sheet.name):
+            value: ValidationValue | None = first
+            bound: int | float | str | None = second
+            if kind == "list" and first is not None:
+                if len(first) > 1 and first[0] == first[-1] == '"':
+                    value = tuple(first[1:-1].split(","))
+                else:
+                    kind = "list_from"
+            elif kind in ("whole", "decimal", "text_length"):
+                value = _number(first, kind)
+                bound = _number(second, kind)
+            yield DataValidation(
+                cast("Any", kind),
+                tuple(ranges),
+                value,
+                bound,
+                cast("Any", comparison),
+                allow_blank,
+                prompt,
+                error,
+            )
 
     def __len__(self) -> int:
         return len(self._sheet._native.validations(self._sheet.name))
@@ -842,23 +922,36 @@ class ConditionalFormats:
     def __init__(self, sheet: Worksheet) -> None:
         self._sheet = sheet
 
-    def __iter__(self) -> Iterator[tuple[tuple[str, ...], tuple[str, ...]]]:
-        """Each rule as its ranges and its formulas, in priority order."""
-        return (
-            (tuple(ranges), tuple(formulas))
-            for ranges, formulas in self._sheet._native.conditional_formats(
-                self._sheet.name
+    def __iter__(self) -> Iterator[ConditionalFormat]:
+        """The rules in priority order."""
+        for (
+            ranges,
+            kind,
+            formulas,
+            comparison,
+            style,
+            stop_if_true,
+        ) in self._sheet._native.conditional_formats(self._sheet.name):
+            yield ConditionalFormat(
+                cast("Any", kind),
+                tuple(ranges),
+                formulas[0] if formulas else None,
+                style,
+                formulas[1] if len(formulas) > 1 else None,
+                cast("Any", comparison),
+                stop_if_true,
             )
-        )
 
     def __len__(self) -> int:
         return len(self._sheet._native.conditional_formats(self._sheet.name))
 
     def add(self, rule: ConditionalFormat) -> None:
         """Add a rule with the lowest priority."""
+        if rule.value is None or rule.style is None:
+            raise InvalidInputError("A conditional format needs a value and a style")
         self._sheet._native.add_conditional_format(
             self._sheet.name,
-            rule.ref,
+            list(rule.ranges),
             rule.kind,
             rule.style,
             rule.value,

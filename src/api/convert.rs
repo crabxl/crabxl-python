@@ -671,6 +671,33 @@ pub(crate) fn style_from_python(value: &Bound<'_, PyAny>) -> PyResult<Style> {
     Ok(style)
 }
 
+/// A `crabxl.styles.PartialStyle` for an engine partial style. Only solid
+/// fills have a Python form; other fills read as `None`.
+pub(crate) fn partial_style_to_python(
+    py: Python<'_>,
+    style: &crabxl::style::PartialStyle,
+) -> PyResult<Py<PyAny>> {
+    let module = py.import("crabxl.styles")?;
+    let kwargs = PyDict::new(py);
+    if let Some(font) = style.font() {
+        kwargs.set_item("font", font_to_python(py, font)?)?;
+    }
+    if let Some(Fill::Pattern(pattern)) = style.fill()
+        && let Some(color) = pattern.background.as_ref().or(pattern.foreground.as_ref())
+    {
+        kwargs.set_item(
+            "fill",
+            module
+                .getattr("Fill")?
+                .call_method1("solid", (color_to_python(py, color)?,))?,
+        )?;
+    }
+    Ok(module
+        .getattr("PartialStyle")?
+        .call((), Some(&kwargs))?
+        .unbind())
+}
+
 /// An engine partial style for a `crabxl.styles.PartialStyle`.
 pub(crate) fn partial_style_from_python(
     value: &Bound<'_, PyAny>,

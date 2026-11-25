@@ -93,11 +93,11 @@ changes.
 ## Objects
 
 ```python
-sheet.tables.add(xl.Table("Sales", "A1:D100"))
+sheet.tables.add(xl.Table("Sales", "A1:D101", totals_row=True))
 sheet.validations.add(xl.DataValidation.list(["North", "South"], ranges="A2:A100"))
 sheet.conditional_formats.add(
     xl.ConditionalFormat.cell(
-        "D2:D100", ">", 1000, style=xl.PartialStyle(fill=xl.Fill("FFC7CE"))
+        ">", 1000, ranges="D2:D100", style=xl.PartialStyle(fill=xl.Fill("FFC7CE"))
     )
 )
 sheet["B2"].note = xl.Note("Preliminary", author="Finance")
@@ -108,5 +108,8 @@ book.defined_names.add(xl.DefinedName("TaxRate", "Settings!$B$1"))
 book.properties = xl.Properties(title="Q3 sales")
 ```
 
-Every object is an immutable value. To remove a note or hyperlink, assign
-`None`. `book.calculate()` calculates every formula and stores the results.
+Every object is an immutable value, and reading gives back the same type:
+`list(sheet.validations)` is a list of `DataValidation`. To remove a note or
+hyperlink, assign `None`. Document dates, `Properties.created` and
+`Properties.modified`, are timezone-aware `datetime` values. The cells of a
+totals row hold text, a formula such as `SUBTOTAL(109,D2:D100)`, or nothing. `book.calculate()` calculates every formula and stores the results.

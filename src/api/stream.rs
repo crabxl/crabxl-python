@@ -341,13 +341,20 @@ impl ApiWriter {
         &self,
         py: Python<'_>,
         sheet: &str,
-        range: &str,
+        ranges: Vec<String>,
         formula: &str,
         style: &Bound<'_, PyAny>,
     ) -> PyResult<()> {
         let style = partial_style_from_python(style)?;
+        let (first, rest) = ranges.split_first().ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("A conditional format needs a range")
+        })?;
         self.with(py, |writer| {
-            let format = crabxl::features::ConditionalFormat::formula(range, formula, style)?;
+            let mut format =
+                crabxl::features::ConditionalFormat::formula(first.as_str(), formula, style)?;
+            for range in rest {
+                format = format.with_range(range.as_str())?;
+            }
             writer.worksheet(sheet)?.add_conditional_format(format)
         })
     }

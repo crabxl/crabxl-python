@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 import io
 import os
@@ -151,18 +152,37 @@ def test_styles_round_trip_and_map() -> None:
 def test_objects_round_trip() -> None:
     book = sample()
     sheet = book.worksheets["Data"]
-    sheet.tables.add(xl.Table("Sales", "A1:B4"))
+    table = xl.Table("Sales", "A1:B5", None, banded_rows=False, totals_row=True)
+    sheet.tables.add(table)
     with pytest.raises(xl.InvalidInputError):
         sheet.tables.add(xl.Table("sales", "D1:E3"))
-    sheet.validations.add(
-        xl.DataValidation.list(["North", "South", "West"], ranges="A2:A4")
-    )
-    sheet.validations.add(xl.DataValidation.whole("between", 0, 100, ranges="B2:B4"))
-    sheet.conditional_formats.add(
+    with pytest.raises(xl.InvalidInputError):
+        sheet.tables.add(xl.Table("Short", "D1:E2", totals_row=True))
+    rules = [
+        xl.DataValidation.list(["North", "South", "West"], ranges=["A2:A4", "C2"]),
+        xl.DataValidation.list_from("$A$2:$A$4", ranges="D2"),
+        xl.DataValidation.whole("between", 0, 100, ranges="B2:B4"),
+        xl.DataValidation.decimal(">", 0.5, ranges="E2"),
+        xl.DataValidation.text_length("<=", 10, ranges="F2"),
+        xl.DataValidation.custom("ISNUMBER(G2)", ranges="G2"),
+        dataclasses.replace(
+            xl.DataValidation.whole(">", 1, ranges="H2"),
+            allow_blank=False,
+            prompt=("Count", "A whole number"),
+            error=("Wrong", "Try again"),
+        ),
+    ]
+    for rule in rules:
+        sheet.validations.add(rule)
+    red = xl.PartialStyle(font=xl.Font(bold=True), fill=xl.Fill.solid("FFC7CE"))
+    formats = [
         xl.ConditionalFormat.cell(
-            "B2:B4", ">", 15, style=xl.PartialStyle(fill=xl.Fill("FFC7CE"))
-        )
-    )
+            "between", 1, 15, ranges=["B2:B4", "D2"], style=red, stop_if_true=True
+        ),
+        xl.ConditionalFormat.formula("$B2>15", ranges="A2:A4", style=red),
+    ]
+    for format in formats:
+        sheet.conditional_formats.add(format)
     sheet["B2"].note = xl.Note("Preliminary", "Finance")
     sheet["A2"].hyperlink = xl.Hyperlink.url(
         "https://example.com/north", tooltip="North"
@@ -175,11 +195,9 @@ def test_objects_round_trip() -> None:
     book.properties = xl.Properties(title="Q3", creator="Finance")
     again = reopen(book)
     data = again.worksheets["Data"]
-    assert [table.name for table in data.tables] == ["Sales"] and data.tables[
-        "sales"
-    ].ref == "A1:B4"
-    assert len(data.validations) == 2
-    assert list(data.conditional_formats) == [(("B2:B4",), ("15",))]
+    assert list(data.tables) == [table] and data.tables["sales"] == table
+    assert list(data.validations) == rules
+    assert list(data.conditional_formats) == formats
     assert data["B2"].note == xl.Note("Preliminary", "Finance")
     assert data["A2"].hyperlink == xl.Hyperlink.url(
         "https://example.com/north", tooltip="North"
@@ -193,6 +211,37 @@ def test_objects_round_trip() -> None:
     data.tables.remove("Sales")
     with pytest.raises(xl.NotFoundError):
         data.tables.remove("Sales")
+
+
+def test_properties_dates_are_aware_datetimes() -> None:
+    book = sample()
+    created = dt.datetime(
+        2026, 1, 2, 3, 4, 5, tzinfo=dt.timezone(dt.timedelta(hours=8))
+    )
+    book.properties = xl.Properties(title="Q3", created=created)
+    properties = reopen(book).properties
+    assert properties.created == created and properties.created.tzinfo is not None
+    with pytest.raises(xl.InvalidInputError):
+        book.properties = xl.Properties(created=dt.datetime(2026, 1, 2))
+
+
+def test_sheet_handles_follow_renames() -> None:
+    book = sample()
+    first = book.worksheets["Data"]
+    second = book.worksheets["data"]
+    assert first is second is book.worksheets[0]
+    second.name = "Renamed"
+    assert first.name == "Renamed" and first["B2"].value == 10
+    book.worksheets.remove("Renamed")
+    assert book.worksheets.add("Renamed") is not first
+
+
+def test_openpyxl_names_point_to_the_adapter() -> None:
+    with pytest.raises(ImportError, match="crabxl.openpyxl.load_workbook"):
+        xl.load_workbook  # type: ignore[attr-defined]  # noqa: B018
+    with pytest.raises(AttributeError):
+        xl.not_a_name  # type: ignore[attr-defined]  # noqa: B018
+    assert not hasattr(xl, "not_a_name")
 
 
 def test_structural_edits_update_references() -> None:
@@ -313,6 +362,12 @@ def test_writer_streams_and_aborts_on_error(tmp_path: os.PathLike[str]) -> None:
             (n, dt.date(2026, 1, 1) + dt.timedelta(days=n)) for n in range(1000)
         )
         sheet.merge("D1:E1")
+        choices = xl.DataValidation.list(["a", "b"], ranges=["C2:C9", "F2"])
+        flag = xl.ConditionalFormat.formula(
+            "$A2>5", ranges=["A2:A9", "C2"], style=xl.PartialStyle(font=bold.font)
+        )
+        sheet.add_validation(choices)
+        sheet.add_conditional_format(flag)
         other = writer.worksheets.add("Other")
         other.append(["x"])
         writer.worksheets["Events"].append([1000, None])
@@ -320,6 +375,8 @@ def test_writer_streams_and_aborts_on_error(tmp_path: os.PathLike[str]) -> None:
         events = book.worksheets["Events"]
         assert events["B2"].value == dt.date(2026, 1, 1)
         assert events["A1"].style.font.bold and events.freeze_panes == "A2"
+        assert list(events.validations) == [choices]
+        assert [rule.ranges for rule in events.conditional_formats] == [flag.ranges]
         # The merge anchor D1 is a present cell.
         assert events.used_range is not None and events.used_range.ref == "A1:D1002"
     failed = os.path.join(tmp_path, "failed.xlsx")

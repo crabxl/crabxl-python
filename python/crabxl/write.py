@@ -171,17 +171,17 @@ class WorksheetWriter:
             raise UnsupportedError(
                 "A streaming writer accepts list validations; use Workbook for others"
             )
-        choices = cast("list[str]", rule.first)
+        choices = cast("tuple[str, ...]", rule.first)
         self._writer._native.add_validation(self.name, list(choices), list(rule.ranges))
 
     def add_conditional_format(self, rule: ConditionalFormat) -> None:
         """Add a formula rule."""
-        if rule.kind != "formula":
+        if rule.kind != "formula" or rule.value is None or rule.style is None:
             raise UnsupportedError(
                 "A streaming writer accepts formula rules; use Workbook for others"
             )
         self._writer._native.add_formula_format(
-            self.name, rule.ref, rule.value, rule.style
+            self.name, list(rule.ranges), rule.value, rule.style
         )
 
     def __repr__(self) -> str:

@@ -6,6 +6,41 @@ Before version 1.0, a minor version can change the API.
 Each release names the Rust core version it uses. The core has its own
 [changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).
 
+## [0.3.1]
+
+It uses the Rust core 0.3.1. Before 1.0 a patch release can change the new
+API; these changes make it consistent.
+
+### Changed
+
+- Tables, validations and conditional formats read back as the values you
+  add: iterating `sheet.validations` gives `DataValidation` values, and
+  `sheet.conditional_formats` gives `ConditionalFormat` values, instead of
+  tuples. Validation bounds read as numbers and list choices as a tuple.
+- `ConditionalFormat` takes `ranges=` like `DataValidation`, and can apply
+  to several ranges: `ConditionalFormat.cell(">", 5, ranges="B2:B9", ...)`.
+- `DataValidation.list` stores its choices as a tuple, so rules are hashable.
+  `list_from` and `custom` drop a leading `=`.
+- `Properties.created` and `Properties.modified` are timezone-aware
+  `datetime` values. Assigning a naive `datetime` raises `InvalidInputError`.
+- `Table.totals_row` takes part in equality.
+
+### Added
+
+- `Table(totals_row=True)` adds a table whose last row is a totals row. Its
+  cells hold text, a formula or nothing; Excel rejects other values there.
+- Tables read back `banded_rows`; rules read back their comparison, second
+  bound, blank handling, prompt, error message and style.
+- `Merges`, `Tables`, `Validations`, `ConditionalFormats`, `Images`,
+  `DefinedNames` and `ValidationValue` are exported from `crabxl`.
+- `crabxl.load_workbook` and other names that moved to `crabxl.openpyxl`
+  raise an `ImportError` that names the new location.
+
+### Fixed
+
+- A worksheet renamed through one handle is renamed for every handle:
+  `book.worksheets["Data"]` gives the same object each time.
+
 ## [0.3.0]
 
 It uses the Rust core 0.3.0.

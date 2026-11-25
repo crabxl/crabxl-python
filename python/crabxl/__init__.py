@@ -9,6 +9,8 @@ Three entry points cover the three ways of working with a file:
 The openpyxl-compatible interface is in :mod:`crabxl.openpyxl`.
 """
 
+import importlib
+
 from ._features import (
     Comparison,
     ConditionalFormat,
@@ -19,6 +21,7 @@ from ._features import (
     Note,
     Properties,
     Table,
+    ValidationValue,
 )
 from ._values import CellInput, ErrorValue, Formula, RichText, TextRun, Value
 from .errors import (
@@ -44,7 +47,20 @@ from .styles import (
     Side,
     Style,
 )
-from .workbook import Columns, Range, Rows, Workbook, Worksheet, Worksheets
+from .workbook import (
+    Columns,
+    ConditionalFormats,
+    DefinedNames,
+    Images,
+    Merges,
+    Range,
+    Rows,
+    Tables,
+    Validations,
+    Workbook,
+    Worksheet,
+    Worksheets,
+)
 from .write import WorksheetWriter, Writer
 
 __version__ = "0.3.0"
@@ -57,10 +73,12 @@ __all__ = [
     "Columns",
     "Comparison",
     "ConditionalFormat",
+    "ConditionalFormats",
     "ConversionError",
     "CrabXLError",
     "DataValidation",
     "DefinedName",
+    "DefinedNames",
     "ErrorValue",
     "FileFormatError",
     "Fill",
@@ -68,9 +86,11 @@ __all__ = [
     "Formula",
     "Hyperlink",
     "Image",
+    "Images",
     "InvalidInputError",
     "LimitExceededError",
     "MemoryLimitError",
+    "Merges",
     "Note",
     "NotFoundError",
     "PartialStyle",
@@ -85,8 +105,11 @@ __all__ = [
     "StateError",
     "Style",
     "Table",
+    "Tables",
     "TextRun",
     "UnsupportedError",
+    "Validations",
+    "ValidationValue",
     "Value",
     "Workbook",
     "Worksheet",
@@ -95,3 +118,17 @@ __all__ = [
     "Worksheets",
     "Writer",
 ]
+
+
+def __getattr__(name: str) -> object:
+    # Point code written for crabxl 0.2 to the openpyxl-compatible module. An
+    # ImportError, because ``from crabxl import x`` hides an AttributeError's text.
+    if not name.startswith("__"):
+        openpyxl = importlib.import_module(f"{__name__}.openpyxl")
+        if hasattr(openpyxl, name):
+            raise ImportError(
+                f"crabxl.{name} moved to crabxl.openpyxl.{name} in 0.3: "
+                f"use 'from crabxl.openpyxl import {name}'",
+                name=__name__,
+            )
+    raise AttributeError(f"module 'crabxl' has no attribute {name!r}")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import os
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -19,6 +20,7 @@ __all__ = [
     "Note",
     "Properties",
     "Table",
+    "ValidationValue",
 ]
 
 Comparison: TypeAlias = Literal[
@@ -44,7 +46,12 @@ class Table:
     ref: str
     style: str | None = "TableStyleMedium2"
     banded_rows: bool = True
-    totals_row: bool = field(default=False, compare=False)
+    totals_row: bool = False
+    """Whether the last row of ``ref`` is a totals row."""
+
+
+ValidationValue: TypeAlias = "int | float | str | tuple[str, ...]"
+"""A bound, formula, source range or list of choices of a validation rule."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,27 +59,43 @@ class DataValidation:
     """A rule that limits what users can type into cells.
 
     Build one with a class method, such as
-    ``DataValidation.list(["Yes", "No"], ranges="C2:C100")``.
+    ``DataValidation.list(["Yes", "No"], ranges="C2:C100")``. Rules read from a
+    file come back as the same type. ``date``, ``time`` and ``any`` rules can be
+    read but not created.
     """
 
-    kind: Literal["list", "list_from", "whole", "decimal", "text_length", "custom"]
+    kind: Literal[
+        "list",
+        "list_from",
+        "whole",
+        "decimal",
+        "text_length",
+        "custom",
+        "date",
+        "time",
+        "any",
+    ]
     ranges: tuple[str, ...]
-    first: object
-    second: object = None
+    first: ValidationValue | None
+    """The choices, source range, formula or first bound."""
+    second: int | float | str | None = None
+    """The second bound of a ``between`` or ``not_between`` rule."""
     comparison: Comparison | None = None
     allow_blank: bool = True
     prompt: tuple[str, str] | None = None
+    """The title and message shown when a user selects the cell."""
     error: tuple[str, str] | None = None
+    """The title and message shown when the rule rejects a value."""
 
     @classmethod
     def list(cls, choices: Sequence[str], *, ranges: Ranges) -> DataValidation:
         """A drop-down list of fixed choices."""
-        return cls("list", _ranges(ranges), [str(choice) for choice in choices])
+        return cls("list", _ranges(ranges), tuple(str(choice) for choice in choices))
 
     @classmethod
     def list_from(cls, source: str, *, ranges: Ranges) -> DataValidation:
-        """A drop-down list of the values in a range, such as ``"=$H$1:$H$10"``."""
-        return cls("list_from", _ranges(ranges), source)
+        """A drop-down list of the values in a range, such as ``"$H$1:$H$10"``."""
+        return cls("list_from", _ranges(ranges), source.removeprefix("="))
 
     @classmethod
     def whole(
@@ -96,7 +119,13 @@ class DataValidation:
         ranges: Ranges,
     ) -> DataValidation:
         """Numbers that compare with one value, or two for ``between``."""
-        return cls("decimal", _ranges(ranges), value, second, comparison)
+        return cls(
+            "decimal",
+            _ranges(ranges),
+            float(value),
+            None if second is None else float(second),
+            comparison,
+        )
 
     @classmethod
     def text_length(
@@ -112,18 +141,24 @@ class DataValidation:
 
     @classmethod
     def custom(cls, formula: str, *, ranges: Ranges) -> DataValidation:
-        """Values for which a formula is true, such as ``"=ISNUMBER(A1)"``."""
-        return cls("custom", _ranges(ranges), formula)
+        """Values for which a formula is true, such as ``"ISNUMBER(A1)"``."""
+        return cls("custom", _ranges(ranges), formula.removeprefix("="))
 
 
 @dataclass(frozen=True, slots=True)
 class ConditionalFormat:
-    """A rule that formats cells when a condition holds."""
+    """A rule that formats cells when a condition holds.
 
-    ref: str
-    kind: Literal["cell", "formula"]
-    value: str
-    style: PartialStyle
+    Build one with :meth:`cell` or :meth:`formula`. Rules read from a file come
+    back as the same type. Other rule types, such as color scales and data
+    bars, read as ``kind="other"`` and cannot be created.
+    """
+
+    kind: Literal["cell", "formula", "other"]
+    ranges: tuple[str, ...]
+    value: str | None
+    """The first value or the formula, without a leading ``=``."""
+    style: PartialStyle | None
     second: str | None = None
     comparison: Comparison | None = None
     stop_if_true: bool = False
@@ -131,35 +166,50 @@ class ConditionalFormat:
     @classmethod
     def cell(
         cls,
-        ref: str,
         comparison: Comparison,
-        value: object,
-        second: object = None,
+        value: int | float | str,
+        second: int | float | str | None = None,
         *,
+        ranges: Ranges,
         style: PartialStyle,
         stop_if_true: bool = False,
     ) -> ConditionalFormat:
         """Format cells whose value compares with one value, or two for
         ``between``. Text values need quotes: ``'"Done"'``."""
         return cls(
-            ref,
             "cell",
-            str(value),
+            _ranges(ranges),
+            _formula(value),
             style,
-            None if second is None else str(second),
+            None if second is None else _formula(second),
             comparison,
             stop_if_true,
         )
 
     @classmethod
     def formula(
-        cls, ref: str, formula: str, *, style: PartialStyle, stop_if_true: bool = False
+        cls,
+        formula: str,
+        *,
+        ranges: Ranges,
+        style: PartialStyle,
+        stop_if_true: bool = False,
     ) -> ConditionalFormat:
         """Format cells for which a formula is true. Relative references
-        refer to the top-left cell of the range."""
+        refer to the top-left cell of the first range."""
         return cls(
-            ref, "formula", formula.removeprefix("="), style, None, None, stop_if_true
+            "formula",
+            _ranges(ranges),
+            _formula(formula),
+            style,
+            None,
+            None,
+            stop_if_true,
         )
+
+
+def _formula(value: int | float | str) -> str:
+    return value.removeprefix("=") if isinstance(value, str) else str(value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -215,8 +265,8 @@ class Image:
 
 @dataclass(frozen=True, slots=True)
 class Properties:
-    """Document properties. Dates are W3CDTF text such as
-    ``2026-11-25T09:30:00Z``."""
+    """Document properties. ``created`` and ``modified`` are timezone-aware
+    datetimes."""
 
     title: str | None = None
     subject: str | None = None
@@ -225,5 +275,5 @@ class Properties:
     keywords: str | None = None
     category: str | None = None
     last_modified_by: str | None = None
-    created: str | None = None
-    modified: str | None = None
+    created: dt.datetime | None = None
+    modified: dt.datetime | None = None
