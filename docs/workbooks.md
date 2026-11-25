@@ -112,4 +112,67 @@ Every object is an immutable value, and reading gives back the same type:
 `list(sheet.validations)` is a list of `DataValidation`. To remove a note or
 hyperlink, assign `None`. Document dates, `Properties.created` and
 `Properties.modified`, are timezone-aware `datetime` values. The cells of a
-totals row hold text, a formula such as `SUBTOTAL(109,D2:D100)`, or nothing. `book.calculate()` calculates every formula and stores the results.
+totals row hold text, a formula such as `SUBTOTAL(109,D2:D100)`, or nothing.
+`book.calculate()` calculates every formula and stores the results.
+
+Each collection removes by range: `sheet.validations.remove("A2:A9")`,
+`sheet.conditional_formats.remove(...)`, `sheet.images.remove(...)` and
+`sheet.charts.remove(...)` remove what applies to, or starts in, those cells
+and return the count. Iterating `sheet.images` gives `PlacedImage` values:
+the picture and the cell of its top-left corner.
+
+Date and time rules take `datetime.date` and `datetime.time` values (`import datetime as dt`):
+
+```python
+sheet.validations.add(
+    xl.DataValidation.date(
+        "between", dt.date(2026, 1, 1), dt.date(2026, 12, 31), ranges="C2:C100"
+    )
+)
+```
+
+## Charts
+
+```python
+sheet.charts.add(
+    xl.Chart(
+        "column",
+        "E2:L18",
+        [xl.Series("Sales!$B$2:$B$13", categories="Sales!$A$2:$A$13", title="Revenue")],
+        title="Revenue by month",
+    )
+)
+```
+
+A chart covers the range of cells given as its second argument. The kinds are
+`"column"`, `"bar"`, `"line"`, `"area"`, `"pie"`, `"doughnut"` and
+`"scatter"`; the categories of a scatter series are its x values. Series refer
+to cells, and Excel draws the chart from them when it opens the file. Charts of
+other kinds in a file read as `kind="other"` and are kept on save.
+
+## Filters, groups and tabs
+
+```python
+sheet.auto_filter = "A1:D100"  # Filter buttons on row 1; None removes them.
+sheet.rows("2:10").outline_level = 1  # Group rows; 0 ungroups.
+sheet.columns("C:D").outline_level = 1
+sheet.tab_color = "C00000"
+```
+
+A worksheet filter cannot overlap a table, because tables have their own.
+
+## Printing
+
+```python
+sheet.page_setup = xl.PageSetup(
+    orientation="landscape",
+    paper_size=9,  # A4
+    fit_to=(1, 0),  # One page wide, any number of pages tall.
+    margins=xl.Margins(left=0.5, right=0.5),
+    print_area="A1:F40",
+    title_rows="1",  # Repeat row 1 on every page.
+)
+```
+
+`sheet.page_setup` reads the same value back. Assigning it keeps page breaks,
+headers and footers.

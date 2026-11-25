@@ -6,10 +6,7 @@ Before version 1.0, a minor version can change the API.
 Each release names the Rust core version it uses. The core has its own
 [changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).
 
-## [0.3.1]
-
-It uses the Rust core 0.3.1. Before 1.0 a patch release can change the new
-API; these changes make it consistent.
+## [Unreleased]
 
 ### Changed
 
@@ -27,6 +24,17 @@ API; these changes make it consistent.
 
 ### Added
 
+- Charts: `sheet.charts` adds, reads and removes column, bar, line, area,
+  pie, doughnut and scatter charts made of `Series`.
+- Printing: `sheet.page_setup` reads and sets a `PageSetup` with orientation,
+  paper size, scale, fit to pages, `Margins`, centering, grid lines, print
+  area and repeated title rows and columns.
+- `sheet.auto_filter`, `sheet.tab_color`, and `outline_level` on
+  `sheet.rows(...)` and `sheet.columns(...)` to group rows and columns.
+- `DataValidation.date` and `DataValidation.time`. Date and time rules read
+  back with `datetime.date` and `datetime.time` bounds.
+- Iterating `sheet.images` gives `PlacedImage` values. `sheet.images`,
+  `sheet.charts` and `sheet.conditional_formats` have `remove(ref)`.
 - `Table(totals_row=True)` adds a table whose last row is a totals row. Its
   cells hold text, a formula or nothing; Excel rejects other values there.
 - Tables read back `banded_rows`; rules read back their comparison, second

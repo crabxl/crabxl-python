@@ -1,9 +1,10 @@
 # Private native module: the classes behind the public crabxl API. The
 # openpyxl adapter's helpers are not part of this stub.
 from collections.abc import Iterable
+from typing import Any
 
 from ._values import CellInput, Value
-from .styles import PartialStyle, Style
+from .styles import Color, PartialStyle, Style
 
 class ApiWorkbook:
     @staticmethod
@@ -143,6 +144,54 @@ class ApiWorkbook:
     def remove_hyperlink(self, sheet: str, cell: str) -> None: ...
     def add_image(self, sheet: str, data: bytes, cell: str) -> None: ...
     def image_count(self, sheet: str) -> int: ...
+    def images(self, sheet: str) -> list[tuple[bytes, str | None]]: ...
+    def remove_images(self, sheet: str, range: str) -> int: ...
+    def charts(
+        self, sheet: str
+    ) -> list[
+        tuple[
+            str,
+            str | None,
+            list[tuple[str, str | None, str | None]],
+            str | None,
+            bool,
+        ]
+    ]: ...
+    def add_chart(
+        self,
+        sheet: str,
+        kind: str,
+        range: str,
+        series: list[tuple[str, str | None, str | None]],
+        title: str | None,
+        legend: bool,
+    ) -> None: ...
+    def remove_charts(self, sheet: str, range: str) -> int: ...
+    def remove_conditional_formats(self, sheet: str, range: str) -> int: ...
+    def auto_filter(self, sheet: str) -> str | None: ...
+    def set_auto_filter(self, sheet: str, range: str | None) -> None: ...
+    def outline_level(self, sheet: str, span: str, rows: bool) -> int: ...
+    def set_outline_level(
+        self, sheet: str, span: str, rows: bool, level: int
+    ) -> None: ...
+    def tab_color(self, sheet: str) -> Color | None: ...
+    def set_tab_color(self, sheet: str, color: Color | None) -> None: ...
+    def page_setup(self, sheet: str) -> dict[str, Any]: ...
+    def set_page_setup(
+        self,
+        sheet: str,
+        orientation: str | None,
+        paper_size: int | None,
+        scale: int | None,
+        fit_to: tuple[int, int] | None,
+        margins: tuple[float, float, float, float, float, float],
+        center_horizontally: bool,
+        center_vertically: bool,
+        grid_lines: bool,
+        print_area: str | None,
+        title_rows: str | None,
+        title_columns: str | None,
+    ) -> None: ...
     def protect(self, sheet: str, password: str | None) -> None: ...
     def unprotect(self, sheet: str) -> None: ...
     def is_protected(self, sheet: str) -> bool: ...

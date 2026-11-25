@@ -10,25 +10,31 @@ from typing import IO, TYPE_CHECKING, Any, Literal, TypeAlias, TypeVar, cast, ov
 
 from . import _native
 from ._features import (
+    Chart,
     ConditionalFormat,
     DataValidation,
     DefinedName,
     Hyperlink,
     Image,
+    Margins,
     Note,
+    PageSetup,
+    PlacedImage,
     Properties,
+    Series,
     Table,
     ValidationValue,
 )
 from ._native import ApiWorkbook
 from ._values import CellInput, Formula, Value
 from .errors import ConversionError, InvalidInputError, NotFoundError
-from .styles import Style
+from .styles import Color, Style
 
 if TYPE_CHECKING:
     from types import TracebackType
 
 __all__ = [
+    "Charts",
     "Columns",
     "ConditionalFormats",
     "DefinedNames",
@@ -76,6 +82,31 @@ def _w3cdtf(value: dt.datetime | None) -> str | None:
     if value.tzinfo is None:
         raise InvalidInputError("Document dates need a timezone, such as dt.UTC")
     return value.astimezone(dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+_DATE = re.compile(r"DATE\((\d+),(\d+),(\d+)\)")
+_TIME = re.compile(r"TIME\((\d+),(\d+),(\d+)\)")
+
+
+def _temporal(text: str | None, kind: str) -> dt.date | dt.time | str | None:
+    match = (_DATE if kind == "date" else _TIME).fullmatch(text or "")
+    if match is None:
+        return text  # A serial number or formula written by another program.
+    first, second, third = (int(group) for group in match.groups())
+    try:
+        if kind == "date":
+            return dt.date(first, second, third)
+        return dt.time(first, second, third)
+    except ValueError:
+        return text
+
+
+def _parts(value: object) -> object:
+    if isinstance(value, dt.date):
+        return (value.year, value.month, value.day)
+    if isinstance(value, dt.time):
+        return (value.hour, value.minute, value.second)
+    return value
 
 
 def _number(text: str | None, kind: str) -> int | float | str | None:
@@ -487,6 +518,65 @@ class Worksheet:
         """The pictures."""
         return Images(self)
 
+    @property
+    def charts(self) -> Charts:
+        """The charts."""
+        return Charts(self)
+
+    @property
+    def auto_filter(self) -> str | None:
+        """The range with filter buttons on its header row. Assign a range to
+        add them, or ``None`` to remove them. It cannot overlap a table."""
+        return self._native.auto_filter(self._name)
+
+    @auto_filter.setter
+    def auto_filter(self, ref: str | None) -> None:
+        self._native.set_auto_filter(self._name, ref)
+
+    @property
+    def tab_color(self) -> Color | None:
+        """The color of the sheet tab."""
+        return self._native.tab_color(self._name)
+
+    @tab_color.setter
+    def tab_color(self, color: Color | str | None) -> None:
+        self._native.set_tab_color(
+            self._name, Color(color) if isinstance(color, str) else color
+        )
+
+    @property
+    def page_setup(self) -> PageSetup:
+        """How the sheet prints. Assign a :class:`PageSetup` to change it;
+        page breaks, headers and footers are kept."""
+        values = self._native.page_setup(self._name)
+        margins = Margins(*values.pop("margins"))
+        return PageSetup(**values, margins=margins)
+
+    @page_setup.setter
+    def page_setup(self, page: PageSetup) -> None:
+        margins = page.margins
+        self._native.set_page_setup(
+            self._name,
+            page.orientation,
+            page.paper_size,
+            page.scale,
+            page.fit_to,
+            (
+                margins.left,
+                margins.right,
+                margins.top,
+                margins.bottom,
+                margins.header,
+                margins.footer,
+            ),
+            page.center_horizontally,
+            page.center_vertically,
+            page.grid_lines,
+            page.print_area,
+            page.title_rows,
+            page.title_columns,
+        )
+
     def protect(self, password: str | None = None) -> None:
         """Protect the sheet against edits. Cells whose style has
         ``Protection(locked=False)`` stay editable."""
@@ -721,6 +811,16 @@ class Rows:
     def height(self, points: float) -> None:
         self._sheet._native.set_row_height(self._sheet.name, self._span, points)
 
+    @property
+    def outline_level(self) -> int:
+        """The outline (group) level of the first row, from 0 to 7. Assign
+        to group or ungroup every row of the span."""
+        return self._sheet._native.outline_level(self._sheet.name, self._span, True)
+
+    @outline_level.setter
+    def outline_level(self, level: int) -> None:
+        self._sheet._native.set_outline_level(self._sheet.name, self._span, True, level)
+
     def hide(self, hidden: bool = True) -> None:
         """Hide or show the rows."""
         self._sheet._native.set_rows_hidden(self._sheet.name, self._span, hidden)
@@ -759,6 +859,18 @@ class Columns:
     @width.setter
     def width(self, characters: float) -> None:
         self._sheet._native.set_column_width(self._sheet.name, self._span, characters)
+
+    @property
+    def outline_level(self) -> int:
+        """The outline (group) level of the first column, from 0 to 7.
+        Assign to group or ungroup every column of the span."""
+        return self._sheet._native.outline_level(self._sheet.name, self._span, False)
+
+    @outline_level.setter
+    def outline_level(self, level: int) -> None:
+        self._sheet._native.set_outline_level(
+            self._sheet.name, self._span, False, level
+        )
 
     def hide(self, hidden: bool = True) -> None:
         """Hide or show the columns."""
@@ -872,7 +984,7 @@ class Validations:
             error,
         ) in self._sheet._native.validations(self._sheet.name):
             value: ValidationValue | None = first
-            bound: int | float | str | None = second
+            bound: int | float | str | dt.date | dt.time | None = second
             if kind == "list" and first is not None:
                 if len(first) > 1 and first[0] == first[-1] == '"':
                     value = tuple(first[1:-1].split(","))
@@ -881,6 +993,9 @@ class Validations:
             elif kind in ("whole", "decimal", "text_length"):
                 value = _number(first, kind)
                 bound = _number(second, kind)
+            elif kind in ("date", "time"):
+                value = _temporal(first, kind)
+                bound = _temporal(second, kind)
             yield DataValidation(
                 cast("Any", kind),
                 tuple(ranges),
@@ -901,8 +1016,8 @@ class Validations:
             self._sheet.name,
             rule.kind,
             list(rule.ranges),
-            rule.first,
-            rule.second,
+            _parts(rule.first),
+            _parts(rule.second),
             rule.comparison,
             rule.allow_blank,
             rule.prompt,
@@ -960,6 +1075,10 @@ class ConditionalFormats:
             rule.stop_if_true,
         )
 
+    def remove(self, ref: str) -> int:
+        """Remove every rule that applies to a cell of ``ref``. Returns the count."""
+        return self._sheet._native.remove_conditional_formats(self._sheet.name, ref)
+
 
 class Images:
     """The pictures of a worksheet."""
@@ -969,12 +1088,70 @@ class Images:
     def __init__(self, sheet: Worksheet) -> None:
         self._sheet = sheet
 
+    def __iter__(self) -> Iterator[PlacedImage]:
+        return (
+            PlacedImage(Image(data), at)
+            for data, at in self._sheet._native.images(self._sheet.name)
+        )
+
     def __len__(self) -> int:
         return self._sheet._native.image_count(self._sheet.name)
 
     def add(self, image: Image, *, at: str) -> None:
         """Place a picture with its top-left corner on a cell, at its natural size."""
         self._sheet._native.add_image(self._sheet.name, image.data, at)
+
+    def remove(self, ref: str) -> int:
+        """Remove every picture whose top-left corner is in ``ref``. Returns
+        the count."""
+        return self._sheet._native.remove_images(self._sheet.name, ref)
+
+
+class Charts:
+    """The charts of a worksheet."""
+
+    __slots__ = ("_sheet",)
+
+    def __init__(self, sheet: Worksheet) -> None:
+        self._sheet = sheet
+
+    def __iter__(self) -> Iterator[Chart]:
+        return (
+            Chart(
+                cast("Any", kind),
+                ref,
+                [Series(*entry) for entry in series],
+                title=title,
+                legend=legend,
+            )
+            for kind, ref, series, title, legend in self._sheet._native.charts(
+                self._sheet.name
+            )
+        )
+
+    def __len__(self) -> int:
+        return len(self._sheet._native.charts(self._sheet.name))
+
+    def add(self, chart: Chart) -> None:
+        """Add a chart. Excel draws it from the referenced cells when it opens
+        the file."""
+        if chart.kind == "other" or chart.ref is None:
+            raise InvalidInputError(
+                "A new chart needs a kind other than 'other' and a ref"
+            )
+        self._sheet._native.add_chart(
+            self._sheet.name,
+            chart.kind,
+            chart.ref,
+            [(s.values, s.categories, s.title) for s in chart.series],
+            chart.title,
+            chart.legend,
+        )
+
+    def remove(self, ref: str) -> int:
+        """Remove every chart whose top-left corner is in ``ref``. Returns the
+        count."""
+        return self._sheet._native.remove_charts(self._sheet.name, ref)
 
 
 class DefinedNames:

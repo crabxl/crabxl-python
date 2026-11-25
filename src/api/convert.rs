@@ -355,7 +355,7 @@ pub(crate) fn row_from_python(row: &Bound<'_, PyAny>) -> PyResult<Vec<crabxl::Ce
 
 // ----- Styles -----
 
-fn color_to_python(py: Python<'_>, color: &Color) -> PyResult<Py<PyAny>> {
+pub(crate) fn color_to_python(py: Python<'_>, color: &Color) -> PyResult<Py<PyAny>> {
     use crabxl_core::ColorKind;
     let module = py.import("crabxl.styles")?;
     let class = module.getattr("Color")?;
@@ -375,7 +375,7 @@ fn color_to_python(py: Python<'_>, color: &Color) -> PyResult<Py<PyAny>> {
     })
 }
 
-fn color_from_python(value: &Bound<'_, PyAny>) -> PyResult<Option<Color>> {
+pub(crate) fn color_from_python(value: &Bound<'_, PyAny>) -> PyResult<Option<Color>> {
     if value.is_none() {
         return Ok(None);
     }

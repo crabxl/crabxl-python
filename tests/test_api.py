@@ -244,6 +244,75 @@ def test_openpyxl_names_point_to_the_adapter() -> None:
     assert not hasattr(xl, "not_a_name")
 
 
+def test_printing_filters_outline_charts_and_pictures_round_trip() -> None:
+    book = sample()
+    sheet = book.worksheets["Data"]
+    page = xl.PageSetup(
+        orientation="landscape",
+        paper_size=9,
+        fit_to=(1, 0),
+        margins=xl.Margins(left=0.5),
+        center_horizontally=True,
+        grid_lines=True,
+        print_area="A1:B5",
+        title_rows="1",
+        title_columns="A",
+    )
+    sheet.page_setup = page
+    with pytest.raises(xl.InvalidInputError):
+        sheet.page_setup = xl.PageSetup(scale=5)
+    sheet.auto_filter = "A1:B4"
+    with pytest.raises(xl.InvalidInputError):
+        sheet.tables.add(xl.Table("Sales", "A1:B4"))
+    sheet.tab_color = "FF0000"
+    sheet.rows("2:3").outline_level = 1
+    sheet.columns("B").outline_level = 2
+    with pytest.raises(xl.InvalidInputError):
+        sheet.rows("2").outline_level = 8
+    bar = xl.Chart(
+        "bar",
+        "E2:K12",
+        [xl.Series("Data!$B$2:$B$4", categories="Data!$A$2:$A$4", title="Amount")],
+        title="Sales",
+    )
+    pie = xl.Chart("pie", "E14:K24", [xl.Series("Data!$B$2:$B$4")], legend=False)
+    sheet.charts.add(bar)
+    sheet.charts.add(pie)
+    sheet.images.add(xl.Image(PNG), at="M2")
+    rules = [
+        xl.DataValidation.date(
+            "between", dt.date(2026, 1, 1), dt.date(2026, 12, 31), ranges="C2:C4"
+        ),
+        xl.DataValidation.time(">", dt.time(9, 30), ranges="D2"),
+    ]
+    for rule in rules:
+        sheet.validations.add(rule)
+    red = xl.PartialStyle(fill=xl.Fill.solid("FFC7CE"))
+    sheet.conditional_formats.add(
+        xl.ConditionalFormat.formula("$B2>15", ranges="B2:B4", style=red)
+    )
+
+    again = reopen(book)
+    data = again.worksheets["Data"]
+    assert data.page_setup == page
+    assert data.auto_filter == "A1:B4" and data.tab_color == xl.Color("FF0000")
+    assert data.rows("2").outline_level == 1 and data.rows("4").outline_level == 0
+    assert data.columns("B").outline_level == 2
+    assert list(data.charts) == [bar, pie]
+    assert list(data.images) == [xl.PlacedImage(xl.Image(PNG), "M2")]
+    assert list(data.validations) == rules
+    assert data.conditional_formats.remove("B3") == 1
+    assert data.charts.remove("E2") == 1 and data.images.remove("A1:Z9") == 1
+    data.auto_filter = None
+    data.tab_color = None
+    data.page_setup = xl.PageSetup()
+    last = reopen(again).worksheets["Data"]
+    assert last.page_setup == xl.PageSetup()
+    assert last.auto_filter is None and last.tab_color is None
+    assert len(last.charts) == 1 and not list(last.images)
+    assert len(last.conditional_formats) == 0
+
+
 def test_structural_edits_update_references() -> None:
     book = sample()
     summary = book.worksheets.add("Summary")

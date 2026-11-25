@@ -1,14 +1,18 @@
 //! `crabxl._native.ApiWorkbook`: the engine behind `crabxl.Workbook`.
 
 use super::convert::{
-    Modes, Phase, error, from_python, partial_style_from_python, partial_style_to_python, raise,
-    row_from_python, style_from_python, style_to_python, to_python,
+    Modes, Phase, color_from_python, color_to_python, error, from_python,
+    partial_style_from_python, partial_style_to_python, raise, row_from_python, style_from_python,
+    style_to_python, to_python,
 };
 use crabxl::features::{
-    Comparison, ConditionalFormat, ConditionalKind, DataValidation, DefinedName, Hyperlink, Image,
-    Note, Table, ValidationKind,
+    Chart, ChartKind, Comparison, ConditionalFormat, ConditionalKind, DataValidation, DefinedName,
+    Hyperlink, Image, Margins, Note, Orientation, PageSetup, Series, Table, ValidationKind,
 };
-use crabxl::{DataLossPolicy, Limits, Memory, OpenOptions, SaveOptions, Visibility, Workbook};
+use crabxl::{
+    CellRef, DataLossPolicy, Limits, Memory, OpenOptions, SaveOptions, Span, Temporal, Visibility,
+    Workbook,
+};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict, PyList, PyTuple};
 use std::io::Cursor;
@@ -609,6 +613,30 @@ impl ApiWorkbook {
                     first.extract()?,
                     second.map(|v| v.extract()).transpose()?,
                 ),
+                "date" => {
+                    let date = |value: &Bound<'_, PyAny>| -> PyResult<crabxl::Result<Temporal>> {
+                        let (year, month, day): (i32, u32, u32) = value.extract()?;
+                        Ok(Temporal::date(year, month, day))
+                    };
+                    match (date(first)?, second.map(date).transpose()?.transpose()) {
+                        (Ok(first), Ok(second)) => {
+                            DataValidation::date(need(comparison)?, first, second)
+                        }
+                        (Err(e), _) | (_, Err(e)) => Err(e),
+                    }
+                }
+                "time" => {
+                    let time = |value: &Bound<'_, PyAny>| -> PyResult<crabxl::Result<Temporal>> {
+                        let (hour, minute, second): (u32, u32, u32) = value.extract()?;
+                        Ok(Temporal::time(hour, minute, second, 0))
+                    };
+                    match (time(first)?, second.map(time).transpose()?.transpose()) {
+                        (Ok(first), Ok(second)) => {
+                            DataValidation::time(need(comparison)?, first, second)
+                        }
+                        (Err(e), _) | (_, Err(e)) => Err(e),
+                    }
+                }
                 other => {
                     return Err(pyo3::exceptions::PyValueError::new_err(format!(
                         "Unknown validation kind {other:?}"
@@ -768,6 +796,256 @@ impl ApiWorkbook {
     }
     fn image_count(&self, py: Python<'_>, sheet: &str) -> PyResult<usize> {
         self.sheet(py, sheet, |s| s.image_count())
+    }
+    // ----- Charts, pictures, filters, outline and printing -----
+
+    fn images<'py>(&self, py: Python<'py>, sheet: &str) -> PyResult<Bound<'py, PyList>> {
+        let images = self.sheet(py, sheet, |s| s.images())?;
+        let list = PyList::empty(py);
+        for placed in images {
+            list.append((
+                PyBytes::new(py, placed.image.data()),
+                placed.at.map(|at| at.to_string()),
+            ))?;
+        }
+        Ok(list)
+    }
+    fn remove_images(&self, py: Python<'_>, sheet: &str, range: &str) -> PyResult<usize> {
+        self.sheet(py, sheet, |s| s.remove_images(range))
+    }
+    fn charts<'py>(&self, py: Python<'py>, sheet: &str) -> PyResult<Bound<'py, PyList>> {
+        let charts = self.sheet(py, sheet, |s| s.charts())?;
+        let list = PyList::empty(py);
+        for chart in charts {
+            let kind = match chart.kind() {
+                ChartKind::Column => "column",
+                ChartKind::Bar => "bar",
+                ChartKind::Line => "line",
+                ChartKind::Area => "area",
+                ChartKind::Pie => "pie",
+                ChartKind::Doughnut => "doughnut",
+                ChartKind::Scatter => "scatter",
+                _ => "other",
+            };
+            let series: Vec<(String, Option<String>, Option<String>)> = chart
+                .series()
+                .iter()
+                .map(|s| {
+                    (
+                        s.values().to_owned(),
+                        s.categories().map(str::to_owned),
+                        s.title().map(str::to_owned),
+                    )
+                })
+                .collect();
+            list.append((
+                kind,
+                chart.range().map(|range| range.to_string()),
+                series,
+                chart.title().map(str::to_owned),
+                chart.has_legend(),
+            ))?;
+        }
+        Ok(list)
+    }
+    #[allow(clippy::too_many_arguments)]
+    fn add_chart(
+        &self,
+        py: Python<'_>,
+        sheet: &str,
+        kind: &str,
+        range: &str,
+        series: Vec<(String, Option<String>, Option<String>)>,
+        title: Option<String>,
+        legend: bool,
+    ) -> PyResult<()> {
+        let kind = match kind {
+            "column" => ChartKind::Column,
+            "bar" => ChartKind::Bar,
+            "line" => ChartKind::Line,
+            "area" => ChartKind::Area,
+            "pie" => ChartKind::Pie,
+            "doughnut" => ChartKind::Doughnut,
+            "scatter" => ChartKind::Scatter,
+            _ => ChartKind::Other,
+        };
+        self.sheet(py, sheet, |s| {
+            let mut chart = Chart::new(kind, range)?.with_legend(legend);
+            if let Some(title) = &title {
+                chart = chart.with_title(title);
+            }
+            for (values, categories, name) in &series {
+                let mut one = Series::new(values)?;
+                if let Some(categories) = categories {
+                    one = one.with_categories(categories);
+                }
+                if let Some(name) = name {
+                    one = one.with_title(name);
+                }
+                chart = chart.with_series(one);
+            }
+            s.add_chart(&chart)
+        })
+    }
+    fn remove_charts(&self, py: Python<'_>, sheet: &str, range: &str) -> PyResult<usize> {
+        self.sheet(py, sheet, |s| s.remove_charts(range))
+    }
+    fn remove_conditional_formats(
+        &self,
+        py: Python<'_>,
+        sheet: &str,
+        range: &str,
+    ) -> PyResult<usize> {
+        self.sheet(py, sheet, |s| s.remove_conditional_formats(range))
+    }
+    fn auto_filter(&self, py: Python<'_>, sheet: &str) -> PyResult<Option<String>> {
+        Ok(self
+            .sheet(py, sheet, |s| s.auto_filter())?
+            .map(|range| range.to_string()))
+    }
+    #[pyo3(signature = (sheet, range))]
+    fn set_auto_filter(&self, py: Python<'_>, sheet: &str, range: Option<&str>) -> PyResult<()> {
+        self.sheet(py, sheet, |s| match range {
+            Some(range) => s.set_auto_filter(range),
+            None => s.remove_auto_filter(),
+        })
+    }
+    fn outline_level(&self, py: Python<'_>, sheet: &str, span: &str, rows: bool) -> PyResult<u8> {
+        self.sheet(py, sheet, |s| {
+            if rows {
+                s.row_outline_level(span)
+            } else {
+                s.column_outline_level(span)
+            }
+        })
+    }
+    fn set_outline_level(
+        &self,
+        py: Python<'_>,
+        sheet: &str,
+        span: &str,
+        rows: bool,
+        level: u8,
+    ) -> PyResult<()> {
+        self.sheet(py, sheet, |s| {
+            if rows {
+                s.set_rows_outline_level(span, level)
+            } else {
+                s.set_columns_outline_level(span, level)
+            }
+        })
+    }
+    fn tab_color(&self, py: Python<'_>, sheet: &str) -> PyResult<Py<PyAny>> {
+        match self.sheet(py, sheet, |s| s.tab_color())? {
+            Some(color) => color_to_python(py, &color),
+            None => Ok(py.None()),
+        }
+    }
+    fn set_tab_color(&self, py: Python<'_>, sheet: &str, color: &Bound<'_, PyAny>) -> PyResult<()> {
+        let color = color_from_python(color)?;
+        self.sheet(py, sheet, |s| s.set_tab_color(color.as_ref()))
+    }
+    fn page_setup<'py>(&self, py: Python<'py>, sheet: &str) -> PyResult<Bound<'py, PyDict>> {
+        let page = self.sheet(py, sheet, |s| s.page_setup())?;
+        let span = |span: Span, rows: bool| -> PyResult<String> {
+            let name = |index: u32| -> PyResult<String> {
+                Ok(if rows {
+                    (index + 1).to_string()
+                } else {
+                    CellRef::new(0, index)
+                        .map_err(|e| raise(py, e, Phase::Edit))?
+                        .column_name()
+                })
+            };
+            let first = name(span.start)?;
+            Ok(if span.count == 1 {
+                first
+            } else {
+                format!("{first}:{}", name(span.start + span.count - 1)?)
+            })
+        };
+        let dict = PyDict::new(py);
+        dict.set_item(
+            "orientation",
+            page.orientation.map(|o| match o {
+                Orientation::Portrait => "portrait",
+                Orientation::Landscape => "landscape",
+            }),
+        )?;
+        dict.set_item("paper_size", page.paper_size)?;
+        dict.set_item("scale", page.scale)?;
+        dict.set_item("fit_to", page.fit_to)?;
+        let m = page.margins;
+        dict.set_item(
+            "margins",
+            (m.left, m.right, m.top, m.bottom, m.header, m.footer),
+        )?;
+        dict.set_item("center_horizontally", page.center_horizontally)?;
+        dict.set_item("center_vertically", page.center_vertically)?;
+        dict.set_item("grid_lines", page.grid_lines)?;
+        dict.set_item("print_area", page.print_area.map(|r| r.to_string()))?;
+        dict.set_item(
+            "title_rows",
+            page.title_rows.map(|s| span(s, true)).transpose()?,
+        )?;
+        dict.set_item(
+            "title_columns",
+            page.title_columns.map(|s| span(s, false)).transpose()?,
+        )?;
+        Ok(dict)
+    }
+    #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (sheet, orientation, paper_size, scale, fit_to, margins, center_horizontally, center_vertically, grid_lines, print_area, title_rows, title_columns))]
+    fn set_page_setup(
+        &self,
+        py: Python<'_>,
+        sheet: &str,
+        orientation: Option<&str>,
+        paper_size: Option<u32>,
+        scale: Option<u32>,
+        fit_to: Option<(u32, u32)>,
+        margins: (f64, f64, f64, f64, f64, f64),
+        center_horizontally: bool,
+        center_vertically: bool,
+        grid_lines: bool,
+        print_area: Option<&str>,
+        title_rows: Option<&str>,
+        title_columns: Option<&str>,
+    ) -> PyResult<()> {
+        let orientation = match orientation {
+            None => None,
+            Some("portrait") => Some(Orientation::Portrait),
+            Some("landscape") => Some(Orientation::Landscape),
+            Some(other) => {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "orientation must be 'portrait' or 'landscape', not {other:?}"
+                )));
+            }
+        };
+        self.sheet(py, sheet, |s| {
+            let (left, right, top, bottom, header, footer) = margins;
+            let page = PageSetup {
+                orientation,
+                paper_size,
+                scale,
+                fit_to,
+                margins: Margins {
+                    left,
+                    right,
+                    top,
+                    bottom,
+                    header,
+                    footer,
+                },
+                center_horizontally,
+                center_vertically,
+                grid_lines,
+                print_area: print_area.map(str::parse).transpose()?,
+                title_rows: title_rows.map(Span::rows).transpose()?,
+                title_columns: title_columns.map(Span::columns).transpose()?,
+            };
+            s.set_page_setup(&page)
+        })
     }
     fn protect(&self, py: Python<'_>, sheet: &str, password: Option<&str>) -> PyResult<()> {
         self.sheet(py, sheet, |s| s.protect(password))

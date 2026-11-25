@@ -1,4 +1,5 @@
-"""Tables, validation, conditional formats, notes, hyperlinks, names and images."""
+"""Tables, validation, conditional formats, charts, page setup, notes,
+hyperlinks, names and images."""
 
 from __future__ import annotations
 
@@ -11,14 +12,21 @@ from typing import Literal, TypeAlias
 from .styles import PartialStyle
 
 __all__ = [
+    "Chart",
+    "ChartKind",
     "Comparison",
     "ConditionalFormat",
     "DataValidation",
     "DefinedName",
     "Hyperlink",
     "Image",
+    "Margins",
     "Note",
+    "Orientation",
+    "PageSetup",
+    "PlacedImage",
     "Properties",
+    "Series",
     "Table",
     "ValidationValue",
 ]
@@ -50,7 +58,7 @@ class Table:
     """Whether the last row of ``ref`` is a totals row."""
 
 
-ValidationValue: TypeAlias = "int | float | str | tuple[str, ...]"
+ValidationValue: TypeAlias = "int | float | str | dt.date | dt.time | tuple[str, ...]"
 """A bound, formula, source range or list of choices of a validation rule."""
 
 
@@ -60,8 +68,8 @@ class DataValidation:
 
     Build one with a class method, such as
     ``DataValidation.list(["Yes", "No"], ranges="C2:C100")``. Rules read from a
-    file come back as the same type. ``date``, ``time`` and ``any`` rules can be
-    read but not created.
+    file come back as the same type. ``any`` rules, which only show a prompt,
+    can be read but not created.
     """
 
     kind: Literal[
@@ -78,7 +86,7 @@ class DataValidation:
     ranges: tuple[str, ...]
     first: ValidationValue | None
     """The choices, source range, formula or first bound."""
-    second: int | float | str | None = None
+    second: int | float | str | dt.date | dt.time | None = None
     """The second bound of a ``between`` or ``not_between`` rule."""
     comparison: Comparison | None = None
     allow_blank: bool = True
@@ -138,6 +146,31 @@ class DataValidation:
     ) -> DataValidation:
         """Text whose length compares with one value, or two for ``between``."""
         return cls("text_length", _ranges(ranges), value, second, comparison)
+
+    @classmethod
+    def date(
+        cls,
+        comparison: Comparison,
+        value: dt.date,
+        second: dt.date | None = None,
+        *,
+        ranges: Ranges,
+    ) -> DataValidation:
+        """Dates that compare with one date, or two for ``between``."""
+        return cls("date", _ranges(ranges), _day(value), _day(second), comparison)
+
+    @classmethod
+    def time(
+        cls,
+        comparison: Comparison,
+        value: dt.time,
+        second: dt.time | None = None,
+        *,
+        ranges: Ranges,
+    ) -> DataValidation:
+        """Times of day, to the second, that compare with one time, or two for
+        ``between``."""
+        return cls("time", _ranges(ranges), _second(value), _second(second), comparison)
 
     @classmethod
     def custom(cls, formula: str, *, ranges: Ranges) -> DataValidation:
@@ -206,6 +239,15 @@ class ConditionalFormat:
             None,
             stop_if_true,
         )
+
+
+def _day(value: dt.date | None) -> dt.date | None:
+    # A datetime is a date; keep only its calendar day.
+    return dt.date(value.year, value.month, value.day) if value is not None else None
+
+
+def _second(value: dt.time | None) -> dt.time | None:
+    return value.replace(microsecond=0, tzinfo=None) if value is not None else None
 
 
 def _formula(value: int | float | str) -> str:
@@ -277,3 +319,102 @@ class Properties:
     last_modified_by: str | None = None
     created: dt.datetime | None = None
     modified: dt.datetime | None = None
+
+
+Orientation: TypeAlias = Literal["portrait", "landscape"]
+
+
+@dataclass(frozen=True, slots=True)
+class Margins:
+    """Page margins in inches."""
+
+    left: float = 0.75
+    right: float = 0.75
+    top: float = 1.0
+    bottom: float = 1.0
+    header: float = 0.5
+    footer: float = 0.5
+
+
+@dataclass(frozen=True, slots=True)
+class PageSetup:
+    """How a worksheet prints, such as
+    ``PageSetup(orientation="landscape", fit_to=(1, 0), title_rows="1")``.
+    ``None`` and ``False`` keep Excel's defaults."""
+
+    orientation: Orientation | None = None
+    paper_size: int | None = None
+    """Excel's paper code, such as 1 for Letter or 9 for A4."""
+    scale: int | None = None
+    """Print scale in percent, from 10 to 400."""
+    fit_to: tuple[int, int] | None = None
+    """Fit to this many pages wide and tall; 0 leaves that direction free."""
+    margins: Margins = Margins()
+    center_horizontally: bool = False
+    center_vertically: bool = False
+    grid_lines: bool = False
+    print_area: str | None = None
+    """The range to print, such as ``"A1:F40"``; ``None`` prints the used range."""
+    title_rows: str | None = None
+    """Rows to repeat at the top of each page, such as ``"1"`` or ``"1:2"``."""
+    title_columns: str | None = None
+    """Columns to repeat at the left of each page, such as ``"A"`` or ``"A:B"``."""
+
+
+ChartKind: TypeAlias = Literal[
+    "column", "bar", "line", "area", "pie", "doughnut", "scatter", "other"
+]
+"""The kind of a chart. ``"other"`` charts are read but cannot be created."""
+
+
+@dataclass(frozen=True, slots=True)
+class Series:
+    """One data series of a chart. References name their sheet, such as
+    ``"Data!$B$2:$B$9"``. A scatter chart's categories are its x values."""
+
+    values: str
+    categories: str | None = None
+    title: str | None = None
+    """The name shown in the legend."""
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "values", self.values.removeprefix("="))
+        if self.categories is not None:
+            object.__setattr__(self, "categories", self.categories.removeprefix("="))
+
+
+@dataclass(frozen=True, slots=True)
+class Chart:
+    """A chart that covers a range of cells, such as
+    ``Chart("column", "E2:L18", [Series("Data!$B$2:$B$9")], title="Sales")``."""
+
+    kind: ChartKind
+    ref: str | None
+    """The cells the chart covers; ``None`` for a chart placed by position."""
+    series: tuple[Series, ...]
+    title: str | None = None
+    legend: bool = True
+
+    def __init__(
+        self,
+        kind: ChartKind,
+        ref: str | None,
+        series: Sequence[Series],
+        *,
+        title: str | None = None,
+        legend: bool = True,
+    ) -> None:
+        object.__setattr__(self, "kind", kind)
+        object.__setattr__(self, "ref", ref)
+        object.__setattr__(self, "series", tuple(series))
+        object.__setattr__(self, "title", title)
+        object.__setattr__(self, "legend", legend)
+
+
+@dataclass(frozen=True, slots=True)
+class PlacedImage:
+    """A picture on a worksheet and the cell of its top-left corner, or
+    ``None`` for a picture placed by position."""
+
+    image: Image
+    at: str | None
