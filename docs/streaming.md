@@ -45,10 +45,16 @@ with xl.Writer.create("export.xlsx", compression=1) as writer:
     sheet.columns("A:C").width = 16
     sheet.append(["id", "kind", "amount"], style=xl.Style(font=xl.Font(bold=True)))
     sheet.extend((n, "sale", n * 1.5) for n in range(1_000_000))
-    sheet.merge("E1:F1")
+    sheet.merges.add("E1:F1")
 ```
 
 The writer finishes when the `with` block ends. If the block raises an
 exception, the writer discards its output and does not touch the target. A
 path target is replaced atomically. Several worksheets can be open at once:
 `writer.worksheets["Events"]` returns an open sheet.
+
+A streaming sheet has the same `merges`, `validations` and
+`conditional_formats` as a workbook sheet, but you can only add to them: the
+writer writes them when the sheet finishes. It accepts list validations and
+formula conditional formats. `freeze_panes` and `columns(...).width` read back
+the values you set.

@@ -26,19 +26,19 @@ def main(tag):
         "macos-x86_64",
         "macos-arm64",
     }
-    expected = {(minor, platform) for minor in range(11, 16) for platform in platforms}
+    expected = {(minor, platform) for minor in range(12, 16) for platform in platforms}
     if (
         len(wheels) != len(expected)
         or len(sources) != 1
         or len(files) != len(expected) + 1
     ):
         raise ValueError(
-            "Expected 25 platform/CPython wheels and one source distribution"
+            "Expected 20 platform/CPython wheels and one source distribution"
         )
     observed = set()
     for path in wheels:
         match = re.fullmatch(
-            r"crabxl-[^-]+-cp3(11|12|13|14|15)-cp3\1-(.+)\.whl", path.name
+            r"crabxl-[^-]+-cp3(12|13|14|15)-cp3\1-(.+)\.whl", path.name
         )
         if not match:
             raise ValueError(f"Unexpected wheel filename: {path.name}")
@@ -73,7 +73,7 @@ def main(tag):
             )
             if metadata["Name"] != "crabxl" or metadata["Version"] != version:
                 raise ValueError(f"Unexpected package identity in {path}")
-            if metadata["Requires-Python"] != ">=3.11":
+            if metadata["Requires-Python"] != ">=3.12":
                 raise ValueError(f"Unexpected Python support in {path}")
     if observed != expected:
         raise ValueError(f"Missing platform/Python wheels: {expected - observed}")

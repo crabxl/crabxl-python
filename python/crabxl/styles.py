@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import dataclasses
 from dataclasses import dataclass
-from typing import Literal, TypeAlias
+from typing import Literal
 
 __all__ = [
     "Alignment",
@@ -91,7 +91,7 @@ class Color:
         return f"#{self.value}" if self.kind == "rgb" else f"{self.kind}:{self.value}"
 
 
-ColorLike: TypeAlias = Color | str
+type ColorLike = Color | str
 """A color, or hex text such as ``"1F4E79"``."""
 
 
@@ -101,9 +101,7 @@ def _color(value: ColorLike | None) -> Color | None:
     return Color(value)
 
 
-Underline: TypeAlias = Literal[
-    "single", "double", "single_accounting", "double_accounting"
-]
+type Underline = Literal["single", "double", "single_accounting", "double_accounting"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,7 +156,7 @@ class Fill:
         return cls(color)
 
 
-BorderStyle: TypeAlias = Literal[
+type BorderStyle = Literal[
     "thin",
     "medium",
     "thick",
@@ -208,7 +206,7 @@ class Border:
         return dataclasses.replace(self, **changes)
 
 
-HorizontalAlignment: TypeAlias = Literal[
+type HorizontalAlignment = Literal[
     "general",
     "left",
     "center",
@@ -218,9 +216,7 @@ HorizontalAlignment: TypeAlias = Literal[
     "center_continuous",
     "distributed",
 ]
-VerticalAlignment: TypeAlias = Literal[
-    "bottom", "center", "top", "justify", "distributed"
-]
+type VerticalAlignment = Literal["bottom", "center", "top", "justify", "distributed"]
 
 
 @dataclass(frozen=True, slots=True)

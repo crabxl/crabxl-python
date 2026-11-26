@@ -1,4 +1,4 @@
-"""Build and test five CPython wheels on one runner with a shared Cargo target."""
+"""Build and test four CPython wheels on one runner with a shared Cargo target."""
 
 import argparse
 import json
@@ -10,7 +10,7 @@ from pathlib import Path
 
 from release import ROOT
 
-ABIS = ("311", "312", "313", "314", "315")
+ABIS = ("312", "313", "314", "315")
 
 
 def interpreters():

@@ -5,7 +5,7 @@
 **Read, write and edit Excel XLSX files in Python, with a Rust core.**
 
 [![PyPI](https://img.shields.io/pypi/v/crabxl)](https://pypi.org/project/crabxl/)
-[![Python](https://img.shields.io/badge/Python-3.11–3.15-blue?logo=python&logoColor=white)](https://pypi.org/project/crabxl/#files)
+[![Python](https://img.shields.io/badge/Python-3.12–3.15-blue?logo=python&logoColor=white)](https://pypi.org/project/crabxl/#files)
 [![CI](https://github.com/crabxl/crabxl-python/actions/workflows/python.yml/badge.svg)](https://github.com/crabxl/crabxl-python/actions/workflows/python.yml)
 [![License](https://img.shields.io/github/license/crabxl/crabxl-python)](LICENSE)
 
@@ -44,7 +44,7 @@ Or with uv:
 uv add crabxl
 ```
 
-Wheels are available for **CPython 3.11–3.15** on Linux x86_64/ARM64, Windows
+Wheels are available for **CPython 3.12–3.15** on Linux x86_64/ARM64, Windows
 x86_64, and macOS Intel/Apple Silicon. Python 3.15 validation currently uses its
 release candidate. Source builds require Rust 1.99 or newer and Maturin.
 

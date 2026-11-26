@@ -5,8 +5,8 @@ from __future__ import annotations
 import datetime as dt
 import os
 import re
-from collections.abc import Callable, Iterable, Iterator, Sequence
-from typing import IO, TYPE_CHECKING, Any, Literal, TypeAlias, TypeVar, cast, overload
+from collections.abc import Buffer, Callable, Iterable, Iterator, Sequence
+from typing import IO, TYPE_CHECKING, Any, Literal, cast, overload
 
 from . import _native
 from ._features import (
@@ -19,6 +19,7 @@ from ._features import (
     Margins,
     Note,
     PageSetup,
+    PlacedChart,
     PlacedImage,
     Properties,
     Series,
@@ -35,13 +36,16 @@ if TYPE_CHECKING:
 
 __all__ = [
     "Charts",
-    "Columns",
+    "ColumnSpan",
     "ConditionalFormats",
+    "Dates",
     "DefinedNames",
     "Images",
+    "Limits",
     "Merges",
+    "Numbers",
     "Range",
-    "Rows",
+    "RowSpan",
     "Source",
     "Tables",
     "Target",
@@ -52,13 +56,19 @@ __all__ = [
     "Worksheets",
 ]
 
-Source: TypeAlias = "str | os.PathLike[str] | bytes | IO[bytes]"
-"""Where a workbook comes from: a path, the file's bytes or a binary file."""
-Target: TypeAlias = "str | os.PathLike[str] | IO[bytes]"
+type Source = str | os.PathLike[str] | Buffer | IO[bytes]
+"""Where a workbook comes from: a path, the file's bytes (any bytes-like
+object) or a binary file."""
+type Target = str | os.PathLike[str] | IO[bytes]
 """Where a workbook goes: a path (saved atomically) or a binary file."""
-Visibility: TypeAlias = Literal["visible", "hidden", "very_hidden"]
-Limits: TypeAlias = Literal["default", "strict", "unlimited"]
-T = TypeVar("T")
+type Visibility = Literal["visible", "hidden", "very_hidden"]
+type Limits = Literal["default", "strict", "unlimited"]
+"""Input safety limits: ``"strict"`` for untrusted files, ``"unlimited"``
+only for files you trust."""
+type Numbers = Literal["float", "exact"]
+"""How non-integer numbers read: ``"exact"`` returns :class:`decimal.Decimal`."""
+type Dates = Literal["native", "serial"]
+"""How dates and times read: ``"serial"`` returns serial numbers."""
 
 _CELL = re.compile(r"^\$?([A-Za-z]{1,3})\$?([0-9]{1,7})$")
 # A reference already in normal form: one cell, uppercase, no $, no leading zero.
@@ -157,8 +167,8 @@ def _normalize(ref: str) -> str:
 def _open(cls: type, source: Source) -> tuple[str | None, bytes | None]:
     if isinstance(source, (str, os.PathLike)):
         return os.fspath(source), None
-    if isinstance(source, (bytes, bytearray, memoryview)):
-        return None, bytes(source)
+    if isinstance(source, Buffer):
+        return None, bytes(memoryview(source))
     if hasattr(source, "read"):
         return None, source.read()
     raise TypeError(
@@ -187,7 +197,7 @@ class Workbook:
     _native: ApiWorkbook
     _sheets: dict[str, Worksheet]
 
-    def __init__(self, *, dates: Literal["native", "serial"] = "native") -> None:
+    def __init__(self, *, dates: Dates = "native") -> None:
         """A new workbook with no sheets. Add a worksheet before you save."""
         self._native = _native.ApiWorkbook.create(dates == "serial")
         self._sheets = {}
@@ -207,8 +217,8 @@ class Workbook:
         limits: Limits = "default",
         memory: int | None = None,
         data_loss: Literal["reject", "allow"] = "reject",
-        numbers: Literal["float", "exact"] = "float",
-        dates: Literal["native", "serial"] = "native",
+        numbers: Numbers = "float",
+        dates: Dates = "native",
     ) -> Workbook:
         """Open a workbook.
 
@@ -473,13 +483,13 @@ class Worksheet:
 
     # ----- Layout -----
 
-    def rows(self, span: str) -> Rows:
+    def rows(self, span: str) -> RowSpan:
         """Whole rows, such as ``"5"`` or ``"5:7"`` (row numbers as Excel shows them)."""
-        return Rows(self, span)
+        return RowSpan(self, span)
 
-    def columns(self, span: str) -> Columns:
+    def columns(self, span: str) -> ColumnSpan:
         """Whole columns, such as ``"B"`` or ``"B:D"``."""
-        return Columns(self, span)
+        return ColumnSpan(self, span)
 
     @property
     def freeze_panes(self) -> str | None:
@@ -678,8 +688,8 @@ class Range:
     @overload
     def value_as(self, kind: type[str]) -> str: ...
     @overload
-    def value_as(self, kind: type[T]) -> T: ...
-    def value_as(self, kind: type[T]) -> T:
+    def value_as[T](self, kind: type[T]) -> T: ...
+    def value_as[T](self, kind: type[T]) -> T:
         """The value of the cell as ``kind``. An ``int`` reads as ``float``
         when you ask for ``float``; other mismatches raise ConversionError."""
         value = self.value
@@ -790,7 +800,7 @@ class Range:
         return hash((self._sheet.name, self._ref))
 
 
-class Rows:
+class RowSpan:
     """Whole rows of a worksheet: height, visibility, insertion and deletion."""
 
     __slots__ = ("_sheet", "_span")
@@ -836,10 +846,10 @@ class Rows:
         self._sheet._native.delete_rows(self._sheet.name, self._span)
 
     def __repr__(self) -> str:
-        return f"<crabxl.Rows {self._sheet.name}!{self._span}>"
+        return f"<crabxl.RowSpan {self._sheet.name}!{self._span}>"
 
 
-class Columns:
+class ColumnSpan:
     """Whole columns of a worksheet: width, visibility, insertion and deletion."""
 
     __slots__ = ("_sheet", "_span")
@@ -877,15 +887,15 @@ class Columns:
         self._sheet._native.set_columns_hidden(self._sheet.name, self._span, hidden)
 
     def insert(self) -> None:
-        """Insert empty columns before the first column. See :meth:`Rows.insert`."""
+        """Insert empty columns before the first column. See :meth:`RowSpan.insert`."""
         self._sheet._native.insert_columns(self._sheet.name, self._span)
 
     def delete(self) -> None:
-        """Delete the columns. See :meth:`Rows.delete`."""
+        """Delete the columns. See :meth:`RowSpan.delete`."""
         self._sheet._native.delete_columns(self._sheet.name, self._span)
 
     def __repr__(self) -> str:
-        return f"<crabxl.Columns {self._sheet.name}!{self._span}>"
+        return f"<crabxl.ColumnSpan {self._sheet.name}!{self._span}>"
 
 
 # ----- Collections -----
@@ -1115,16 +1125,18 @@ class Charts:
     def __init__(self, sheet: Worksheet) -> None:
         self._sheet = sheet
 
-    def __iter__(self) -> Iterator[Chart]:
+    def __iter__(self) -> Iterator[PlacedChart]:
         return (
-            Chart(
-                cast("Any", kind),
-                ref,
-                [Series(*entry) for entry in series],
-                title=title,
-                legend=legend,
+            PlacedChart(
+                Chart(
+                    cast("Any", kind),
+                    [Series(*entry) for entry in series],
+                    title=title,
+                    legend=legend,
+                ),
+                at,
             )
-            for kind, ref, series, title, legend in self._sheet._native.charts(
+            for kind, at, series, title, legend in self._sheet._native.charts(
                 self._sheet.name
             )
         )
@@ -1132,17 +1144,15 @@ class Charts:
     def __len__(self) -> int:
         return len(self._sheet._native.charts(self._sheet.name))
 
-    def add(self, chart: Chart) -> None:
-        """Add a chart. Excel draws it from the referenced cells when it opens
-        the file."""
-        if chart.kind == "other" or chart.ref is None:
-            raise InvalidInputError(
-                "A new chart needs a kind other than 'other' and a ref"
-            )
+    def add(self, chart: Chart, *, at: str) -> None:
+        """Place a chart over a range of cells, such as ``at="E2:L18"``.
+        Excel draws it from the referenced cells when it opens the file."""
+        if chart.kind == "other":
+            raise InvalidInputError("A new chart needs a kind other than 'other'")
         self._sheet._native.add_chart(
             self._sheet.name,
             chart.kind,
-            chart.ref,
+            at,
             [(s.values, s.categories, s.title) for s in chart.series],
             chart.title,
             chart.legend,

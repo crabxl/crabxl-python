@@ -45,8 +45,10 @@ def without_version(path, text):
             if package["name"] == "crabxl-python":
                 package.pop("version")
     else:
-        # Project metadata comes from the new source distribution.
+        # Project metadata comes from the new source distribution, and tool
+        # settings other than maturin's do not reach the build.
         data.pop("project")
+        data["tool"] = {"maturin": data.get("tool", {}).get("maturin")}
     return data
 
 
@@ -84,13 +86,14 @@ def repack(wheel, version, metadata, sources, out):
     with zipfile.ZipFile(wheel) as archive:
         old_info = f"crabxl-{old[1]}.dist-info/"
         for name in archive.namelist():
-            if name.startswith("crabxl/_native."):
+            # The compiled module only; its .pyi stub comes from this commit.
+            if name.startswith("crabxl/_native.") and not name.endswith(".pyi"):
                 files[name] = archive.read(name)
             elif name.startswith(old_info) and not name.endswith(
                 ("/METADATA", "/RECORD")
             ):
                 files[info + name.removeprefix(old_info)] = archive.read(name)
-    if sum(name.startswith("crabxl/_native.") for name in files) != 1:
+    if len([name for name in files if name.startswith("crabxl/_native.")]) != 1:
         raise ValueError(f"Expected one native module in {wheel.name}")
     files.update(sources)
     files[info + "METADATA"] = metadata
@@ -129,7 +132,17 @@ def main():
             for member in archive.getmembers()
             if member.isfile() and member.name.startswith(prefix + "python/crabxl/")
         }
-    wheels = sorted(args.old.glob("*.whl"))
+    # Python versions that this version no longer supports get no wheel.
+    minimum = int(
+        tomllib.loads((ROOT / "pyproject.toml").read_text())["project"][
+            "requires-python"
+        ].removeprefix(">=3.")
+    )
+    wheels = [
+        wheel
+        for wheel in sorted(args.old.glob("*.whl"))
+        if int(re.search(r"-cp3(\d+)-", wheel.name)[1]) >= minimum
+    ]
     if not wheels:
         sys.exit("No wheels to repack")
     for wheel in wheels:

@@ -7,7 +7,7 @@ import datetime as dt
 import os
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Literal, TypeAlias
+from typing import Literal
 
 from .styles import PartialStyle
 
@@ -24,6 +24,7 @@ __all__ = [
     "Note",
     "Orientation",
     "PageSetup",
+    "PlacedChart",
     "PlacedImage",
     "Properties",
     "Series",
@@ -31,13 +32,11 @@ __all__ = [
     "ValidationValue",
 ]
 
-Comparison: TypeAlias = Literal[
-    "between", "not_between", "==", "!=", ">", ">=", "<", "<="
-]
+type Comparison = Literal["between", "not_between", "==", "!=", ">", ">=", "<", "<="]
 """A comparison for validation and conditional formats."""
 
 
-Ranges: TypeAlias = "str | Sequence[str]"
+type Ranges = str | Sequence[str]
 """One A1 range, or several."""
 
 
@@ -58,7 +57,7 @@ class Table:
     """Whether the last row of ``ref`` is a totals row."""
 
 
-ValidationValue: TypeAlias = "int | float | str | dt.date | dt.time | tuple[str, ...]"
+type ValidationValue = int | float | str | dt.date | dt.time | tuple[str, ...]
 """A bound, formula, source range or list of choices of a validation rule."""
 
 
@@ -321,7 +320,7 @@ class Properties:
     modified: dt.datetime | None = None
 
 
-Orientation: TypeAlias = Literal["portrait", "landscape"]
+type Orientation = Literal["portrait", "landscape"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -361,7 +360,7 @@ class PageSetup:
     """Columns to repeat at the left of each page, such as ``"A"`` or ``"A:B"``."""
 
 
-ChartKind: TypeAlias = Literal[
+type ChartKind = Literal[
     "column", "bar", "line", "area", "pie", "doughnut", "scatter", "other"
 ]
 """The kind of a chart. ``"other"`` charts are read but cannot be created."""
@@ -385,12 +384,10 @@ class Series:
 
 @dataclass(frozen=True, slots=True)
 class Chart:
-    """A chart that covers a range of cells, such as
-    ``Chart("column", "E2:L18", [Series("Data!$B$2:$B$9")], title="Sales")``."""
+    """A chart, such as ``Chart("column", [Series("Data!$B$2:$B$9")], title="Sales")``.
+    Place it with ``sheet.charts.add(chart, at="E2:L18")``."""
 
     kind: ChartKind
-    ref: str | None
-    """The cells the chart covers; ``None`` for a chart placed by position."""
     series: tuple[Series, ...]
     title: str | None = None
     legend: bool = True
@@ -398,17 +395,24 @@ class Chart:
     def __init__(
         self,
         kind: ChartKind,
-        ref: str | None,
         series: Sequence[Series],
         *,
         title: str | None = None,
         legend: bool = True,
     ) -> None:
         object.__setattr__(self, "kind", kind)
-        object.__setattr__(self, "ref", ref)
         object.__setattr__(self, "series", tuple(series))
         object.__setattr__(self, "title", title)
         object.__setattr__(self, "legend", legend)
+
+
+@dataclass(frozen=True, slots=True)
+class PlacedChart:
+    """A chart on a worksheet and the cells it covers, or ``None`` for a
+    chart placed by position."""
+
+    chart: Chart
+    at: str | None
 
 
 @dataclass(frozen=True, slots=True)

@@ -28,7 +28,7 @@ jobs:
       - run: cargo fmt -- --check
       - run: cargo clippy --all-targets --locked -- -D warnings
       - run: pip install 'maturin>=1.15,<2'
-      - name: Build all five wheels with shared Rust dependencies
+      - name: Build all four wheels with shared Rust dependencies
         env:
           PYTHON_PATHS: ${{ toJSON(steps.pythons.outputs) }}
         run: python tools/platform_wheels.py build

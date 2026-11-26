@@ -9,8 +9,6 @@ Three entry points cover the three ways of working with a file:
 The openpyxl-compatible interface is in :mod:`crabxl.openpyxl`.
 """
 
-import importlib
-
 from ._features import (
     Chart,
     ChartKind,
@@ -24,6 +22,7 @@ from ._features import (
     Note,
     Orientation,
     PageSetup,
+    PlacedChart,
     PlacedImage,
     Properties,
     Series,
@@ -42,7 +41,7 @@ from .errors import (
     StateError,
     UnsupportedError,
 )
-from .read import Reader, Row, WorksheetReader
+from .read import Reader, Row, WorksheetReader, WorksheetReaders
 from .styles import (
     Alignment,
     Border,
@@ -56,24 +55,37 @@ from .styles import (
 )
 from .workbook import (
     Charts,
-    Columns,
+    ColumnSpan,
     ConditionalFormats,
+    Dates,
     DefinedNames,
     Images,
+    Limits,
     Merges,
+    Numbers,
     Range,
-    Rows,
+    RowSpan,
+    Source,
     Tables,
+    Target,
     Validations,
+    Visibility,
     Workbook,
     Worksheet,
     Worksheets,
 )
-from .write import WorksheetWriter, Writer
+from .write import (
+    AddOnly,
+    ColumnSpanWriter,
+    WorksheetWriter,
+    WorksheetWriters,
+    Writer,
+)
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 __all__ = [
+    "AddOnly",
     "Alignment",
     "Border",
     "CellInput",
@@ -81,13 +93,15 @@ __all__ = [
     "ChartKind",
     "Charts",
     "Color",
-    "Columns",
+    "ColumnSpan",
+    "ColumnSpanWriter",
     "Comparison",
     "ConditionalFormat",
     "ConditionalFormats",
     "ConversionError",
     "CrabXLError",
     "DataValidation",
+    "Dates",
     "DefinedName",
     "DefinedNames",
     "ErrorValue",
@@ -100,14 +114,17 @@ __all__ = [
     "Images",
     "InvalidInputError",
     "LimitExceededError",
+    "Limits",
     "Margins",
     "MemoryLimitError",
     "Merges",
     "Note",
     "NotFoundError",
+    "Numbers",
     "Orientation",
     "PageSetup",
     "PartialStyle",
+    "PlacedChart",
     "PlacedImage",
     "Properties",
     "Protection",
@@ -115,36 +132,27 @@ __all__ = [
     "Reader",
     "RichText",
     "Row",
-    "Rows",
+    "RowSpan",
     "Series",
     "Side",
+    "Source",
     "StateError",
     "Style",
     "Table",
     "Tables",
+    "Target",
     "TextRun",
     "UnsupportedError",
     "Validations",
     "ValidationValue",
     "Value",
+    "Visibility",
     "Workbook",
     "Worksheet",
     "WorksheetReader",
-    "WorksheetWriter",
+    "WorksheetReaders",
     "Worksheets",
+    "WorksheetWriter",
+    "WorksheetWriters",
     "Writer",
 ]
-
-
-def __getattr__(name: str) -> object:
-    # Point code written for crabxl 0.2 to the openpyxl-compatible module. An
-    # ImportError, because ``from crabxl import x`` hides an AttributeError's text.
-    if not name.startswith("__"):
-        openpyxl = importlib.import_module(f"{__name__}.openpyxl")
-        if hasattr(openpyxl, name):
-            raise ImportError(
-                f"crabxl.{name} moved to crabxl.openpyxl.{name} in 0.3: "
-                f"use 'from crabxl.openpyxl import {name}'",
-                name=__name__,
-            )
-    raise AttributeError(f"module 'crabxl' has no attribute {name!r}")

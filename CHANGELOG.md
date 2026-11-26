@@ -6,6 +6,37 @@ Before version 1.0, a minor version can change the API.
 Each release names the Rust core version it uses. The core has its own
 [changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).
 
+## [0.5.0]
+
+It uses the Rust core 0.4.0.
+
+### Changed
+
+- CrabXL needs Python 3.12 or newer. The public type aliases use the
+  `type` statement (PEP 695).
+- A chart no longer holds its place: `sheet.charts.add(chart, at="E2:L18")`,
+  as for pictures. `Chart` takes the kind, the series and the options.
+  Iterating `sheet.charts` gives `PlacedChart` values.
+- `Rows` and `Columns` are now `RowSpan` and `ColumnSpan`, so they differ
+  from `Row`, a row that `Reader` reads.
+- A streaming sheet uses the collections of a workbook sheet:
+  `sheet.merges.add(...)`, `sheet.validations.add(...)` and
+  `sheet.conditional_formats.add(...)` replace `merge`, `add_validation`
+  and `add_conditional_format`.
+- `freeze_panes` and `columns(...).width` of a streaming sheet read back the
+  values you set, instead of `None`.
+- `from crabxl import load_workbook` and the other openpyxl names now raise
+  a plain `ImportError`. Import them from `crabxl.openpyxl`.
+
+### Added
+
+- `Workbook.open` and `Reader.open` accept any bytes-like object, such as
+  `bytearray`, `memoryview` or `mmap`.
+- The worksheet collections of `Reader` and `Writer` are public types,
+  `WorksheetReaders` and `WorksheetWriters`, with a `names` property.
+- `Source`, `Target`, `Limits`, `Numbers`, `Dates` and `Visibility` are
+  exported for type annotations.
+
 ## [0.4.0]
 
 It uses the Rust core 0.4.0.
@@ -260,6 +291,7 @@ First release. It uses the Rust core 0.1.0.
 - The user guide, adapted from the openpyxl documentation, and pages for
   memory limits, migration, supported features and compatibility.
 
+[0.5.0]: https://github.com/crabxl/crabxl-python/releases/tag/0.5.0
 [0.4.0]: https://github.com/crabxl/crabxl-python/releases/tag/0.4.0
 [0.2.2]: https://github.com/crabxl/crabxl-python/releases/tag/0.2.2
 [0.2.1]: https://github.com/crabxl/crabxl-python/releases/tag/0.2.1

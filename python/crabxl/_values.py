@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime as _dt
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import TYPE_CHECKING, ClassVar, Final, TypeAlias
+from typing import TYPE_CHECKING, ClassVar, Final
 
 if TYPE_CHECKING:
     from .styles import Font
@@ -132,7 +132,7 @@ class RichText:
         return str(self)
 
 
-Value: TypeAlias = (
+type Value = (
     None
     | bool
     | int
@@ -148,5 +148,5 @@ Value: TypeAlias = (
 )
 """The value of a cell; for a formula cell, its cached result."""
 
-CellInput: TypeAlias = Value | Formula
+type CellInput = Value | Formula
 """What a cell write accepts: a value or a formula."""

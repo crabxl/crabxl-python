@@ -6,7 +6,7 @@ description: Open, change and save workbooks; work with sheets, ranges, layout a
 ## Open and save
 
 `Workbook()` creates a workbook with no sheets. `Workbook.open` opens a path,
-the bytes of a file or a binary file object.
+the bytes of a file (any bytes-like object) or a binary file object.
 
 ```python
 import crabxl as xl
@@ -119,7 +119,8 @@ Each collection removes by range: `sheet.validations.remove("A2:A9")`,
 `sheet.conditional_formats.remove(...)`, `sheet.images.remove(...)` and
 `sheet.charts.remove(...)` remove what applies to, or starts in, those cells
 and return the count. Iterating `sheet.images` gives `PlacedImage` values:
-the picture and the cell of its top-left corner.
+the picture and the cell of its top-left corner. Iterating `sheet.charts`
+gives `PlacedChart` values: the chart and the cells it covers.
 
 Date and time rules take `datetime.date` and `datetime.time` values (`import datetime as dt`):
 
@@ -137,14 +138,14 @@ sheet.validations.add(
 sheet.charts.add(
     xl.Chart(
         "column",
-        "E2:L18",
         [xl.Series("Sales!$B$2:$B$13", categories="Sales!$A$2:$A$13", title="Revenue")],
         title="Revenue by month",
-    )
+    ),
+    at="E2:L18",
 )
 ```
 
-A chart covers the range of cells given as its second argument. The kinds are
+A chart covers the range of cells given as `at`. The kinds are
 `"column"`, `"bar"`, `"line"`, `"area"`, `"pie"`, `"doughnut"` and
 `"scatter"`; the categories of a scatter series are its x values. Series refer
 to cells, and Excel draws the chart from them when it opens the file. Charts of

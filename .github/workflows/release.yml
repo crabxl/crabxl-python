@@ -88,7 +88,6 @@ jobs:
           manylinux: '2_28'
           args: >-
             --release --locked --out dist --interpreter
-            /opt/python/cp311-cp311/bin/python
             /opt/python/cp312-cp312/bin/python
             /opt/python/cp313-cp313/bin/python
             /opt/python/cp314-cp314/bin/python
@@ -101,7 +100,7 @@ jobs:
         env:
           PYTHON_PATHS: ${{ toJSON(steps.pythons.outputs) }}
         run: python tools/platform_wheels.py build --target ${{ matrix.platform.target }}
-      - name: Test all five installed CPython wheels
+      - name: Test all four installed CPython wheels
         env:
           PYTHON_PATHS: ${{ toJSON(steps.pythons.outputs) }}
         run: python tools/platform_wheels.py test
@@ -159,7 +158,7 @@ jobs:
       - name: Keep this platform's wheels
         shell: bash
         run: mkdir dist && cp all/${{ matrix.platform.wheels }} dist/
-      - name: Test all five installed CPython wheels
+      - name: Test all four installed CPython wheels
         env:
           PYTHON_PATHS: ${{ toJSON(steps.pythons.outputs) }}
         run: python tools/platform_wheels.py test

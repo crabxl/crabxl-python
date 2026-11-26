@@ -18,7 +18,7 @@ Or with uv:
 uv add crabxl
 ```
 
-Wheels are available for CPython 3.11–3.15 on Linux, Windows and macOS.
+Wheels are available for CPython 3.12–3.15 on Linux, Windows and macOS.
 
 ## Choose an entry point
 

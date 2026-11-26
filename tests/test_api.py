@@ -236,12 +236,16 @@ def test_sheet_handles_follow_renames() -> None:
     assert book.worksheets.add("Renamed") is not first
 
 
-def test_openpyxl_names_point_to_the_adapter() -> None:
-    with pytest.raises(ImportError, match="crabxl.openpyxl.load_workbook"):
-        xl.load_workbook  # type: ignore[attr-defined]  # noqa: B018
-    with pytest.raises(AttributeError):
-        xl.not_a_name  # type: ignore[attr-defined]  # noqa: B018
-    assert not hasattr(xl, "not_a_name")
+def test_opens_any_bytes_like_source() -> None:
+    data = sample().to_bytes()
+    for source in (bytearray(data), memoryview(data)):
+        with xl.Workbook.open(source) as book:
+            assert book.worksheets["Data"]["B2"].value == 10
+        with xl.Reader.open(source) as reader:
+            assert reader.worksheets.names == ["Data"]
+    with pytest.raises(TypeError):
+        xl.Workbook.open(12)  # type: ignore[arg-type]
+    assert not hasattr(xl, "load_workbook")
 
 
 def test_printing_filters_outline_charts_and_pictures_round_trip() -> None:
@@ -271,13 +275,12 @@ def test_printing_filters_outline_charts_and_pictures_round_trip() -> None:
         sheet.rows("2").outline_level = 8
     bar = xl.Chart(
         "bar",
-        "E2:K12",
         [xl.Series("Data!$B$2:$B$4", categories="Data!$A$2:$A$4", title="Amount")],
         title="Sales",
     )
-    pie = xl.Chart("pie", "E14:K24", [xl.Series("Data!$B$2:$B$4")], legend=False)
-    sheet.charts.add(bar)
-    sheet.charts.add(pie)
+    pie = xl.Chart("pie", [xl.Series("Data!$B$2:$B$4")], legend=False)
+    sheet.charts.add(bar, at="E2:K12")
+    sheet.charts.add(pie, at="E14:K24")
     sheet.images.add(xl.Image(PNG), at="M2")
     rules = [
         xl.DataValidation.date(
@@ -298,7 +301,10 @@ def test_printing_filters_outline_charts_and_pictures_round_trip() -> None:
     assert data.auto_filter == "A1:B4" and data.tab_color == xl.Color("FF0000")
     assert data.rows("2").outline_level == 1 and data.rows("4").outline_level == 0
     assert data.columns("B").outline_level == 2
-    assert list(data.charts) == [bar, pie]
+    assert list(data.charts) == [
+        xl.PlacedChart(bar, "E2:K12"),
+        xl.PlacedChart(pie, "E14:K24"),
+    ]
     assert list(data.images) == [xl.PlacedImage(xl.Image(PNG), "M2")]
     assert list(data.validations) == rules
     assert data.conditional_formats.remove("B3") == 1
@@ -430,14 +436,19 @@ def test_writer_streams_and_aborts_on_error(tmp_path: os.PathLike[str]) -> None:
         sheet.extend(
             (n, dt.date(2026, 1, 1) + dt.timedelta(days=n)) for n in range(1000)
         )
-        sheet.merge("D1:E1")
+        sheet.merges.add("D1:E1")
         choices = xl.DataValidation.list(["a", "b"], ranges=["C2:C9", "F2"])
         flag = xl.ConditionalFormat.formula(
             "$A2>5", ranges=["A2:A9", "C2"], style=xl.PartialStyle(font=bold.font)
         )
-        sheet.add_validation(choices)
-        sheet.add_conditional_format(flag)
+        sheet.validations.add(choices)
+        sheet.conditional_formats.add(flag)
+        assert sheet.freeze_panes == "A2" and sheet.columns("B").width == 16
+        assert sheet.columns("C").width is None
+        with pytest.raises(xl.UnsupportedError):
+            sheet.validations.add(xl.DataValidation.whole(">", 1, ranges="G2"))
         other = writer.worksheets.add("Other")
+        assert writer.worksheets.names == ["Events", "Other"]
         other.append(["x"])
         writer.worksheets["Events"].append([1000, None])
     with xl.Workbook.open(path) as book:

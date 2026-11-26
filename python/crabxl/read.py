@@ -9,18 +9,18 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
-from typing import TYPE_CHECKING, Literal, overload
+from typing import TYPE_CHECKING, overload
 
 from . import _native
 from ._native import ApiReader
 from ._values import Formula, Value
 from .errors import NotFoundError, StateError
-from .workbook import Limits, Source, _open
+from .workbook import Dates, Limits, Numbers, Source, _open
 
 if TYPE_CHECKING:
     from types import TracebackType
 
-__all__ = ["Reader", "Row", "WorksheetReader"]
+__all__ = ["Reader", "Row", "WorksheetReader", "WorksheetReaders"]
 
 
 class Row(Sequence[Value]):
@@ -98,8 +98,8 @@ class Reader:
         source: Source,
         *,
         limits: Limits = "default",
-        numbers: Literal["float", "exact"] = "float",
-        dates: Literal["native", "serial"] = "native",
+        numbers: Numbers = "float",
+        dates: Dates = "native",
     ) -> Reader:
         """Open a workbook for reading. See :meth:`crabxl.Workbook.open` for
         the options."""
@@ -118,11 +118,11 @@ class Reader:
         return names
 
     @property
-    def worksheets(self) -> _Worksheets:
+    def worksheets(self) -> WorksheetReaders:
         """The worksheets by name or position."""
         if self._closed:
             raise StateError("The reader is closed")
-        return _Worksheets(self)
+        return WorksheetReaders(self)
 
     def close(self) -> None:
         """Release the reader. Open iterators stop."""
@@ -140,11 +140,19 @@ class Reader:
         self.close()
 
 
-class _Worksheets:
+class WorksheetReaders:
+    """The worksheets of a :class:`Reader`: index by name or position, or
+    iterate."""
+
     __slots__ = ("_reader",)
 
     def __init__(self, reader: Reader) -> None:
         self._reader = reader
+
+    @property
+    def names(self) -> list[str]:
+        """The sheet names, in tab order."""
+        return self._reader.sheet_names
 
     def __getitem__(self, key: str | int) -> WorksheetReader:
         names = self._reader.sheet_names
