@@ -392,6 +392,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "crabxl-bindings"
+version = "0.6.0"
+dependencies = [
+ "chrono",
+ "crabxl",
+ "crabxl-calc",
+ "crabxl-core",
+ "crabxl-xlsx",
+ "pyo3",
+ "tempfile",
+]
+
+[[package]]
 name = "crabxl-calc"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -411,19 +424,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c9f9e87ef6dcbb89249621b11d569e3dbcd19c9452402e6622795a5d914b8f24"
 dependencies = [
  "chrono",
-]
-
-[[package]]
-name = "crabxl-python"
-version = "0.5.0"
-dependencies = [
- "chrono",
- "crabxl",
- "crabxl-calc",
- "crabxl-core",
- "crabxl-xlsx",
- "pyo3",
- "tempfile",
 ]
 
 [[package]]

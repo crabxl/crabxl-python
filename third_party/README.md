@@ -8,7 +8,7 @@ Source: openpyxl 3.1.5, revision `13627b03ca25a1a98becf40e533b955615b13429`
 
 Copied or adapted code:
 
-- The Serialisable descriptor classes in `python/crabxl/openpyxl`: `descriptors`,
+- The Serialisable descriptor classes in `packages/crabxl-openpyxl/src/crabxl_openpyxl`: `descriptors`,
   `compat`, `xml`, `packaging`, `formatting`, `comments`, `chart`,
   `chartsheet`, `drawing`, `pivot`, `styles` (except the native style
   bridge), most of `utils`, and the feature modules of `worksheet` and
@@ -22,7 +22,7 @@ Copied or adapted code:
 Tests:
 
 - Selected openpyxl tests are copied without change into
-  `tests/test_upstream_*.py`. [python-tests.json](python-tests.json),
+  `tests/adapter/test_upstream_*.py`. [python-tests.json](python-tests.json),
   [python-workbook-tests.json](python-workbook-tests.json) and
   [python-formula-tests.json](python-formula-tests.json) record each source.
   `tools/verify_python_test_provenance.py` checks that the copies are

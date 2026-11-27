@@ -1,0 +1,479 @@
+//! Shared value conversion, errors and handle synchronization.
+use crate::*;
+
+pub(crate) type TaggedValue = (String, Py<PyAny>);
+pub(crate) type EncodedValue = (&'static str, Py<PyAny>);
+pub(crate) type DecodedValues = (Vec<Py<PyAny>>, Option<Vec<u32>>);
+pub(crate) type SharedLoaded = Arc<Mutex<Option<LoadedWorkbook<streaming::SharedFile>>>>;
+pyo3::create_exception!(
+    crabxl_openpyxl,
+    LimitExceededError,
+    PyValueError,
+    "A file exceeds a ResourceLimits guard."
+);
+pub(crate) fn failure(error: Error) -> PyErr {
+    let mut text = error.to_string();
+    let mut source = std::error::Error::source(&error);
+    let mut io_kind = None;
+    while let Some(cause) = source {
+        text.push_str(": ");
+        text.push_str(&cause.to_string());
+        io_kind = io_kind.or(cause
+            .downcast_ref::<std::io::Error>()
+            .map(std::io::Error::kind));
+        source = cause.source();
+    }
+    match error.kind() {
+        ErrorKind::MemoryBudgetExceeded => PyMemoryError::new_err(text),
+        ErrorKind::LimitExceeded => LimitExceededError::new_err(
+            text + ". For files you trust, pass limits=\"unlimited\" to load_workbook or set CRABXL_LIMITS=unlimited.",
+        ),
+        ErrorKind::SheetNotFound => PyKeyError::new_err(text),
+        // PyO3 maps io kinds to FileNotFoundError, PermissionError and so on.
+        ErrorKind::Io => io_kind.map_or_else(
+            || PyOSError::new_err(text.clone()),
+            |kind| PyErr::from(std::io::Error::new(kind, text.clone())),
+        ),
+        ErrorKind::InvalidState => PyRuntimeError::new_err(text),
+        ErrorKind::NoVisibleSheet => PyIndexError::new_err(text),
+        _ => PyValueError::new_err(text),
+    }
+}
+pub(crate) fn visibility(value: &str) -> PyResult<SheetVisibility> {
+    match value {
+        "visible" => Ok(SheetVisibility::Visible),
+        "hidden" => Ok(SheetVisibility::Hidden),
+        "veryHidden" => Ok(SheetVisibility::VeryHidden),
+        _ => Err(PyValueError::new_err(
+            "Sheet state must be visible, hidden or veryHidden",
+        )),
+    }
+}
+pub(crate) fn lock<T>(value: &Mutex<T>) -> PyResult<MutexGuard<'_, T>> {
+    value
+        .lock()
+        .map_err(|_| PyRuntimeError::new_err("Native resource lock was poisoned"))
+}
+pub(crate) fn closed() -> PyErr {
+    PyValueError::new_err("Workbook is closed")
+}
+pub(crate) fn input_flag(fields: &Bound<'_, PyDict>, name: &str) -> PyResult<Option<FormulaFlag>> {
+    let Some(value) = fields.get_item(name)? else {
+        return Ok(None);
+    };
+    if value.is_none() {
+        return Ok(None);
+    }
+    if let Ok(boolean) = value.extract::<bool>() {
+        return Ok(Some(boolean.into()));
+    }
+    Ok(Some(FormulaFlag::from_literal(value.extract::<String>()?)))
+}
+pub(crate) fn input_text(fields: &Bound<'_, PyDict>, name: &str) -> PyResult<Option<Box<str>>> {
+    fields
+        .get_item(name)?
+        .filter(|value| !value.is_none())
+        .map(|value| value.extract::<String>().map(String::into_boxed_str))
+        .transpose()
+}
+pub(crate) fn output_flag(
+    fields: &Bound<'_, PyDict>,
+    name: &str,
+    flag: Option<&FormulaFlag>,
+) -> PyResult<()> {
+    if let Some(flag) = flag {
+        if let Some(source) = flag.source() {
+            fields.set_item(name, source)?;
+        } else {
+            fields.set_item(name, flag.value())?;
+        }
+    }
+    Ok(())
+}
+pub(crate) fn decode(py: Python<'_>, value: TaggedValue) -> PyResult<CellValue> {
+    let (kind, value) = value;
+    let value = value.bind(py);
+    Ok(match kind.as_str() {
+        "typed" => {
+            let (kind, raw): (String, TaggedValue) = value.extract()?;
+            decode(py, raw)?
+                .with_storage_type(crate::engine::CellStorageType::parse(&kind).map_err(failure)?)
+                .map_err(failure)?
+        }
+        "empty" => CellValue::Empty,
+        "bool" => CellValue::Boolean(value.extract()?),
+        "int" => {
+            let decimal: String = value.extract()?;
+            match decimal.parse::<i64>() {
+                Ok(integer) => CellValue::Integer(integer),
+                Err(_) => {
+                    CellValue::BigInteger(Box::new(ExactInteger::parse(&decimal).map_err(failure)?))
+                }
+            }
+        }
+        "float" => {
+            let number: f64 = value.extract()?;
+            CellValue::Number(number)
+        }
+        "text" => CellValue::text(value.extract::<String>()?),
+        "rich" => CellValue::RichText(Box::new(crate::rich_text::decode(value.cast::<PyDict>()?)?)),
+        "error" => CellValue::error(value.extract::<String>()?),
+        "formula" => CellValue::Formula(Box::new(
+            Formula::from_source(value.extract::<String>()?, None, None).map_err(failure)?,
+        )),
+        "array" | "table" => {
+            let fields = value.cast::<PyDict>()?;
+            let reference = input_text(fields, "ref")?.map(FormulaRange::from_literal);
+            let mut metadata = FormulaMetadata {
+                kind: if kind == "array" {
+                    FormulaType::Array
+                } else {
+                    FormulaType::DataTable
+                },
+                reference,
+                ..Default::default()
+            };
+            let formula = if kind == "array" {
+                Formula::from_array_text(input_text(fields, "text")?, None, metadata)
+                    .map_err(failure)?
+            } else {
+                metadata.flags = FormulaFlags {
+                    calculate_cell: input_flag(fields, "ca")?,
+                    ..Default::default()
+                };
+                metadata.data_table = Some(Box::new(DataTableOptions {
+                    two_dimensions: input_flag(fields, "dt2D")?,
+                    row_table: input_flag(fields, "dtr")?,
+                    deleted1: input_flag(fields, "del1")?,
+                    deleted2: input_flag(fields, "del2")?,
+                    input1: input_text(fields, "r1")?,
+                    input2: input_text(fields, "r2")?,
+                }));
+                Formula::with_optional_expression(None, None, metadata).map_err(failure)?
+            };
+            CellValue::Formula(Box::new(formula))
+        }
+        "date" => {
+            let (year, month, day): (i32, u32, u32) = value.extract()?;
+            CellValue::DateTime(Box::new(
+                ExcelDateTime::from_ymd(year, month, day).map_err(failure)?,
+            ))
+        }
+        "datetime" => {
+            let (y, m, d, h, minute, second, micro): (i32, u32, u32, u32, u32, u32, u32) =
+                value.extract()?;
+            CellValue::DateTime(Box::new(
+                ExcelDateTime::from_ymd_hms_micro(y, m, d, h, minute, second, micro)
+                    .map_err(failure)?,
+            ))
+        }
+        "time" => {
+            let (hour, minute, second, micro): (u32, u32, u32, u32) = value.extract()?;
+            CellValue::DateTime(Box::new(
+                ExcelDateTime::from_hms_micro(hour, minute, second, micro).map_err(failure)?,
+            ))
+        }
+        "duration" => {
+            let (days, seconds, micro): (i64, u32, u32) = value.extract()?;
+            CellValue::DateTime(Box::new(
+                ExcelDateTime::from_duration_parts(days, seconds, micro).map_err(failure)?,
+            ))
+        }
+        _ => return Err(PyValueError::new_err("Unknown native value tag")),
+    })
+}
+pub(crate) fn encode(py: Python<'_>, value: &CellValue) -> PyResult<EncodedValue> {
+    let raw = encode_raw(py, value)?;
+    if let Some(kind) = value.storage_type() {
+        Ok(("typed", (kind.as_str(), raw).into_py_any(py)?))
+    } else {
+        Ok(raw)
+    }
+}
+fn encode_raw(py: Python<'_>, value: &CellValue) -> PyResult<EncodedValue> {
+    let (kind, object) = match value.unannotated() {
+        CellValue::Empty => ("n", py.None()),
+        CellValue::Number(value) => ("n", value.into_py_any(py)?),
+        CellValue::Integer(value) => ("n", value.into_py_any(py)?),
+        CellValue::BigInteger(value) => ("bigint", value.as_str().into_py_any(py)?),
+        // openpyxl reads every non-integer number as a float.
+        CellValue::Decimal(value) => ("n", value.to_f64().into_py_any(py)?),
+        CellValue::Boolean(value) => ("b", value.into_py_any(py)?),
+        CellValue::Text(value) => ("s", value.as_str().into_py_any(py)?),
+        CellValue::Error(value) => ("e", value.as_str().into_py_any(py)?),
+        CellValue::Formula(value) => match value.formula_type() {
+            FormulaType::Array | FormulaType::DataTable => {
+                let metadata = value
+                    .metadata()
+                    .ok_or_else(|| PyValueError::new_err("Missing structured formula metadata"))?;
+                let fields = PyDict::new(py);
+                fields.set_item(
+                    "ref",
+                    metadata
+                        .reference
+                        .as_ref()
+                        .map(|reference| reference.spelling().into_owned()),
+                )?;
+                if value.formula_type() == FormulaType::Array {
+                    fields.set_item("text", value.array_text().as_deref())?;
+                    ("array", fields.into_any().unbind())
+                } else {
+                    output_flag(&fields, "ca", metadata.flags.calculate_cell.as_ref())?;
+                    if let Some(table) = &metadata.data_table {
+                        for (name, flag) in [
+                            ("dt2D", table.two_dimensions.as_ref()),
+                            ("dtr", table.row_table.as_ref()),
+                            ("del1", table.deleted1.as_ref()),
+                            ("del2", table.deleted2.as_ref()),
+                        ] {
+                            output_flag(&fields, name, flag)?;
+                        }
+                        fields.set_item("r1", table.input1.as_deref())?;
+                        fields.set_item("r2", table.input2.as_deref())?;
+                    }
+                    ("table", fields.into_any().unbind())
+                }
+            }
+            _ => ("f", format!("={}", value.expression()).into_py_any(py)?),
+        },
+        CellValue::DateTime(value) => match value.kind() {
+            DateKind::Date => (
+                "date",
+                value
+                    .to_date()
+                    .map_err(failure)?
+                    .to_string()
+                    .into_py_any(py)?,
+            ),
+            DateKind::DateTime => (
+                "datetime",
+                value
+                    .to_datetime()
+                    .map_err(failure)?
+                    .to_string()
+                    .into_py_any(py)?,
+            ),
+            DateKind::Time => (
+                "time",
+                value
+                    .to_time()
+                    .map_err(failure)?
+                    .to_string()
+                    .into_py_any(py)?,
+            ),
+            DateKind::Duration => {
+                let duration = value.to_duration().map_err(failure)?;
+                (
+                    "duration",
+                    (duration.num_seconds(), duration.subsec_micros()).into_py_any(py)?,
+                )
+            }
+        },
+        CellValue::RichText(value) => (
+            "rich",
+            crate::rich_text::encode(py, value)?.into_any().unbind(),
+        ),
+        _ => return Err(PyRuntimeError::new_err("Unknown native value")),
+    };
+    Ok((kind, object))
+}
+
+/// One cell value as `_decode(encode(value))` returns it. Common types are
+/// built here; the rare ones go through the Python decoder.
+pub(crate) fn read_value<'py>(
+    py: Python<'py>,
+    value: &CellValue,
+    decoder: &mut Option<Bound<'py, PyAny>>,
+) -> PyResult<Py<PyAny>> {
+    use chrono::{Datelike, Timelike};
+    use pyo3::types::{PyDate, PyDateTime, PyTime};
+    match value.unannotated() {
+        CellValue::Empty => return Ok(py.None()),
+        CellValue::Number(value) => return value.into_py_any(py),
+        CellValue::Integer(value) => return value.into_py_any(py),
+        CellValue::Boolean(value) => return value.into_py_any(py),
+        CellValue::Text(value) => return value.as_str().into_py_any(py),
+        CellValue::Error(value) => return value.as_str().into_py_any(py),
+        CellValue::DateTime(value) => match value.kind() {
+            DateKind::Date => {
+                let date = value.to_date().map_err(failure)?;
+                return Ok(
+                    PyDate::new(py, date.year(), date.month() as u8, date.day() as u8)?
+                        .into_any()
+                        .unbind(),
+                );
+            }
+            DateKind::DateTime => {
+                let at = value.to_datetime().map_err(failure)?;
+                return Ok(PyDateTime::new(
+                    py,
+                    at.year(),
+                    at.month() as u8,
+                    at.day() as u8,
+                    at.hour() as u8,
+                    at.minute() as u8,
+                    at.second() as u8,
+                    at.nanosecond() / 1000,
+                    None,
+                )?
+                .into_any()
+                .unbind());
+            }
+            DateKind::Time => {
+                let at = value.to_time().map_err(failure)?;
+                return Ok(PyTime::new(
+                    py,
+                    at.hour() as u8,
+                    at.minute() as u8,
+                    at.second() as u8,
+                    at.nanosecond() / 1000,
+                    None,
+                )?
+                .into_any()
+                .unbind());
+            }
+            DateKind::Duration => {}
+        },
+        CellValue::Formula(formula)
+            if !matches!(
+                formula.formula_type(),
+                FormulaType::Array | FormulaType::DataTable
+            ) =>
+        {
+            return format!("={}", formula.expression()).into_py_any(py);
+        }
+        _ => {}
+    }
+    if decoder.is_none() {
+        *decoder = Some(py.import("crabxl_openpyxl")?.getattr("_decode")?);
+    }
+    let decode = decoder.as_ref().ok_or_else(closed)?;
+    Ok(decode.call1((encode_raw(py, value)?,))?.unbind())
+}
+
+const ERROR_LITERALS: [&str; 8] = [
+    "#NULL!",
+    "#DIV/0!",
+    "#VALUE!",
+    "#REF!",
+    "#NAME?",
+    "#NUM!",
+    "#N/A",
+    "#GETTING_DATA",
+];
+/// Convert a list or tuple of plain values as `_values._encode` does, with the
+/// bytes the Python write-only path charges for each. Returns None when any
+/// value needs the Python path (other or subclassed types, aware datetimes,
+/// illegal text, integers beyond i64), so its errors stay in one place.
+pub(crate) fn plain_row(row: &Bound<'_, PyAny>) -> PyResult<Option<(Vec<CellValue>, usize)>> {
+    use pyo3::types::PyTuple;
+    if !(row.is_exact_instance_of::<PyList>() || row.is_exact_instance_of::<PyTuple>()) {
+        return Ok(None);
+    }
+    let mut values = Vec::with_capacity(row.len()?);
+    let mut bytes = 0usize;
+    for item in row.try_iter()? {
+        let Some((value, payload)) = plain_value(&item?)? else {
+            return Ok(None);
+        };
+        // The Python path charges 128 bytes per value plus its payload.
+        bytes = bytes.saturating_add(128 + payload);
+        values.push(value);
+    }
+    Ok(Some((values, bytes)))
+}
+fn plain_value(value: &Bound<'_, PyAny>) -> PyResult<Option<(CellValue, usize)>> {
+    use pyo3::types::{
+        PyBool, PyDate, PyDateAccess, PyDateTime, PyDelta, PyDeltaAccess, PyFloat, PyInt, PyString,
+        PyTime, PyTimeAccess, PyTzInfoAccess,
+    };
+    if value.is_none() {
+        return Ok(Some((CellValue::Empty, 0)));
+    }
+    if value.is_exact_instance_of::<PyBool>() {
+        return Ok(Some((CellValue::Boolean(value.extract()?), 0)));
+    }
+    if value.is_exact_instance_of::<PyInt>() {
+        return Ok(value
+            .extract::<i64>()
+            .ok()
+            .map(|number| (CellValue::Integer(number), number.to_string().len())));
+    }
+    if value.is_exact_instance_of::<PyFloat>() {
+        return Ok(Some((CellValue::Number(value.extract()?), 0)));
+    }
+    if value.is_exact_instance_of::<PyString>() {
+        let owned = value.cast::<PyString>()?.to_cow()?;
+        let text = &owned[..];
+        // Longer text takes the Python path, which raises the cell-limit error.
+        if text.chars().nth(32_767).is_some()
+            || text
+                .chars()
+                .any(|c| (c as u32) < 32 && !matches!(c, '\t' | '\n' | '\r'))
+        {
+            return Ok(None);
+        }
+        return Ok(Some(if text.len() > 1 && text.starts_with('=') {
+            let formula =
+                Formula::from_source(text[1..].to_owned(), None, None).map_err(failure)?;
+            (CellValue::Formula(Box::new(formula)), text.len() - 1)
+        } else if ERROR_LITERALS.contains(&text) {
+            (CellValue::error(text.to_owned()), text.len())
+        } else {
+            (CellValue::text(text.to_owned()), text.len())
+        }));
+    }
+    // Tuple payload charges: 64 plus 32 per field.
+    if value.is_exact_instance_of::<PyDateTime>() {
+        let value = value.cast::<PyDateTime>()?;
+        if value.get_tzinfo().is_some() {
+            return Ok(None);
+        }
+        let date = ExcelDateTime::from_ymd_hms_micro(
+            value.get_year(),
+            value.get_month().into(),
+            value.get_day().into(),
+            value.get_hour().into(),
+            value.get_minute().into(),
+            value.get_second().into(),
+            value.get_microsecond(),
+        )
+        .map_err(failure)?;
+        return Ok(Some((CellValue::DateTime(Box::new(date)), 64 + 32 * 7)));
+    }
+    if value.is_exact_instance_of::<PyDate>() {
+        let value = value.cast::<PyDate>()?;
+        let date = ExcelDateTime::from_ymd(
+            value.get_year(),
+            value.get_month().into(),
+            value.get_day().into(),
+        )
+        .map_err(failure)?;
+        return Ok(Some((CellValue::DateTime(Box::new(date)), 64 + 32 * 3)));
+    }
+    if value.is_exact_instance_of::<PyTime>() {
+        let value = value.cast::<PyTime>()?;
+        if value.get_tzinfo().is_some() {
+            return Ok(None);
+        }
+        let time = ExcelDateTime::from_hms_micro(
+            value.get_hour().into(),
+            value.get_minute().into(),
+            value.get_second().into(),
+            value.get_microsecond(),
+        )
+        .map_err(failure)?;
+        return Ok(Some((CellValue::DateTime(Box::new(time)), 64 + 32 * 4)));
+    }
+    if value.is_exact_instance_of::<PyDelta>() {
+        let value = value.cast::<PyDelta>()?;
+        let duration = ExcelDateTime::from_duration_parts(
+            value.get_days().into(),
+            value.get_seconds() as u32,
+            value.get_microseconds() as u32,
+        )
+        .map_err(failure)?;
+        return Ok(Some((CellValue::DateTime(Box::new(duration)), 64 + 32 * 3)));
+    }
+    Ok(None)
+}

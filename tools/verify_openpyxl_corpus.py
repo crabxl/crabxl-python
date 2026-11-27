@@ -14,7 +14,7 @@ from tempfile import TemporaryDirectory
 from xml.etree.ElementTree import canonicalize, tostring
 from zipfile import BadZipFile
 
-import crabxl.openpyxl as crabxl
+import crabxl_openpyxl as crabxl
 import openpyxl
 
 
@@ -180,7 +180,7 @@ def main():
             except BadZipFile:
                 try:
                     actual = crabxl.load_workbook(path)
-                except (ValueError, BadZipFile):
+                except ValueError, BadZipFile:
                     rejected += 1
                     continue
                 close(actual)

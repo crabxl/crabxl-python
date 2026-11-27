@@ -1,0 +1,52 @@
+[build-system]
+requires = ["uv_build>=0.13.10,<0.14"]
+build-backend = "uv_build"
+
+[project]
+name = "crabxl-openpyxl"
+version = "0.6.0"
+requires-python = ">=3.9"
+description = "Drop-in openpyxl replacement with a Rust core: run openpyxl code unchanged to read, write and edit Excel .xlsx files faster, in less memory."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE", "licenses/openpyxl-MIT.txt"]
+keywords = [
+    "openpyxl",
+    "excel",
+    "xlsx",
+    "spreadsheet",
+    "drop-in replacement",
+    "workbook",
+    "worksheet",
+    "ooxml",
+    "rust",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Rust",
+    "Topic :: Office/Business :: Financial :: Spreadsheet",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = ["crabxl-bindings~=0.6.0"]
+
+[project.urls]
+Homepage = "https://crabxl.com"
+Documentation = "https://docs.crabxl.com/docs/python/openpyxl"
+Repository = "https://github.com/crabxl/crabxl-python"
+Changelog = "https://github.com/crabxl/crabxl-python/blob/main/packages/crabxl-openpyxl/CHANGELOG.md"
+Issues = "https://github.com/crabxl/crabxl-python/issues"

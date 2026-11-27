@@ -4,7 +4,7 @@
   "repository": "https://foss.heptapod.net/openpyxl/openpyxl",
   "revision": "13627b03ca25a1a98becf40e533b955615b13429",
   "source": "openpyxl/worksheet/tests/test_worksheet.py",
-  "destination": "tests/test_upstream_worksheet.py",
+  "destination": "tests/adapter/test_upstream_worksheet.py",
   "license": "MIT",
   "notice": "Copyright (c) 2010-2024 openpyxl",
   "license_file": "third_party/licenses/openpyxl-MIT.txt",

@@ -7,7 +7,7 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 
-# Native extension built by maturin develop or pip install -e
-python/crabxl/*.so
-python/crabxl/*.pyd
-python/crabxl/*.pdb
+# Native extension built by maturin develop or an editable install
+packages/crabxl-bindings/python/crabxl_bindings/*.so
+packages/crabxl-bindings/python/crabxl_bindings/*.pyd
+packages/crabxl-bindings/python/crabxl_bindings/*.pdb

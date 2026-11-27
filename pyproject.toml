@@ -1,105 +1,132 @@
-[build-system]
-requires = ["maturin>=1.15,<2"]
-build-backend = "maturin"
+# The development workspace of the three packages in packages/: crabxl,
+# crabxl-openpyxl and crabxl-bindings, the native module they share. Each one
+# has its own pyproject.toml, version and changelog.
+[tool.uv.workspace]
+members = ["packages/*"]
 
-[project]
-name = "crabxl"
-version = "0.5.0"
-requires-python = ">=3.12"
-description = "Fast, low-memory Python library for reading, writing and editing Excel XLSX files, with the openpyxl API."
-readme = "README.md"
-license = "MIT"
-keywords = ["xlsx", "excel", "spreadsheet", "openpyxl"]
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Rust",
-    "Topic :: Office/Business :: Financial :: Spreadsheet",
+[tool.uv.sources]
+crabxl = { workspace = true }
+crabxl-openpyxl = { workspace = true }
+crabxl-bindings = { workspace = true }
+
+[dependency-groups]
+test = [
+    "pytest>=9.1.1,<10; python_version >= '3.10'",
+    "pytest>=8.4,<9; python_version < '3.10'",
+    "openpyxl==3.1.5",
+    "Pillow>=12.3; python_version >= '3.10'",
+    "Pillow>=11.3,<12; python_version < '3.10'",
+    "lxml>=6.1.3",
 ]
-
-[project.urls]
-Homepage = "https://crabxl.com"
-Repository = "https://github.com/crabxl/crabxl-python"
-Changelog = "https://github.com/crabxl/crabxl-python/blob/main/CHANGELOG.md"
-Issues = "https://github.com/crabxl/crabxl-python/issues"
-
-[project.optional-dependencies]
-test = ["pytest>=9.1.1,<10", "openpyxl==3.1.5", "Pillow>=12.3", "lxml>=6.1.3"]
-dev = ["ruff>=0.16.10,<0.18"]
-
-[tool.maturin]
-python-source = "python"
-module-name = "crabxl._native"
+dev = [{ include-group = "test" }, "ruff>=0.16.10,<0.17"]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py39"
+# The adapter supports Python 3.9; crabxl needs 3.13.
+per-file-target-version = { "packages/crabxl/**" = "py313", "tests/api/**" = "py313", "tools/**" = "py314" }
 extend-exclude = [
-    "tests/test_upstream_worksheet.py",
-    "tests/test_upstream_workbook.py",
-    "tests/test_upstream_translate.py",
+    "tests/adapter/test_upstream_worksheet.py",
+    "tests/adapter/test_upstream_workbook.py",
+    "tests/adapter/test_upstream_translate.py",
     # Copied from openpyxl; see third_party/README.md.
-    "python/crabxl/openpyxl/descriptors",
-    "python/crabxl/openpyxl/compat",
-    "python/crabxl/openpyxl/xml",
-    "python/crabxl/openpyxl/comments",
-    "python/crabxl/openpyxl/chart",
-    "python/crabxl/openpyxl/drawing/colors.py",
-    "python/crabxl/openpyxl/drawing/effect.py",
-    "python/crabxl/openpyxl/drawing/fill.py",
-    "python/crabxl/openpyxl/drawing/geometry.py",
-    "python/crabxl/openpyxl/drawing/line.py",
-    "python/crabxl/openpyxl/drawing/text.py",
-    "python/crabxl/openpyxl/packaging",
-    "python/crabxl/openpyxl/formatting",
-    "python/crabxl/openpyxl/styles/_x",
-    "python/crabxl/openpyxl/styles/differential.py",
-    "python/crabxl/openpyxl/utils/cell.py",
-    "python/crabxl/openpyxl/utils/escape.py",
-    "python/crabxl/openpyxl/utils/protection.py",
-    "python/crabxl/openpyxl/utils/units.py",
-    "python/crabxl/openpyxl/utils/datetime.py",
-    "python/crabxl/openpyxl/utils/formulas.py",
-    "python/crabxl/openpyxl/utils/bound_dictionary.py",
-    "python/crabxl/openpyxl/utils/indexed_list.py",
-    "python/crabxl/openpyxl/worksheet/table.py",
-    "python/crabxl/openpyxl/worksheet/filters.py",
-    "python/crabxl/openpyxl/worksheet/datavalidation.py",
-    "python/crabxl/openpyxl/worksheet/header_footer.py",
-    "python/crabxl/openpyxl/worksheet/page.py",
-    "python/crabxl/openpyxl/worksheet/protection.py",
-    "python/crabxl/openpyxl/worksheet/print_settings.py",
-    "python/crabxl/openpyxl/worksheet/related.py",
-    "python/crabxl/openpyxl/workbook/defined_name.py",
-    "python/crabxl/openpyxl/workbook/protection.py",
-    "python/crabxl/openpyxl/utils/dataframe.py",
-    "python/crabxl/openpyxl/worksheet/cell_watch.py",
-    "python/crabxl/openpyxl/worksheet/custom.py",
-    "python/crabxl/openpyxl/worksheet/errors.py",
-    "python/crabxl/openpyxl/worksheet/picture.py",
-    "python/crabxl/openpyxl/worksheet/smart_tag.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/descriptors",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/compat",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/xml",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/comments",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/chart",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/drawing/colors.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/drawing/effect.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/drawing/fill.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/drawing/geometry.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/drawing/line.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/drawing/text.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/packaging",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/formatting",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/styles/_x",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/styles/differential.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/utils/cell.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/utils/escape.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/utils/protection.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/utils/units.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/utils/datetime.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/utils/formulas.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/utils/bound_dictionary.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/utils/indexed_list.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/worksheet/table.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/worksheet/filters.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/worksheet/datavalidation.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/worksheet/header_footer.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/worksheet/page.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/worksheet/protection.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/worksheet/print_settings.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/worksheet/related.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/workbook/defined_name.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/workbook/protection.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/utils/dataframe.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/worksheet/cell_watch.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/worksheet/custom.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/worksheet/errors.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/worksheet/picture.py",
+    "packages/crabxl-openpyxl/src/crabxl_openpyxl/worksheet/smart_tag.py",
 ]
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "I"]
+select = ["E4", "E7", "E9", "F", "FA102", "I", "UP"]
 
-# The redesigned API is fully typed; the openpyxl adapter mirrors openpyxl's
-# own untyped modules and is excluded.
+# crabxl is fully typed. crabxl-openpyxl mirrors openpyxl's own untyped
+# modules and is not checked.
 [tool.mypy]
 strict = true
-python_version = "3.12"
-mypy_path = "python"
+python_version = "3.13"
+warn_unreachable = true
+enable_error_code = [
+    "deprecated",
+    "exhaustive-match",
+    "explicit-override",
+    "ignore-without-code",
+    "mutable-override",
+    "possibly-undefined",
+    "redundant-expr",
+    "redundant-self",
+    "truthy-bool",
+    "truthy-iterable",
+    "unimported-reveal",
+    "unused-awaitable",
+]
+mypy_path = "packages/crabxl/src,packages/crabxl-bindings/python"
 packages = ["crabxl"]
 
 [[tool.mypy.overrides]]
-module = "crabxl.openpyxl.*"
-ignore_errors = true
+# Untyped, like openpyxl.
+module = "crabxl_openpyxl.*"
+ignore_missing_imports = true
 follow_imports = "skip"
 
 [tool.pyright]
-include = ["python/crabxl"]
-exclude = ["python/crabxl/openpyxl"]
+include = ["packages/crabxl/src/crabxl"]
 typeCheckingMode = "strict"
-pythonVersion = "3.12"
-extraPaths = ["python"]
+pythonVersion = "3.13"
+extraPaths = ["packages/crabxl/src", "packages/crabxl-bindings/python"]
+# The modules of the package call each other's private members, such as the
+# native handle; the public API has no private names.
 reportPrivateUsage = false
+# Rules that strict mode leaves off.
+reportCallInDefaultInitializer = "error"
+reportImplicitOverride = "error"
+reportImplicitStringConcatenation = "error"
+reportImportCycles = "error"
+reportMissingSuperCall = "error"
+reportPropertyTypeMismatch = "error"
+reportShadowedImports = "error"
+reportUninitializedInstanceVariable = "error"
+reportUnnecessaryTypeIgnoreComment = "error"
+reportUnusedCallResult = "error"
+
+[tool.ty.src]
+include = ["packages/crabxl/src/crabxl"]
+
+[tool.ty.environment]
+python-version = "3.13"
+
+[tool.ty.rules]
+all = "error"
