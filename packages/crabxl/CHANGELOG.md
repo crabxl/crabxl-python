@@ -29,6 +29,9 @@ packages [crabxl-openpyxl](../crabxl-openpyxl/CHANGELOG.md) and
 - `name in book.defined_names` checks workbook-wide names only, like indexing
   and `remove`. Names limited to one sheet are still in the iteration.
 - A closed `Reader` raises `StateError` from `sheet_names` too.
+- `RowSpan.hide()` and `ColumnSpan.hide()` are now the `hidden` property,
+  which also reads whether a row or column is hidden:
+  `sheet.columns("D").hidden = True`.
 
 ### Fixed
 

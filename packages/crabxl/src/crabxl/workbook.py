@@ -845,8 +845,15 @@ class RowSpan:
     def outline_level(self, level: int) -> None:
         self._sheet._native.set_outline_level(self._sheet.name, self._span, True, level)
 
-    def hide(self, hidden: bool = True) -> None:
-        """Hide or show the rows."""
+    @property
+    def hidden(self) -> bool:
+        """Whether the first row is hidden. Assign to hide or show every row."""
+        return self._sheet._native.row_hidden(
+            self._sheet.name, self._span.split(":")[0]
+        )
+
+    @hidden.setter
+    def hidden(self, hidden: bool) -> None:
         self._sheet._native.set_rows_hidden(self._sheet.name, self._span, hidden)
 
     def insert(self) -> None:
@@ -898,8 +905,16 @@ class ColumnSpan:
             self._sheet.name, self._span, False, level
         )
 
-    def hide(self, hidden: bool = True) -> None:
-        """Hide or show the columns."""
+    @property
+    def hidden(self) -> bool:
+        """Whether the first column is hidden. Assign to hide or show every
+        column."""
+        return self._sheet._native.column_hidden(
+            self._sheet.name, self._span.split(":")[0]
+        )
+
+    @hidden.setter
+    def hidden(self, hidden: bool) -> None:
         self._sheet._native.set_columns_hidden(self._sheet.name, self._span, hidden)
 
     def insert(self) -> None:

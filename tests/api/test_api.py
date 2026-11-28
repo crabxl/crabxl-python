@@ -132,6 +132,8 @@ def test_styles_round_trip_and_map() -> None:
     sheet["B2:B4"].map_style(lambda style: style.replace(number_format="#,##0.00"))
     sheet.columns("A:B").width = 18
     sheet.rows("1").height = 24
+    sheet.rows("3:4").hidden = True
+    sheet.columns("C").hidden = True
     sheet.freeze_panes = "A2"
     again = reopen(book).worksheets["Data"]
     style = again["A1"].style
@@ -142,6 +144,8 @@ def test_styles_round_trip_and_map() -> None:
     assert again["B3"].style.number_format == "#,##0.00"
     assert again.columns("B").width == 18
     assert again.rows("1").height == 24
+    assert again.rows("4").hidden and not again.rows("2").hidden
+    assert again.columns("C").hidden and not again.columns("D").hidden
     assert again.freeze_panes == "A2"
     again.freeze_panes = None
     assert again.freeze_panes is None

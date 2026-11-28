@@ -442,6 +442,9 @@ impl ApiWorkbook {
     ) -> PyResult<()> {
         self.sheet(py, sheet, |s| s.set_column_width(columns, width))
     }
+    fn column_hidden(&self, py: Python<'_>, sheet: &str, column: &str) -> PyResult<bool> {
+        self.sheet(py, sheet, |s| s.column_hidden(column))
+    }
     fn set_columns_hidden(
         &self,
         py: Python<'_>,
@@ -456,6 +459,9 @@ impl ApiWorkbook {
     }
     fn set_row_height(&self, py: Python<'_>, sheet: &str, rows: &str, height: f64) -> PyResult<()> {
         self.sheet(py, sheet, |s| s.set_row_height(rows, height))
+    }
+    fn row_hidden(&self, py: Python<'_>, sheet: &str, row: &str) -> PyResult<bool> {
+        self.sheet(py, sheet, |s| s.row_hidden(row))
     }
     fn set_rows_hidden(
         &self,

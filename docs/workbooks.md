@@ -72,7 +72,7 @@ sheet["A1:C10"].clear()  # Values and formulas; styles stay.
 ```python
 sheet.columns("A:C").width = 16
 sheet.rows("1").height = 24
-sheet.columns("D").hide()
+sheet.columns("D").hidden = True
 sheet.freeze_panes = "B2"  # Freeze the first row and column. None unfreezes.
 sheet.merges.add("E1:G1")
 ```
