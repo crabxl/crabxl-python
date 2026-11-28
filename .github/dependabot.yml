@@ -16,7 +16,7 @@ updates:
     groups:
       cargo:
         patterns: ["*"]
-  - package-ecosystem: pip
+  - package-ecosystem: uv
     directory: /
     schedule:
       interval: weekly
@@ -26,13 +26,14 @@ updates:
     ignore:
       # The compatibility target.
       - dependency-name: openpyxl
+      # tools/release.py manages the packages of this repository.
+      - dependency-name: crabxl-bindings
+      - dependency-name: crabxl-openpyxl
     groups:
       python:
         patterns: ["*"]
   - package-ecosystem: github-actions
-    directories:
-      - /
-      - /.github/actions/setup-supported-python
+    directory: /
     schedule:
       interval: weekly
     cooldown:

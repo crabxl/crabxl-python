@@ -1,31 +1,19 @@
-"""Decide whether this push releases, and give GitHub the version and notes.
+"""Decide which packages this push releases, and tell GitHub.
 
-A push to main releases the committed version when no tag has that name yet.
-The release workflow creates the tag after publishing. A manual run resumes the
-release of the committed version.
+A push to main releases each package whose committed version has no release
+tag yet. The release workflow creates the tags after publishing. A manual run
+resumes the release of every package whose newest version is at this commit.
 """
 
+import json
 import os
-import re
 import subprocess
-import tomllib
+import sys
+import tempfile
 import uuid
+from pathlib import Path
 
-from release import ROOT, run, validate
-from repack_wheels import reusable
-
-
-def notes(version):
-    """The CHANGELOG.md section of this version, without its heading."""
-    text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    match = re.search(
-        rf"^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=^## \[|^\[[^\]]+\]: |\Z)",
-        text,
-        re.S | re.M,
-    )
-    if not match or not match[1].strip():
-        raise ValueError(f"Add a CHANGELOG.md section for {version}")
-    return match[1].strip()
+from release import BINDINGS, PACKAGES, ROOT, notes, run, tag, validate, version_of
 
 
 def output(**values):
@@ -36,27 +24,94 @@ def output(**values):
                 stream.write(f"{key}<<{delimiter}\n{value}\n{delimiter}\n")
 
 
+def pending():
+    """The packages to release, with their versions."""
+    tags = run("git", "tag", "--list").splitlines()
+    head = run("git", "rev-parse", "HEAD")
+    resume = os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
+    found = {}
+    for package in PACKAGES:
+        version = version_of(package)
+        name = tag(package, version)
+        if name not in tags:
+            found[package] = version
+        elif resume and run("git", "rev-parse", name + "^{commit}") == head:
+            found[package] = version
+    return found
+
+
 def main():
-    version = tomllib.loads((ROOT / "Cargo.toml").read_text())["package"]["version"]
-    tagged = version in run("git", "tag", "--list").splitlines()
-    if tagged and os.environ.get("GITHUB_EVENT_NAME") != "workflow_dispatch":
-        output(release="false", version=version, notes="")
-        print(f"{version} is already released")
+    releases = pending()
+    if not releases:
+        output(releases="[]", bindings="", pure="[]")
+        print("Every package version is already released")
         return
-    validate(version)
     branch = os.environ.get("DEFAULT_BRANCH", "main")
     if subprocess.run(
         ["git", "merge-base", "--is-ancestor", "HEAD", f"origin/{branch}"], cwd=ROOT
     ).returncode:
         raise ValueError(f"Release a commit that is on {branch}")
-    # A manual run with rebuild set compiles every wheel even when it could reuse one.
-    reuse = "" if os.environ.get("REBUILD") == "true" else reusable(version) or ""
-    output(release="true", version=version, notes=notes(version), reuse=reuse)
-    print(
-        f"Releasing {version}"
-        + (f" with the native modules of {reuse}" if reuse else "")
+    items = []
+    for package, version in releases.items():
+        validate(package, version)
+        items.append(
+            {
+                "package": package,
+                "version": version,
+                "tag": tag(package, version),
+                "notes": notes(package, version),
+            }
+        )
+        print(f"Releasing {package} {version}")
+    output(
+        releases=json.dumps(items),
+        bindings="true" if BINDINGS in releases else "",
+        pure=json.dumps([package for package in releases if package != BINDINGS]),
     )
 
 
+def github(directory):
+    """Create the tag and GitHub release of each published package, or add
+    the files to a release that exists."""
+    for item in json.loads(os.environ["RELEASES"]):
+        stem = item["package"].replace("-", "_")
+        files = [
+            str(path)
+            for path in sorted(Path(directory).glob(f"{stem}-{item['version']}*"))
+        ]
+        if (
+            subprocess.run(
+                ["gh", "release", "view", item["tag"]], capture_output=True
+            ).returncode
+            == 0
+        ):
+            subprocess.run(
+                ["gh", "release", "upload", item["tag"], *files, "--clobber"],
+                check=True,
+            )
+            continue
+        with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as stream:
+            stream.write(item["notes"] + "\n")
+        subprocess.run(
+            [
+                "gh",
+                "release",
+                "create",
+                item["tag"],
+                *files,
+                "--target",
+                os.environ["GITHUB_SHA"],
+                "--title",
+                f"{item['package']} {item['version']}",
+                "--notes-file",
+                stream.name,
+            ],
+            check=True,
+        )
+
+
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:2] == ["github"]:
+        github(sys.argv[2])
+    else:
+        main()
