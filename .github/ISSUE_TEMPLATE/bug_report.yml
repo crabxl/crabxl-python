@@ -5,9 +5,9 @@ body:
   - type: input
     id: version
     attributes:
-      label: CrabXL version
-      description: Run `python -c "import crabxl; print(crabxl.__version__)"`.
-      placeholder: 0.5.0
+      label: CrabXL versions
+      description: Run `pip show crabxl crabxl-openpyxl crabxl-bindings` and give the versions.
+      placeholder: 0.6.0
     validations:
       required: true
   - type: input

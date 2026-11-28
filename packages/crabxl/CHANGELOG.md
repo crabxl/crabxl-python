@@ -3,8 +3,30 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Before version 1.0, a minor version can change the API.
 
-Each release names the Rust core version it uses. The core has its own
-[changelog](https://github.com/crabxl/crabxl/blob/main/CHANGELOG.md).
+Until 0.5.0, crabxl included the openpyxl interface and the native module, and
+each release named the Rust core version it uses. Since 0.6.0 they are the
+packages [crabxl-openpyxl](../crabxl-openpyxl/CHANGELOG.md) and
+[crabxl-bindings](../crabxl-bindings/CHANGELOG.md), with their own changelogs.
+
+## [0.6.0]
+
+### Changed
+
+- CrabXL needs Python 3.13 or newer.
+- The openpyxl interface is the new package crabxl-openpyxl, which supports
+  Python 3.9 and newer. Install it with `pip install "crabxl[openpyxl]"` to
+  keep using `crabxl.openpyxl`, which is the module `crabxl_openpyxl`: its
+  submodules and classes are the same objects.
+- The native module is the new package crabxl-bindings, a dependency of
+  crabxl, so the crabxl wheel is pure Python.
+- `Reader.open` and `Writer.create` are typed to return the class they are
+  called on, so a subclass gets its own type.
+- `DataValidation.list` is typed to accept numbers, which it saves as text.
+
+### Fixed
+
+- `Workbook.to_bytes`, and saving or finishing into a binary file, no longer
+  copy the file contents once more.
 
 ## [0.5.0]
 
@@ -291,6 +313,7 @@ First release. It uses the Rust core 0.1.0.
 - The user guide, adapted from the openpyxl documentation, and pages for
   memory limits, migration, supported features and compatibility.
 
+[0.6.0]: https://github.com/crabxl/crabxl-python/releases/tag/crabxl-0.6.0
 [0.5.0]: https://github.com/crabxl/crabxl-python/releases/tag/0.5.0
 [0.4.0]: https://github.com/crabxl/crabxl-python/releases/tag/0.4.0
 [0.2.2]: https://github.com/crabxl/crabxl-python/releases/tag/0.2.2

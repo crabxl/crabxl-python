@@ -35,7 +35,7 @@ from .workbook.loader import load_workbook as load_workbook
 from .workbook.workbook import Workbook as Workbook
 from .worksheet.worksheet import Worksheet as Worksheet
 
-__version__ = "0.3.0"
+__version__ = "0.6.0"
 LXML = False
 DEFUSEDXML = False
 
