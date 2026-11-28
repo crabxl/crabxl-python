@@ -12,14 +12,14 @@ By default all surface charts are 3D. 2D wireframe and contour charts are
 created by setting the rotation and perspective.
 
 ```python
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.chart import (
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.chart import (
     SurfaceChart,
     SurfaceChart3D,
     Reference,
     Series,
 )
-from crabxl.openpyxl.chart.axis import SeriesAxis
+from crabxl_openpyxl.chart.axis import SeriesAxis
 
 wb = Workbook()
 ws = wb.active

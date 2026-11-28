@@ -6,8 +6,8 @@ description: Insert images into worksheets.
 ## Inserting an image
 
 ```python
->>> from crabxl.openpyxl import Workbook
->>> from crabxl.openpyxl.drawing.image import Image
+>>> from crabxl_openpyxl import Workbook
+>>> from crabxl_openpyxl.drawing.image import Image
 >>>
 >>> wb = Workbook()
 >>> ws = wb.active

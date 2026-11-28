@@ -17,8 +17,8 @@ the text which is to be formatted like this. The result is a
 `CellRichText` object.
 
 ```python
->>> from crabxl.openpyxl.cell.text import InlineFont
->>> from crabxl.openpyxl.cell.rich_text import TextBlock, CellRichText
+>>> from crabxl_openpyxl.cell.text import InlineFont
+>>> from crabxl_openpyxl.cell.rich_text import TextBlock, CellRichText
 >>> rich_string1 = CellRichText(
 ...    'This is a test ',
 ...    TextBlock(InlineFont(b=True), 'xxx'),
@@ -54,7 +54,7 @@ initialize an `InlineFont` object with an existing `Font`
 object:
 
 ```python
->>> from crabxl.openpyxl.cell.text import Font
+>>> from crabxl_openpyxl.cell.text import Font
 >>> font = Font(name='Calibri',
 ...             size=11,
 ...             bold=False,
@@ -134,7 +134,7 @@ Rich Text objects can be assigned directly to cells
 ..
 
 ```python
->>> from crabxl.openpyxl import Workbook
+>>> from crabxl_openpyxl import Workbook
 >>> wb = Workbook()
 >>> ws = wb.active
 >>> ws['A1'] = rich_string1

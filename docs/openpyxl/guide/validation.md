@@ -8,8 +8,8 @@ Data validators can be applied to ranges of cells but are not enforced or evalua
 ## Examples
 
 ```python
->>> from crabxl.openpyxl import Workbook
->>> from crabxl.openpyxl.worksheet.datavalidation import DataValidation
+>>> from crabxl_openpyxl import Workbook
+>>> from crabxl_openpyxl.worksheet.datavalidation import DataValidation
 >>>
 >>> # Create the workbook and worksheet we'll be working with
 >>> wb = Workbook()
@@ -110,7 +110,7 @@ Cell range validation:
 :
 
 ```python
-from crabxl.openpyxl.utils import quote_sheetname
+from crabxl_openpyxl.utils import quote_sheetname
 
 dv = DataValidation(
     type="list", formula1="{0}!$B$1:$B$10".format(quote_sheetname(sheetname))

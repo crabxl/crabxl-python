@@ -29,7 +29,7 @@ There is no need to create a file on the filesystem to get started with CrabXL.
 Just import the `Workbook` class and start work:
 
 ```python
->>> from crabxl.openpyxl import Workbook
+>>> from crabxl_openpyxl import Workbook
 >>> wb = Workbook()
 ```
 
@@ -312,7 +312,7 @@ such as Pyramid, Flask or Django then you can simply provide a
 
 ```python
 >>> from tempfile import NamedTemporaryFile
->>> from crabxl.openpyxl import Workbook
+>>> from crabxl_openpyxl import Workbook
 >>> wb = Workbook()
 >>> with NamedTemporaryFile() as tmp:
         wb.save(tmp.name)
@@ -352,7 +352,7 @@ such as Pyramid, Flask or Django then you can simply provide a
 You can use the `load_workbook` to open an existing workbook:
 
 ```python
->>> from crabxl.openpyxl import load_workbook
+>>> from crabxl_openpyxl import load_workbook
 >>> wb = load_workbook(filename = 'empty_book.xlsx')
 >>> sheet_ranges = wb['range names']
 >>> print(sheet_ranges['D18'].value)

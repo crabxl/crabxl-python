@@ -13,8 +13,8 @@ type "marker" has no effect. If markers are desired these can be set for the
 relevant series.
 
 ```python
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.chart import (
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.chart import (
     RadarChart,
     Reference,
 )

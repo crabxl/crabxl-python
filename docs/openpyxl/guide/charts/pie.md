@@ -11,10 +11,10 @@ being at the top of the circle. Pie charts can only take a single series of
 data. The title of the chart will default to being the title of the series.
 
 ```python
-from crabxl.openpyxl import Workbook
+from crabxl_openpyxl import Workbook
 
-from crabxl.openpyxl.chart import PieChart, ProjectedPieChart, Reference
-from crabxl.openpyxl.chart.series import DataPoint
+from crabxl_openpyxl.chart import PieChart, ProjectedPieChart, Reference
+from crabxl_openpyxl.chart.series import DataPoint
 
 data = [
     ["Pie", "Sold"],
@@ -94,9 +94,9 @@ In addition custom splits can be defined.
 Pie charts can also be created with a 3D effect.
 
 ```python
-from crabxl.openpyxl import Workbook
+from crabxl_openpyxl import Workbook
 
-from crabxl.openpyxl.chart import PieChart3D, Reference
+from crabxl_openpyxl.chart import PieChart3D, Reference
 
 data = [
     ["Pie", "Sold"],
@@ -131,17 +131,17 @@ wb.save("pie3D.xlsx")
 Pie charts can also be created with gradient series.
 
 ```python
-from crabxl.openpyxl import Workbook
+from crabxl_openpyxl import Workbook
 
-from crabxl.openpyxl.chart import PieChart, Reference
-from crabxl.openpyxl.chart.series import DataPoint
-from crabxl.openpyxl.chart.shapes import GraphicalProperties
-from crabxl.openpyxl.drawing.fill import (
+from crabxl_openpyxl.chart import PieChart, Reference
+from crabxl_openpyxl.chart.series import DataPoint
+from crabxl_openpyxl.chart.shapes import GraphicalProperties
+from crabxl_openpyxl.drawing.fill import (
     GradientFillProperties,
     GradientStop,
     LinearShadeProperties,
 )
-from crabxl.openpyxl.drawing.colors import SchemeColor
+from crabxl_openpyxl.drawing.colors import SchemeColor
 
 data = [
     ["Pie", "Sold"],

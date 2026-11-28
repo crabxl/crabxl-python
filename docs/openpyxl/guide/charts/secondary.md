@@ -7,8 +7,8 @@ Adding a second axis actually involves creating a second chart that shares a
 common x-axis with the first chart but has a separate y-axis.
 
 ```python
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.chart import (
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.chart import (
     LineChart,
     BarChart,
     Reference,

@@ -13,13 +13,13 @@ Charts are composed of at least one series of one or more data points. Series
 themselves are comprised of references to cell ranges.
 
 ```python
->>> from crabxl.openpyxl import Workbook
+>>> from crabxl_openpyxl import Workbook
 >>> wb = Workbook()
 >>> ws = wb.active
 >>> for i in range(10):
 ...     ws.append([i])
 >>>
->>> from crabxl.openpyxl.chart import BarChart, Reference, Series
+>>> from crabxl_openpyxl.chart import BarChart, Reference, Series
 >>> values = Reference(ws, min_col=1, min_row=1, max_col=1, max_row=10)
 >>> chart = BarChart()
 >>> chart.add_data(values)

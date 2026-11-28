@@ -17,7 +17,7 @@ attribute names, eg. `GraphicalProperties for `spPr` or `line` for `line`.
 :
 
 ```python
-from crabxl.openpyxl.chart.shapes import GraphicalProperties
+from crabxl_openpyxl.chart.shapes import GraphicalProperties
 
 chart.graphical_properties = GraphicalProperties()
 chart.graphical_properties.noFill = True
@@ -28,7 +28,7 @@ chart.graphical_properties.noFill = True
 :
 
 ```python
-from crabxl.openpyxl.chart.shapes import GraphicalProperties
+from crabxl_openpyxl.chart.shapes import GraphicalProperties
 
 chart.graphical_properties = GraphicalProperties()
 chart.graphical_properties.line.noFill = True
@@ -65,8 +65,8 @@ xml = """
 </txPr>
 """
 
-from crabxl.openpyxl.chart.text import RichText
-from crabxl.openpyxl.xml.functions import fromstring
+from crabxl_openpyxl.chart.text import RichText
+from crabxl_openpyxl.xml.functions import fromstring
 
 xml = fromstring(txt)
 text_props = RichText.from_tree(xml)

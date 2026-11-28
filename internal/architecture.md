@@ -3,18 +3,21 @@
 Update this file only when the architecture changes.
 
 The Rust core (https://github.com/crabxl/crabxl) is the only spreadsheet
-engine. This package has two interfaces over it: the native `crabxl` API and
-the openpyxl 3.1.5 interface `crabxl.openpyxl`. `Cargo.toml` pins the core to
-an exact version.
+engine. This repository has two packages over it: `crabxl`, the native typed
+API, and `crabxl-openpyxl`, the openpyxl 3.1.5 interface. They share the
+native module of a third package, `crabxl-bindings`, whose `Cargo.toml` pins
+the core to an exact version. `crabxl.openpyxl` is an import alias
+(`packages/crabxl/src/crabxl/openpyxl.py`) that maps each `crabxl.openpyxl.*`
+module to the same `crabxl_openpyxl.*` module object.
 
 ## Layers
 
 | Layer | Responsibility |
 |---|---|
-| `python/crabxl` | The native API: typed classes (`workbook.py`, `read.py`, `write.py`) and frozen value, style and feature types. |
-| `python/crabxl/openpyxl` | The openpyxl interface. Its modules follow the openpyxl module layout. Compatible objects are views over native handles. |
-| `src/api/` (`crabxl._native.Api*`) | The native API's engine, built on the `crabxl` crate: `ApiWorkbook`, `ApiReader` (row streams on a background thread with a bounded channel) and `ApiWriter`. Converts values in bulk and releases the GIL for file work. |
-| `src/` (other modules) | The openpyxl interface's PyO3 handles, built on `crabxl-xlsx` and `crabxl-core` through `src/engine.rs`. |
+| `packages/crabxl/src/crabxl` | The native API: typed classes (`workbook.py`, `read.py`, `write.py`) and frozen value, style and feature types. |
+| `packages/crabxl-openpyxl/src/crabxl_openpyxl` | The openpyxl interface. Its modules follow the openpyxl module layout. Compatible objects are views over native handles. |
+| `packages/crabxl-bindings/src/api/` (`crabxl_bindings._native.Api*`) | The native API's engine, built on the `crabxl` crate: `ApiWorkbook`, `ApiReader` (row streams on a background thread with a bounded channel) and `ApiWriter`. Converts values in bulk and releases the GIL for file work. |
+| `packages/crabxl-bindings/src/` (other modules) | The openpyxl interface's PyO3 handles, built on `crabxl-xlsx` and `crabxl-core` through `src/engine.rs`. |
 | Rust core | Models, validation, resources and every XLSX codec. |
 
 ## openpyxl workbook modes
@@ -48,12 +51,12 @@ access, and only changed features are pushed back before save.
 
 ## Source modules
 
-- `python/crabxl/__init__.py` and `python/crabxl/openpyxl/__init__.py` only
-  compose exports.
-- In `crabxl.openpyxl`, `cell/cell.py`, `worksheet/worksheet.py` and
+- The `__init__.py` files of `crabxl` and `crabxl_openpyxl` only compose
+  exports.
+- In `crabxl_openpyxl`, `cell/cell.py`, `worksheet/worksheet.py` and
   `workbook/workbook.py` hold the compatible objects. `workbook/loader.py` selects the loading mode.
   `optimized.py` holds the read-only and write-only views.
-- `src/lib.rs` registers classes. `workbook.rs`, `worksheet.rs`, `reader.rs`,
+- `packages/crabxl-bindings/src/lib.rs` registers classes. `workbook.rs`, `worksheet.rs`, `reader.rs`,
   `editor.rs` and `streaming/` implement the handles. `values.rs` shares value
   conversion and error mapping.
 

@@ -9,8 +9,8 @@ certain operations such as styling the cells in a table easier.
 ## Creating a table
 
 ```python
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.worksheet.table import Table, TableStyleInfo
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.worksheet.table import Table, TableStyleInfo
 
 wb = Workbook()
 ws = wb.active
@@ -61,7 +61,7 @@ stripe rows or columns and apply the different colour schemes.
 
 ```python
 >>> ws.tables
-{"Table1",  <crabxl.openpyxl.worksheet.table.Table object>}
+{"Table1",  <crabxl_openpyxl.worksheet.table.Table object>}
 ```
 
 ## Get Table by name or range
@@ -129,7 +129,7 @@ Excel can set the print area to a table name. CrabXL does not resolve such a nam
 print area, use the cell range of the table instead.
 
 ```python
->>> from crabxl.openpyxl import load_workbook
+>>> from crabxl_openpyxl import load_workbook
 >>> wb = load_workbook("QueryTable.xlsx")
 >>> ws = wb.active
 >>> table_range = ws.tables["InvoiceData"]

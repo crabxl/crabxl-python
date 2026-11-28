@@ -12,7 +12,7 @@ Set `max_memory_bytes` to limit the memory that CrabXL manages for a workbook.
 The memory limit is not a limit for the full process.
 
 ```python
-from crabxl.openpyxl import load_workbook
+from crabxl_openpyxl import load_workbook
 
 book = load_workbook("input.xlsx", max_memory_bytes=512 * 1024 * 1024)
 ```
@@ -24,7 +24,7 @@ If an operation needs more memory than the limit, CrabXL raises an error.
 Use `ResourceOptions` for detailed limits.
 
 ```python
-from crabxl.openpyxl import ResourceOptions, SharedStringOptions, load_workbook
+from crabxl_openpyxl import ResourceOptions, SharedStringOptions, load_workbook
 
 options = ResourceOptions(
     shared_strings=SharedStringOptions(storage="disk"),
@@ -44,7 +44,7 @@ to data you write. The default opens every file Excel writes. Choose another
 preset with `limits`:
 
 ```python
-from crabxl.openpyxl import load_workbook
+from crabxl_openpyxl import load_workbook
 
 # Uploads from strangers: tighter guards and memory caps.
 book = load_workbook("upload.xlsx", limits="strict")
@@ -55,11 +55,11 @@ book = load_workbook("trusted.xlsx", limits="unlimited")
 For code that cannot pass arguments, such as `pandas.read_excel`, set the
 `CRABXL_LIMITS` environment variable to `strict` or `unlimited`.
 
-A file that exceeds a guard raises `crabxl.openpyxl.LimitExceededError`, a `ValueError`
+A file that exceeds a guard raises `crabxl_openpyxl.LimitExceededError`, a `ValueError`
 whose message names the guard. To change one guard, pass `ResourceLimits`:
 
 ```python
-from crabxl.openpyxl import ResourceLimits, load_workbook
+from crabxl_openpyxl import ResourceLimits, load_workbook
 
 book = load_workbook("input.xlsx", limits=ResourceLimits(max_expansion_ratio=1000))
 ```

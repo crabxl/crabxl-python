@@ -8,8 +8,8 @@ is that one series of values is plotted against another. This is useful where
 values are unordered.
 
 ```python
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.chart import (
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.chart import (
     ScatterChart,
     Reference,
     Series,

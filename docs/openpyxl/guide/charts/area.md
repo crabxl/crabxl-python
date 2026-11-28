@@ -9,8 +9,8 @@ Area charts are similar to line charts with the addition that the area underneat
 Different variants are available by setting the grouping to "standard", "stacked" or "percentStacked"; "standard" is the default.
 
 ```python
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.chart import (
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.chart import (
     AreaChart,
     Reference,
     Series,
@@ -55,8 +55,8 @@ wb.save("area.xlsx")
 You can also create 3D area charts
 
 ```python
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.chart import (
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.chart import (
     AreaChart3D,
     Reference,
     Series,

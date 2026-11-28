@@ -7,9 +7,9 @@ Chartsheets are special worksheets which only contain charts. All the data
 for the chart must be on a different worksheet.
 
 ```python
-from crabxl.openpyxl import Workbook
+from crabxl_openpyxl import Workbook
 
-from crabxl.openpyxl.chart import PieChart, Reference, Series
+from crabxl_openpyxl.chart import PieChart, Reference, Series
 
 wb = Workbook()
 ws = wb.active

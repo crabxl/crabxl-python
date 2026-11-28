@@ -12,8 +12,8 @@ description: Read and write cell comments.
 Comments have a text attribute and an author attribute, which must both be set
 
 ```python
->>> from crabxl.openpyxl import Workbook
->>> from crabxl.openpyxl.comments import Comment
+>>> from crabxl_openpyxl import Workbook
+>>> from crabxl_openpyxl.comments import Comment
 >>> wb = Workbook()
 >>> ws = wb.active
 >>> comment = ws["A1"].comment
@@ -27,8 +27,8 @@ Comments have a text attribute and an author attribute, which must both be set
 If you assign the same comment to multiple cells then CrabXL will automatically create copies
 
 ```python
->>> from crabxl.openpyxl import Workbook
->>> from crabxl.openpyxl.comments import Comment
+>>> from crabxl_openpyxl import Workbook
+>>> from crabxl_openpyxl.comments import Comment
 >>> wb=Workbook()
 >>> ws=wb.active
 >>> comment = Comment("Text", "Author")
@@ -54,9 +54,9 @@ Comment dimensions can be specified for write-only. Comment dimension are
 in pixels.
 
 ```python
->>> from crabxl.openpyxl import Workbook
->>> from crabxl.openpyxl.comments import Comment
->>> from crabxl.openpyxl.utils import units
+>>> from crabxl_openpyxl import Workbook
+>>> from crabxl_openpyxl.comments import Comment
+>>> from crabxl_openpyxl.utils import units
 >>>
 >>> wb=Workbook()
 >>> ws=wb.active
@@ -70,13 +70,13 @@ in pixels.
 >>> wb.save('commented_book.xlsx')
 ```
 
-If needed, `crabxl.openpyxl.utils.units` contains helper functions for converting
+If needed, `crabxl_openpyxl.utils.units` contains helper functions for converting
 from other measurements such as mm or points to pixels:
 
 ```python
->>> from crabxl.openpyxl import Workbook
->>> from crabxl.openpyxl.comments import Comment
->>> from crabxl.openpyxl.utils import units
+>>> from crabxl_openpyxl import Workbook
+>>> from crabxl_openpyxl.comments import Comment
+>>> from crabxl_openpyxl.utils import units
 >>>
 >>> wb=Workbook()
 >>> ws=wb.active

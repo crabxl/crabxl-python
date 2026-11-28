@@ -39,8 +39,8 @@ Search `ECMA-376 pageSetup` for more details.
 > Once done, they can be directly modified by the routine later if needed.
 
 ```python
->>> from crabxl.openpyxl.workbook import Workbook
->>> from crabxl.openpyxl.worksheet.properties import WorksheetProperties, PageSetupProperties
+>>> from crabxl_openpyxl.workbook import Workbook
+>>> from crabxl_openpyxl.worksheet.properties import WorksheetProperties, PageSetupProperties
 >>>
 >>> wb = Workbook()
 >>> ws = wb.active
@@ -61,7 +61,7 @@ There are also several convenient properties defined as worksheet views.
 You can use `sheet_view` to set sheet attributes such as zoom, show formulas or if the tab is selected. `ws.sheet_view` returns the first view.
 
 ```python
->>> from crabxl.openpyxl.workbook import Workbook
+>>> from crabxl_openpyxl.workbook import Workbook
 >>>
 >>> wb = Workbook()
 >>> ws = wb.active
@@ -79,7 +79,7 @@ Custom Sheetviews can also be defined.
 ## Fold (outline)
 
 ```python
->>> import crabxl.openpyxl as crabxl
+>>> import crabxl_openpyxl as crabxl
 >>> wb = crabxl.Workbook()
 >>> ws = wb.create_sheet()
 >>> ws.column_dimensions.group('A','D', hidden=True)

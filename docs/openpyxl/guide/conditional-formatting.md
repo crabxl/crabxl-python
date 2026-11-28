@@ -12,9 +12,9 @@ Excel supports three different types of conditional formatting: builtins, standa
 The basic syntax for creating a formatting rule is:
 
 ```python
->>> from crabxl.openpyxl.formatting import Rule
->>> from crabxl.openpyxl.styles import Font, PatternFill, Border
->>> from crabxl.openpyxl.styles.differential import DifferentialStyle
+>>> from crabxl_openpyxl.formatting import Rule
+>>> from crabxl_openpyxl.styles import Font, PatternFill, Border
+>>> from crabxl_openpyxl.styles.differential import DifferentialStyle
 >>> dxf = DifferentialStyle(font=Font(bold=True), fill=PatternFill(start_color='EE1111', end_color='EE1111'))
 >>> rule = Rule(type='cellIs', dxf=dxf, formula=["10"])
 ```
@@ -38,8 +38,8 @@ You can have color scales with 2 or 3 colors. 2 color scales produce a gradient 
 The full syntax for creating a ColorScale rule is:
 
 ```python
->>> from crabxl.openpyxl.formatting.rule import ColorScale, FormatObject
->>> from crabxl.openpyxl.styles import Color
+>>> from crabxl_openpyxl.formatting.rule import ColorScale, FormatObject
+>>> from crabxl_openpyxl.styles import Color
 >>> first = FormatObject(type='min')
 >>> last = FormatObject(type='max')
 >>> # colors match the format objects:
@@ -50,14 +50,14 @@ The full syntax for creating a ColorScale rule is:
 >>> colors.insert(1, Color('00AA00'))
 >>> cs3 = ColorScale(cfvo=[first, mid, last], color=colors)
 >>> # create a rule with the color scale
->>> from crabxl.openpyxl.formatting.rule import Rule
+>>> from crabxl_openpyxl.formatting.rule import Rule
 >>> rule = Rule(type='colorScale', colorScale=cs3)
 ```
 
 There is a convenience function for creating ColorScale rules
 
 ```python
->>> from crabxl.openpyxl.formatting.rule import ColorScaleRule
+>>> from crabxl_openpyxl.formatting.rule import ColorScaleRule
 >>> rule = ColorScaleRule(start_type='percentile', start_value=10, start_color='FFAA0000',
 ...                       mid_type='percentile', mid_value=50, mid_color='FF0000AA',
 ...                       end_type='percentile', end_value=90, end_color='FF00AA00')
@@ -70,20 +70,20 @@ Choose from the following set of icons: `'3Arrows', '3ArrowsGray', '3Flags', '3T
 The full syntax for creating an IconSet rule is:
 
 ```python
->>> from crabxl.openpyxl.formatting.rule import IconSet, FormatObject
+>>> from crabxl_openpyxl.formatting.rule import IconSet, FormatObject
 >>> first = FormatObject(type='percent', val=0)
 >>> second = FormatObject(type='percent', val=33)
 >>> third = FormatObject(type='percent', val=67)
 >>> iconset = IconSet(iconSet='3TrafficLights1', cfvo=[first, second, third], showValue=None, percent=None, reverse=None)
 >>> # assign the icon set to a rule
->>> from crabxl.openpyxl.formatting.rule import Rule
+>>> from crabxl_openpyxl.formatting.rule import Rule
 >>> rule = Rule(type='iconSet', iconSet=iconset)
 ```
 
 There is a convenience function for creating IconSet rules:
 
 ```python
->>> from crabxl.openpyxl.formatting.rule import IconSetRule
+>>> from crabxl_openpyxl.formatting.rule import IconSetRule
 >>> rule = IconSetRule('5Arrows', 'percent', [10, 20, 30, 40, 50], showValue=None, percent=None, reverse=None)
 ```
 
@@ -94,19 +94,19 @@ Currently, CrabXL supports the DataBars as defined in the original specification
 The full syntax for creating a DataBar rule is:
 
 ```python
->>> from crabxl.openpyxl.formatting.rule import DataBar, FormatObject
+>>> from crabxl_openpyxl.formatting.rule import DataBar, FormatObject
 >>> first = FormatObject(type='min')
 >>> second = FormatObject(type='max')
 >>> data_bar = DataBar(cfvo=[first, second], color="638EC6", showValue=None, minLength=None, maxLength=None)
 >>> # assign the data bar to a rule
->>> from crabxl.openpyxl.formatting.rule import Rule
+>>> from crabxl_openpyxl.formatting.rule import Rule
 >>> rule = Rule(type='dataBar', dataBar=data_bar)
 ```
 
 There is a convenience function for creating DataBar rules:
 
 ```python
->>> from crabxl.openpyxl.formatting.rule import DataBarRule
+>>> from crabxl_openpyxl.formatting.rule import DataBarRule
 >>> rule = DataBarRule(start_type='percentile', start_value=10, end_type='percentile', end_value='90',
 ...                    color="FF638EC6", showValue="None", minLength=None, maxLength=None)
 ```
@@ -122,10 +122,10 @@ The standard conditional formats are:
   * Rank
 
 ```python
->>> from crabxl.openpyxl import Workbook
->>> from crabxl.openpyxl.styles import Color, PatternFill, Font, Border
->>> from crabxl.openpyxl.styles.differential import DifferentialStyle
->>> from crabxl.openpyxl.formatting.rule import ColorScaleRule, CellIsRule, FormulaRule
+>>> from crabxl_openpyxl import Workbook
+>>> from crabxl_openpyxl.styles import Color, PatternFill, Font, Border
+>>> from crabxl_openpyxl.styles.differential import DifferentialStyle
+>>> from crabxl_openpyxl.formatting.rule import ColorScaleRule, CellIsRule, FormulaRule
 >>>
 >>> wb = Workbook()
 >>> ws = wb.active

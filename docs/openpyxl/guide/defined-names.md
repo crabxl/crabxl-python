@@ -49,9 +49,9 @@ defn = ws.defined_names["private_range"]
 Global definitions are assigned to the workbook collection:
 
 ```python
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.workbook.defined_name import DefinedName
-from crabxl.openpyxl.utils import quote_sheetname, absolute_coordinate
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.workbook.defined_name import DefinedName
+from crabxl_openpyxl.utils import quote_sheetname, absolute_coordinate
 
 wb = Workbook()
 ws = wb.active
@@ -94,7 +94,7 @@ If you need to handle this you can extract the range of the defined name and set
 as the appropriate cell range.
 
 ```python
->>> from crabxl.openpyxl import load_workbook
+>>> from crabxl_openpyxl import load_workbook
 >>> wb = load_workbook("Example.xlsx")
 >>> ws = wb.active
 >>> area = ws.defined_names["TestArea"] # Globally defined named ranges can be used too

@@ -8,7 +8,7 @@ CrabXL provides reasonably full support for print settings.
 ## Edit Print Options
 
 ```python
->>> from crabxl.openpyxl.workbook import Workbook
+>>> from crabxl_openpyxl.workbook import Workbook
 >>>
 >>> wb = Workbook()
 >>> ws = wb.active
@@ -27,7 +27,7 @@ size and color for a left, centre/center, or right element. Granular control
 manually.
 
 ```python
->>> from crabxl.openpyxl.workbook import Workbook
+>>> from crabxl_openpyxl.workbook import Workbook
 >>>
 >>> wb = Workbook()
 >>> ws = wb.active
@@ -46,7 +46,7 @@ You can print titles on every page to ensure that the data is properly
 labelled.
 
 ```python
->>> from crabxl.openpyxl.workbook import Workbook
+>>> from crabxl_openpyxl.workbook import Workbook
 >>>
 >>> wb = Workbook()
 >>> ws = wb.active
@@ -60,7 +60,7 @@ labelled.
 You can select a part of a worksheet as the only part that you want to print
 
 ```python
->>> from crabxl.openpyxl.workbook import Workbook
+>>> from crabxl_openpyxl.workbook import Workbook
 >>>
 >>> wb = Workbook()
 >>> ws = wb.active

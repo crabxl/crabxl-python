@@ -61,7 +61,7 @@ merged cell are created as MergeCells which always have the value None.
 See `styling-merged-cells` for information on formatting merged cells.
 
 ```python
->>> from crabxl.openpyxl.workbook import Workbook
+>>> from crabxl_openpyxl.workbook import Workbook
 >>>
 >>> wb = Workbook()
 >>> ws = wb.active

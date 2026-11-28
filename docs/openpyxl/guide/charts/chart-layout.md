@@ -54,9 +54,9 @@ legend.layout = ManualLayout()
 ```
 
 ```python
-from crabxl.openpyxl import Workbook, load_workbook
-from crabxl.openpyxl.chart import ScatterChart, Series, Reference
-from crabxl.openpyxl.chart.layout import Layout, ManualLayout
+from crabxl_openpyxl import Workbook, load_workbook
+from crabxl_openpyxl.chart import ScatterChart, Series, Reference
+from crabxl_openpyxl.chart.layout import Layout, ManualLayout
 
 wb = Workbook()
 ws = wb.active

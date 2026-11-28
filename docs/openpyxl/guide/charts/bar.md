@@ -20,8 +20,8 @@ In bar charts values are plotted as either horizontal bars or vertical columns.
 ![Sample bar charts](bar.png)
 
 ```python
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.chart import BarChart, Series, Reference
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.chart import BarChart, Series, Reference
 
 wb = Workbook(write_only=True)
 ws = wb.create_sheet()
@@ -90,8 +90,8 @@ This will produce four charts illustrating the various possibilities.
 You can also create 3D bar charts
 
 ```python
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.chart import (
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.chart import (
     Reference,
     Series,
     BarChart3D,

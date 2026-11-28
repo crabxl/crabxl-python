@@ -29,7 +29,7 @@ Looping over all the custom properties ("custom_doc_props"):
 Adding a new property:
 
 ```python
-from crabxl.openpyxl.packaging.custom import (
+from crabxl_openpyxl.packaging.custom import (
     BoolProperty,
     DateTimeProperty,
     FloatProperty,

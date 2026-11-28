@@ -6,11 +6,11 @@ description: Pattern fills with CrabXL.
 Whole data series and individual data points can be extensively styled through the `graphicalProperties`. Getting things just right may take some time.
 
 ```python
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.chart import BarChart, Reference
-from crabxl.openpyxl.chart.marker import DataPoint
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.chart import BarChart, Reference
+from crabxl_openpyxl.chart.marker import DataPoint
 
-from crabxl.openpyxl.drawing.fill import PatternFillProperties, ColorChoice
+from crabxl_openpyxl.drawing.fill import PatternFillProperties, ColorChoice
 
 wb = Workbook()
 ws = wb.active

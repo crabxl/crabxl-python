@@ -18,7 +18,8 @@ Or with uv:
 uv add crabxl
 ```
 
-Wheels are available for CPython 3.12–3.15 on Linux, Windows and macOS.
+CrabXL needs CPython 3.13 or newer. Wheels of its native module are available
+for Linux, Windows and macOS.
 
 ## Choose an entry point
 
@@ -84,4 +85,5 @@ with xl.Reader.open("events.xlsx") as reader:
 - [Styles](styles.md): fonts, fills, borders and number formats.
 - [Streaming](streaming.md): `Reader` and `Writer`.
 - [Errors](errors.md): the exceptions CrabXL raises.
-- [openpyxl interface](openpyxl/index.md): `crabxl.openpyxl` runs openpyxl code.
+- [openpyxl interface](openpyxl/index.md): the crabxl-openpyxl package runs
+  openpyxl code, on Python 3.9 and newer.

@@ -7,14 +7,14 @@ Doughnut charts are similar to pie charts except that they use a ring instead
 of a circle. They can also plot several series of data as concentric rings.
 
 ```python
-from crabxl.openpyxl import Workbook
+from crabxl_openpyxl import Workbook
 
-from crabxl.openpyxl.chart import (
+from crabxl_openpyxl.chart import (
     DoughnutChart,
     Reference,
     Series,
 )
-from crabxl.openpyxl.chart.series import DataPoint
+from crabxl_openpyxl.chart.series import DataPoint
 
 data = [
     ["Pie", 2014, 2015],

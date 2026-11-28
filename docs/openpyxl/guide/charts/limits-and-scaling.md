@@ -9,8 +9,8 @@ Axis minimum and maximum values can be set manually to display specific regions
 on a chart.
 
 ```python
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.chart import (
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.chart import (
     ScatterChart,
     Reference,
     Series,
@@ -69,8 +69,8 @@ can be set to any valid float. If the x-axis is scaled logarithmically, negative
 values in the domain will be discarded.
 
 ```python
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.chart import (
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.chart import (
     ScatterChart,
     Reference,
     Series,
@@ -154,8 +154,8 @@ by the scaling `orientation` property, which can have a value of either
 `'minMax'` for normal orientation or `'maxMin'` for reversed.
 
 ```python
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.chart import (
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.chart import (
     ScatterChart,
     Reference,
     Series,

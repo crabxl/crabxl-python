@@ -1,72 +1,79 @@
 # Python releases
 
-Versions are `X.Y.Z`, the same string for Cargo, PyPI and the Git tag. Before
-1.0, a minor version can change the API. Only tested, usable changes get a
-release. Each release depends on an exact Rust core version from crates.io.
+This repository releases three packages, each with its own version, changelog
+and tags:
 
-Describe every change under `## [Unreleased]` in `CHANGELOG.md` as you make it.
+| Package | Contents | Python | Wheels |
+| --- | --- | --- | --- |
+| `crabxl-bindings` | The native module (`packages/crabxl-bindings`) | 3.9+ | 35 native |
+| `crabxl` | The typed API (`packages/crabxl`) | 3.13+ | pure Python |
+| `crabxl-openpyxl` | The openpyxl interface (`packages/crabxl-openpyxl`) | 3.9+ | pure Python |
+
+Versions are `X.Y.Z`; tags are `<package>-X.Y.Z`. The plain `X.Y.Z` tags up to
+0.5.0 are crabxl's. Before 1.0, a minor version can change the API. Only
+tested, usable changes get a release.
+
+crabxl and crabxl-openpyxl require `crabxl-bindings~=X.Y.Z`. The interface of
+the bindings is private, so a minor bindings release breaks it: release it
+together with both packages, and raise their requirements. A patch release of
+the bindings, such as a new Rust core, must keep the interface, so the two
+packages need no release.
+
+Describe every change under `## [Unreleased]` in the package's
+`CHANGELOG.md` as you make it.
 
 ## Release
 
-Release the Rust core first when this release needs a new core. Then run:
+Release the Rust core first when the bindings need a new core. Then prepare
+each package to release:
 
 ```sh
-python tools/release.py prepare 0.1.3
+python tools/release.py prepare crabxl-bindings 0.6.1 --core 0.4.1
+python tools/release.py prepare crabxl 0.6.1
+python tools/release.py prepare crabxl-openpyxl 0.6.1
 ```
 
-This sets the Cargo version, the Python version, `__version__`, the core
-dependency (the same version by default; pass `--core 0.1.4` for another) and
-Cargo.lock, renames `## [Unreleased]` to `## [0.1.3]` with the core version,
-and updates the bug report form. It fails when the core version is not on
-crates.io yet. Review the changes, commit them as `Release 0.1.3` and push to
+This sets the version (and `__version__`), renames `## [Unreleased]` in the
+package's changelog to the version, and for the bindings sets the core
+dependency and Cargo.lock. It fails when the core version is not on crates.io
+yet, and when a package requires bindings that this commit does not build.
+Move a local `.cargo/config.toml` aside first, or Cargo.lock records the local
+core path. Review the changes, commit them as `Release <packages>` and push to
 `main`. Nothing else is manual.
 
-The **Release Python** workflow runs on every push to `main`. When the
-committed version has no tag yet, it builds and tests every wheel and the
-sdist, publishes them to PyPI, and then creates the tag and the GitHub release
-on that commit. The changelog section becomes the release notes. Pushes whose
-version already has a tag stop after the version check.
+The **Release Python** workflow runs on every push to `main` and releases each
+package whose committed version has no tag yet:
 
-## Python-only releases
+1. The bindings build on five platforms for CPython 3.9 to 3.15, and each
+   wheel runs the tests with this commit's crabxl-openpyxl and, on 3.13 and
+   newer, crabxl. Their sdist is built, installed and tested on 3.15.
+2. The pure-Python packages are built with `uv build` and tested on 3.9, 3.13
+   and 3.15, with the bindings of this release or, when the bindings are not
+   released, the ones on PyPI.
+3. The bindings are published first, then each pure-Python package.
+4. The tags and GitHub releases are created on that commit, with the
+   changelog sections as notes.
 
-The Python version is separate from the Rust core version. To release Python
-changes on the same core, run `python tools/release.py prepare 0.2.1 --core
-0.2.0`.
+A release of only crabxl or crabxl-openpyxl compiles nothing and takes a few
+minutes.
 
-When nothing since the previous release tag changes the native build (only
-`python/`, `tests/`, `docs/`, `internal/`, `tools/`, `.github/`, the Markdown
-files and the version fields of `Cargo.toml`, `Cargo.lock` and
-`pyproject.toml`), the workflow skips compiling. It downloads the previous
-release's wheels, keeps their native module and SBOM, and replaces the Python
-files and metadata with those of the new sdist
-(`tools/repack_wheels.py`). All 25 wheels still run the full test suite on
-their platforms. Such a release takes minutes instead of about half an hour.
-Run the workflow manually with **rebuild** checked to compile anyway.
+## PyPI trusted publishers
 
-## PyPI Trusted Publisher configuration
+Each package publishes from its own GitHub environment, so each PyPI project
+has its own trusted publisher, and pending publishers never clash:
 
-Create a pending publisher for the first upload, or add a publisher to the
-existing project's publishing settings:
-
-| PyPI field | Value |
+| PyPI project | Environment |
 | --- | --- |
-| Project name | `crabxl` |
-| Owner | `crabxl` |
-| Repository | `crabxl-python` |
-| Workflow name (filename) | `release.yml` |
-| Environment name | `pypi` |
+| `crabxl` | `pypi-crabxl` |
+| `crabxl-openpyxl` | `pypi-crabxl-openpyxl` |
+| `crabxl-bindings` | `pypi-crabxl-bindings` |
 
-PyPI's workflow field is the filename, **not** the GitHub display name. The
-GitHub environment `pypi` applies its protections to the publication job. OIDC
-uses `id-token: write` only in that job. No PyPI API token is needed. See
-https://docs.pypi.org/trusted-publishers/ .
+The other fields are the same for all three: owner `crabxl`, repository
+`crabxl-python`, workflow `release.yml` (the filename, **not** the display
+name). OIDC uses `id-token: write` only in the publish jobs; no API token is
+needed. See https://docs.pypi.org/trusted-publishers/ .
 
-## Run and outputs
-
-- GitHub workflow name: **Release Python**.
-- Workflow file: `.github/workflows/release.yml`.
-
-All five CPython versions (3.11 through 3.15) build native wheels on each of:
+## Platforms
 
 | System | Architecture |
 | --- | --- |
@@ -74,30 +81,22 @@ All five CPython versions (3.11 through 3.15) build native wheels on each of:
 | Windows | x86_64 |
 | macOS | Intel x86_64, Apple Silicon ARM64 |
 
-Each platform job builds all five CPython wheels on one runner and shares the
-Cargo target directory. Linux builds use one manylinux container per platform.
-A failed platform job reruns that platform's five versions.
+Each platform job builds all seven CPython wheels on one runner and shares the
+Cargo target directory. Alpine/musllinux, Windows ARM64, PyPy, GraalPy and
+free-threaded Python are not included.
 
-Each of the 25 combinations runs the complete compatibility suite after
-installation into a clean virtual environment. Only 3.15 may be a release
-candidate until it is stable. The sdist is also built, installed and tested.
-Alpine/musllinux, Windows ARM64, PyPy, GraalPy and free-threaded Python are not
-included.
-
-After every build and test job passes, the workflow checks all 26 artifacts,
-their versions and any existing PyPI file hashes, then publishes with
-`pypa/gh-action-pypi-publish` through OIDC. It then creates the tag and the
-GitHub release with all 26 files.
-
-If an upload or the GitHub release step fails, rerun the failed jobs of the same
-workflow run, or run the workflow manually on `main`. Identical PyPI files are
-skipped; different file hashes are rejected. PyPI publication cannot be undone
-and can partly succeed before a later step fails. Do not move tags or raise the
+Before publishing, `tools/check_release_files.py` checks every file, its
+version and Python support, and any PyPI file of the same name. If an upload or
+the GitHub release step fails, rerun the failed jobs, or run the workflow
+manually on `main`. Identical PyPI files are skipped; different file hashes are
+rejected. PyPI publication cannot be undone. Do not move tags or raise a
 version only to hide an interrupted release.
 
-## Python quality checks
+## Quality checks
 
 CI and release validation require `ruff format --check .` and `ruff check .`.
-Install the `dev` extra for Ruff. The configuration targets Python 3.11. The
-three provenance-tracked upstream test files are excluded from Ruff so that
-their reference bodies stay unchanged; they still run in every test job.
+Ruff checks crabxl-openpyxl as Python 3.9 code and crabxl as 3.13 code. CI
+also requires pyright, mypy and pyrefly in strict mode for crabxl; ty runs as
+advice. The three provenance-tracked upstream test files are excluded from
+Ruff so that their reference bodies stay unchanged; they still run in every
+test job.

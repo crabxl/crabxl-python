@@ -17,7 +17,7 @@ API for pivot tables so that client code will have to loop over the
 ## Example
 
 ```python
-from crabxl.openpyxl import load_workbook
+from crabxl_openpyxl import load_workbook
 
 wb = load_workbook("campaign.xlsx")
 ws = wb["Results"]

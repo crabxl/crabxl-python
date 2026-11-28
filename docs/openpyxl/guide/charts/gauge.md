@@ -10,10 +10,10 @@ A pie chart containing three slices is added. The first and third slice are invi
 The effects are done using the graphical properties of individual data points in a data series.
 
 ```python
-from crabxl.openpyxl import Workbook
+from crabxl_openpyxl import Workbook
 
-from crabxl.openpyxl.chart import PieChart, DoughnutChart, Series, Reference
-from crabxl.openpyxl.chart.series import DataPoint
+from crabxl_openpyxl.chart import PieChart, DoughnutChart, Series, Reference
+from crabxl_openpyxl.chart.series import DataPoint
 
 data = [
     ["Donut", "Pie"],

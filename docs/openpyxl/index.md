@@ -1,18 +1,34 @@
 ---
 title: openpyxl interface
-description: Use crabxl.openpyxl in place of openpyxl.
+description: Install crabxl-openpyxl and use it in place of openpyxl.
 ---
 
-`crabxl.openpyxl` gives you the openpyxl 3.1.5 API. The Rust core reads,
-writes and edits the XLSX files. It is faster and uses less memory than
+The crabxl-openpyxl package gives you the openpyxl 3.1.5 API. The Rust core
+reads, writes and edits the XLSX files. It is faster and uses less memory than
 openpyxl.
+
+## Install
+
+```sh
+pip install crabxl-openpyxl
+```
+
+It supports CPython 3.9 and newer. To use it with the [native API](../index.md),
+on Python 3.13 or newer, install both:
+
+```sh
+pip install "crabxl[openpyxl]"
+```
+
+Then `crabxl.openpyxl` is the same module as `crabxl_openpyxl`, and
+`import crabxl.openpyxl as openpyxl` also works.
 
 ## Use
 
-Import `crabxl.openpyxl` in place of `openpyxl`. The calls are the same.
+Import `crabxl_openpyxl` in place of `openpyxl`. The calls are the same.
 
 ```python
-import crabxl.openpyxl as openpyxl
+import crabxl_openpyxl as openpyxl
 
 book = openpyxl.load_workbook("input.xlsx")
 book.active["A1"] = "Updated"

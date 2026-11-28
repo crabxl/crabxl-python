@@ -16,12 +16,12 @@ and percentStacked.
 ```python
 from datetime import date
 
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.chart import (
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.chart import (
     LineChart,
     Reference,
 )
-from crabxl.openpyxl.chart.axis import DateAxis
+from crabxl_openpyxl.chart.axis import DateAxis
 
 wb = Workbook()
 ws = wb.active
@@ -107,12 +107,12 @@ In 3D line charts the third axis is the same as the legend for the series.
 ```python
 from datetime import date
 
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.chart import (
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.chart import (
     LineChart3D,
     Reference,
 )
-from crabxl.openpyxl.chart.axis import DateAxis
+from crabxl_openpyxl.chart.axis import DateAxis
 
 wb = Workbook()
 ws = wb.active

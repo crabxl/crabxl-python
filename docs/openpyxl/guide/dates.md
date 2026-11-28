@@ -30,7 +30,7 @@ To make CrabXL store dates and times in the ISO 8601 format on
 writing your file, set the workbook's `iso_dates` flag to `True`:
 
 ```python
->>> import crabxl.openpyxl as crabxl
+>>> import crabxl_openpyxl as crabxl
 >>> wb = crabxl.Workbook()
 >>> wb.iso_dates = True
 ```
@@ -73,7 +73,7 @@ since it is not a valid date.
 You can get the date system of a workbook like this:
 
 ```python
->>> import crabxl.openpyxl as crabxl
+>>> import crabxl_openpyxl as crabxl
 >>> wb = crabxl.Workbook()
 >>> if wb.epoch == crabxl.utils.datetime.CALENDAR_WINDOWS_1900:
 ...     print("This workbook is using the 1900 date system.")

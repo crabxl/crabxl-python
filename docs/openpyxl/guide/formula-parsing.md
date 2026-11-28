@@ -4,11 +4,11 @@ description: Tokenize and translate formulas.
 ---
 
 CrabXL supports limited parsing of formulas embedded in cells. The
-`crabxl.openpyxl.formula` package contains a `Tokenizer` class to break
+`crabxl_openpyxl.formula` package contains a `Tokenizer` class to break
 formulas into their constituent tokens. Usage is as follows:
 
 ```python
->>> from crabxl.openpyxl.formula import Tokenizer
+>>> from crabxl_openpyxl.formula import Tokenizer
 >>> tok = Tokenizer("""=IF($A$1,"then True",MAX(DEFAULT_VAL,'Sheet 2'!B1))""")
 >>> print("\n".join("%12s%11s%9s" % (t.value, t.type, t.subtype) for t in tok.items))
          IF(       FUNC     OPEN
@@ -100,7 +100,7 @@ class. For example, there a range of cells `B2:E7` with a sum of each
 row in column `F`:
 
 ```python
->>> from crabxl.openpyxl.formula.translate import Translator
+>>> from crabxl_openpyxl.formula.translate import Translator
 >>> ws['F2'] = "=SUM(B2:E2)"
 >>> # move the formula one colum to the right
 >>> ws['G2'] = Translator("=SUM(B2:E2)", origin="F2").translate_formula("G2")

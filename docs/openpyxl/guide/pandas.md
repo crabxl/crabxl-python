@@ -17,7 +17,7 @@ The `dataframe_to_rows` function provides a
 simple way to work with Pandas Dataframes:
 
 ```python
-from crabxl.openpyxl.utils.dataframe import dataframe_to_rows
+from crabxl_openpyxl.utils.dataframe import dataframe_to_rows
 
 wb = Workbook()
 ws = wb.active
@@ -48,7 +48,7 @@ wb.save("pandas_openpyxl.xlsx")
 Alternatively, if you just want to convert the data you can use write-only mode:
 
 ```python
-from crabxl.openpyxl.cell.cell import WriteOnlyCell
+from crabxl_openpyxl.cell.cell import WriteOnlyCell
 wb = Workbook(write_only=True)
 ws = wb.create_sheet()
 

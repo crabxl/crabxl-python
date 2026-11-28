@@ -19,7 +19,7 @@ Styles can be applied to the following aspects:
 The following are the default values
 
 ```python
->>> from crabxl.openpyxl.styles import PatternFill, Border, Side, Alignment, Protection, Font
+>>> from crabxl_openpyxl.styles import PatternFill, Border, Side, Alignment, Protection, Font
 >>> font = Font(name='Calibri',
 ...                 size=11,
 ...                 bold=False,
@@ -72,9 +72,9 @@ cannot be changed. This stops unwanted side-effects such as changing the
 style for lots of cells when only one changes.
 
 ```python
->>> from crabxl.openpyxl.styles import colors
->>> from crabxl.openpyxl.styles import Font, Color
->>> from crabxl.openpyxl import Workbook
+>>> from crabxl_openpyxl.styles import colors
+>>> from crabxl_openpyxl.styles import Font, Color
+>>> from crabxl_openpyxl import Workbook
 >>> wb = Workbook()
 >>> ws = wb.active
 >>>
@@ -96,7 +96,7 @@ style for lots of cells when only one changes.
 Styles can also be copied
 
 ```python
->>> from crabxl.openpyxl.styles import Font
+>>> from crabxl_openpyxl.styles import Font
 >>> from copy import copy
 >>>
 >>> ft1 = Font(name='Arial', size=14)
@@ -119,14 +119,14 @@ Colours for fonts, backgrounds, borders, etc. can be set in three ways: indexed,
 RGB colours are set using hexadecimal values for red, green and blue.
 
 ```python
->>> from crabxl.openpyxl.styles import Font
+>>> from crabxl_openpyxl.styles import Font
 >>> font = Font(color="FF0000")
 ```
 
 The alpha value refers in theory to the transparency of the colour but this is not relevant for cell styles. The default of 00 will prepended to any simple RGB value:
 
 ```python
->>> from crabxl.openpyxl.styles import Font
+>>> from crabxl_openpyxl.styles import Font
 >>> font = Font(color="00FF00")
 >>> font.color.rgb
 '0000FF00'
@@ -135,7 +135,7 @@ The alpha value refers in theory to the transparency of the colour but this is n
 There is also support for legacy indexed colours as well as themes and tints.
 
 ```python
->>> from crabxl.openpyxl.styles.colors import Color
+>>> from crabxl_openpyxl.styles.colors import Color
 >>> c = Color(indexed=32)
 >>> c = Color(theme=6, tint=0.5)
 ```
@@ -149,8 +149,8 @@ The indices 64 and 65 cannot be set and are reserved for the system foreground a
 Styles are applied directly to cells
 
 ```python
->>> from crabxl.openpyxl.workbook import Workbook
->>> from crabxl.openpyxl.styles import Font, Fill
+>>> from crabxl_openpyxl.workbook import Workbook
+>>> from crabxl_openpyxl.styles import Font, Fill
 >>> wb = Workbook()
 >>> ws = wb.active
 >>> c = ws['A1']
@@ -185,8 +185,8 @@ change the border of its top-left cell.
 The formatting is generated for the purpose of writing.
 
 ```python
->>> from crabxl.openpyxl.styles import Border, Side, PatternFill, Font, GradientFill, Alignment
->>> from crabxl.openpyxl import Workbook
+>>> from crabxl_openpyxl.styles import Border, Side, PatternFill, Font, GradientFill, Alignment
+>>> from crabxl_openpyxl import Workbook
 >>>
 >>> wb = Workbook()
 >>> ws = wb.active
@@ -213,7 +213,7 @@ You can specify the number format for cells, or for some instances (ie datetime)
 
 ```python
 >>> import datetime
->>> from crabxl.openpyxl import Workbook
+>>> from crabxl_openpyxl import Workbook
 >>> wb = Workbook()
 >>> ws = wb.active
 >>> # set date using a Python datetime
@@ -229,7 +229,7 @@ You can specify the number format for cells, or for some instances (ie datetime)
 ## Edit Page Setup
 
 ```python
->>> from crabxl.openpyxl.workbook import Workbook
+>>> from crabxl_openpyxl.workbook import Workbook
 >>>
 >>> wb = Workbook()
 >>> ws = wb.active
@@ -252,7 +252,7 @@ Once a named style has been registered with a workbook, it can be referred to si
 ## Creating a Named Style
 
 ```python
->>> from crabxl.openpyxl.styles import NamedStyle, Font, Border, Side
+>>> from crabxl_openpyxl.styles import NamedStyle, Font, Border, Side
 >>> highlight = NamedStyle(name="highlight")
 >>> highlight.font = Font(bold=True, size=20)
 >>> bd = Side(style='thick', color="000000")

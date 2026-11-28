@@ -15,8 +15,8 @@ You can change anchors quite easily on a chart like this. Let's assume we
 have created a bar chart using the sample code:
 
 ```python
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.chart import BarChart, Series, Reference
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.chart import BarChart, Series, Reference
 
 wb = Workbook(write_only=True)
 ws = wb.create_sheet()
@@ -83,7 +83,7 @@ keep it with our table of data, say A9 to C20. We can do this by creating a
 TwoCellAnchor for those two cells.:
 
 ```python
-from crabxl.openpyxl.drawing.spreadsheet_drawing import TwoCellAnchor
+from crabxl_openpyxl.drawing.spreadsheet_drawing import TwoCellAnchor
 
 anchor = TwoCellAnchor()
 anchor._from.col = 0  # A

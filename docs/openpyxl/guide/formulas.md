@@ -8,7 +8,7 @@ description: Write formulas and read their cached results.
 Formualae may be parsed and modified as well.
 
 ```python
->>> from crabxl.openpyxl import Workbook
+>>> from crabxl_openpyxl import Workbook
 >>> wb = Workbook()
 >>> ws = wb.active
 >>> # add a simple formula
@@ -22,7 +22,7 @@ Formualae may be parsed and modified as well.
 CrabXL **never** evaluates formula but it is possible to check the name of a formula:
 
 ```python
->>> from crabxl.openpyxl.utils import FORMULAE
+>>> from crabxl_openpyxl.utils import FORMULAE
 >>> "HEX2DEC" in FORMULAE
 True
 ```
@@ -42,8 +42,8 @@ Although array formulae are applied to a range of cells, they will only be visib
 Creating your own array formulae is fairly straightforward
 
 ```python
->>> from crabxl.openpyxl import Workbook
->>> from crabxl.openpyxl.worksheet.formula import ArrayFormula
+>>> from crabxl_openpyxl import Workbook
+>>> from crabxl_openpyxl.worksheet.formula import ArrayFormula
 >>>
 >>> wb = Workbook()
 >>> ws = wb.active

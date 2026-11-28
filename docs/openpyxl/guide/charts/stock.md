@@ -29,16 +29,16 @@ Volume can be added by combining the stock chart with a bar chart for the volume
 ```python
 from datetime import date
 
-from crabxl.openpyxl import Workbook
+from crabxl_openpyxl import Workbook
 
-from crabxl.openpyxl.chart import (
+from crabxl_openpyxl.chart import (
     BarChart,
     StockChart,
     Reference,
     Series,
 )
-from crabxl.openpyxl.chart.axis import DateAxis, ChartLines
-from crabxl.openpyxl.chart.updown_bars import UpDownBars
+from crabxl_openpyxl.chart.axis import DateAxis, ChartLines
+from crabxl_openpyxl.chart.updown_bars import UpDownBars
 
 wb = Workbook()
 ws = wb.active
@@ -105,7 +105,7 @@ c1.title = "High-low-close"
 c1.hiLowLines = ChartLines()
 
 # Excel is broken and needs a cache of values in order to display hiLoLines :-/
-from crabxl.openpyxl.chart.data_source import NumData, NumVal
+from crabxl_openpyxl.chart.data_source import NumData, NumVal
 
 pts = [NumVal(idx=i) for i in range(len(data) - 1)]
 cache = NumData(pt=pts)
@@ -171,7 +171,7 @@ wb.save("stock.xlsx")
 > Due to a bug in Excel high-low lines will only be shown if at least one of
 > the data series has some dummy values. This can be done with the following hack:
 >
->   from crabxl.openpyxl.chart.data_source import NumData, NumVal
+>   from crabxl_openpyxl.chart.data_source import NumData, NumVal
 >   pts = [NumVal(idx=i) for i in range(len(data) - 1)]
 >   cache = NumData(pt=pts)
 >   c1.series[-1].val.numRef.numCache = cache

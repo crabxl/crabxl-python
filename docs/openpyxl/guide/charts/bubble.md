@@ -11,8 +11,8 @@ Charts can include multiple series.
 Sample bubble chart
 """
 
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.chart import Series, Reference, BubbleChart
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.chart import Series, Reference, BubbleChart
 
 wb = Workbook()
 ws = wb.active

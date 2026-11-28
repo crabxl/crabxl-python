@@ -11,8 +11,8 @@ It's possible to filter single range of values in a worksheet by adding an autof
 To add a filter you define a range and then add columns. You set the range over which the filter by setting the `ref` attribute. Filters are then applied to columns in the range using a zero-based index, eg. in a range from A1:H10, colId 1 refers to column B. CrabXL does not check that the column is inside the range.
 
 ```python
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.worksheet.filters import (
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.worksheet.filters import (
     FilterColumn,
     CustomFilter,
     CustomFilters,
@@ -72,7 +72,7 @@ CustomFilters can have one or two conditions which will operate either independe
 Filter values < 10 and > 90:
 
 ```python
-from crabxl.openpyxl.worksheet.filters import CustomFilter, CustomFilters
+from crabxl_openpyxl.worksheet.filters import CustomFilter, CustomFilters
 
 flt1 = CustomFilter(operator="lessThan", val=10)
 flt2 = CustomFilter(operator="greaterThan", val=90)
@@ -99,7 +99,7 @@ To simplify creating filters, CrabXL provides three specialised filters: `Number
 NumericFilters differ from CustomFilters only in that they are explicitly numerical:
 
 ```python
-from crabxl.openpyxl.worksheet.filters import NumberFilter, CustomerFilter
+from crabxl_openpyxl.worksheet.filters import NumberFilter, CustomerFilter
 
 flt1 = CustomFilter(operator="lessThan", val=10)
 flt1.val == "10"
@@ -112,7 +112,7 @@ flt2.val == 10.0
 BlankFilters are used for excluding blanks and are not editable:
 
 ```python
-from crabxl.openpyxl.worksheet.filters import BlankFilter
+from crabxl_openpyxl.worksheet.filters import BlankFilter
 
 blank = BlankFilter()
 ```
@@ -122,7 +122,7 @@ blank = BlankFilter()
 StringFilters have the folowing operators: `contains` `startwith` `endswith` and `wildcard`. To apply the filter in the negative, set the exclude attribue to `True`. CrabXL escapes wildcards for you:
 
 ```python
-from crabxl.openpyxl.worksheet.filters import StringFilter
+from crabxl_openpyxl.worksheet.filters import StringFilter
 
 fil = StringFilter("contains", "xml", exclude=True)
 ```
@@ -139,7 +139,7 @@ Date filters can be set to allow filtering by different datetime criteria such a
 To filter by the month of March:
 
 ```python
-from crabxl.openpyxl.worksheet.filters import DateGroupItem
+from crabxl_openpyxl.worksheet.filters import DateGroupItem
 
 df1 = DateGroupItem(month=3, dateTimeGrouping="month")
 col = FilterColumn(colId=1)  # second column

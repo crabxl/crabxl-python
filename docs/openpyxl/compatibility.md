@@ -4,7 +4,7 @@ description: Results of the openpyxl 3.1.5 test suite run against CrabXL.
 ---
 
 CrabXL runs the test suite of openpyxl 3.1.5 without changes. Each
-`openpyxl` module that the tests use resolves to the matching `crabxl.openpyxl`
+`openpyxl` module that the tests use resolves to the matching `crabxl_openpyxl`
 module.
 
 ## Summary

@@ -5,7 +5,7 @@
 - **Report a bug.** Use the [issue forms](https://github.com/crabxl/crabxl-python/issues/new/choose).
   Give the CrabXL version, the Python version and the smallest code or `.xlsx`
   file that shows the problem. Remove confidential data first.
-- **Report a difference from openpyxl.** `crabxl.openpyxl` must behave like
+- **Report a difference from openpyxl.** crabxl-openpyxl must behave like
   openpyxl 3.1.5. Give the code, the openpyxl result and the CrabXL result.
 - **Improve the documentation.** User documentation is in [docs](docs). The
   documentation site is built from it by
@@ -17,39 +17,44 @@ Do not report security problems in public issues. Read [SECURITY.md](SECURITY.md
 
 ## How this package works
 
-This package does not implement spreadsheet features itself. The Rust core in
-[crabxl](https://github.com/crabxl/crabxl) implements them. This package offers
-the native `crabxl` API and the openpyxl interface `crabxl.openpyxl` over it.
+These packages do not implement spreadsheet features themselves. The Rust core
+in [crabxl](https://github.com/crabxl/crabxl) implements them. This repository
+offers two packages over it: `crabxl`, the native typed API, and
+`crabxl-openpyxl`, the openpyxl interface. Both use the native module of
+`crabxl-bindings`.
 
 - If a feature is missing in the core, add it to the core first.
-- `Cargo.toml` pins the core to an exact Git revision. A change that needs a
-  new core feature also updates this revision.
+- `packages/crabxl-bindings/Cargo.toml` pins the core to an exact crates.io
+  version. A change that needs a new core feature waits for a core release.
 - The native API follows the core's lossless defaults: a save refuses to drop
   content unless the caller allows it.
-- `crabxl.openpyxl` follows openpyxl: content the core does not model is
+- crabxl-openpyxl follows openpyxl: content the core does not model is
   dropped, not refused, and it selects that behavior through core options.
   Never raise `NotImplementedError`. The package never falls back to openpyxl.
-- Keep the native API typed: run `mypy` and `pyright` (configured in
-  `pyproject.toml`) before you push.
+- Keep the native API typed: pyright, mypy and pyrefly (configured in
+  `pyproject.toml`) must pass in strict mode.
+- crabxl supports Python 3.13 and newer; crabxl-openpyxl and the bindings
+  support 3.9 and newer. Ruff checks each package for its oldest version.
 
 ## Repository layout
 
 | Path | Contents |
 |---|---|
-| `python/crabxl` | The native, typed Python API. |
-| `python/crabxl/openpyxl` | The openpyxl interface. Its modules follow the openpyxl module layout. |
-| `src/` | PyO3 bindings to the Rust core. |
-| `tests/` | Tests. Files named `test_upstream_*.py` contain selected openpyxl tests. |
-| `third_party/` | Provenance and licenses of the selected openpyxl tests. |
+| `packages/crabxl` | The crabxl package: the native, typed Python API. |
+| `packages/crabxl-openpyxl` | The crabxl-openpyxl package: the openpyxl interface. Its modules follow the openpyxl module layout. |
+| `packages/crabxl-bindings` | The crabxl-bindings package: PyO3 bindings to the Rust core. |
+| `tests/api` | Tests of crabxl. |
+| `tests/adapter` | Tests of crabxl-openpyxl. Files named `test_upstream_*.py` contain selected openpyxl tests. |
+| `third_party/` | Provenance and licenses of the code and tests from openpyxl. |
 | `docs/` | Public user documentation. |
-| `internal/` | Maintainer records: [status](internal/STATUS.md), roadmap, architecture, design decisions and release evidence. |
+| `internal/` | Maintainer records: [status](internal/STATUS.md), roadmap, architecture, design decisions and [releases](internal/releases.md). |
 | `tools/` | Release, wheel and provenance scripts. |
 
 ## Development setup
 
 You need:
 
-- Python 3.11 or later.
+- [uv](https://docs.astral.sh/uv/).
 - Rust 1.99 or later, installed with [rustup](https://rustup.rs/). The
   repository uses the latest stable toolchain. If the build reports that it
   requires a newer `rustc`, run `rustup update stable`.
@@ -57,17 +62,15 @@ You need:
 ```sh
 git clone https://github.com/crabxl/crabxl-python.git
 cd crabxl-python
-python -m venv .venv
-source .venv/bin/activate
-pip install "maturin>=1.15,<2"
-pip install -e ".[test,dev]"
+uv sync --all-packages --group dev
 ```
 
-The editable install builds the native extension. After you change Rust code in
-`src/`, build it again:
+The repository is a uv workspace. `uv sync` installs the three packages in
+editable mode into `.venv` with Python 3.13 or newer, and builds the native
+module. After you change Rust code, build it again:
 
 ```sh
-maturin develop --release
+uv sync --all-packages --group dev --reinstall-package crabxl-bindings
 ```
 
 The Rust core comes from crates.io. To build against a local checkout of
@@ -84,15 +87,26 @@ crabxl = { path = "../crabxl/crates/crabxl" }
 CI runs these checks. Run them before you open a pull request:
 
 ```sh
-ruff format --check .
-ruff check .
-cargo fmt -- --check
+uvx ruff format --check .
+uvx ruff check .
+uvx pyright
+uvx mypy
+uvx pyrefly check
+cargo fmt --all -- --check
 cargo clippy --all-targets --locked -- -D warnings
-python -m pytest tests -q
+uv run pytest tests -q
 ```
 
-CI also builds and tests wheels for all supported Python versions on Linux,
-Windows and macOS.
+To test the oldest Python version, build its wheel and test it in a clean
+environment:
+
+```sh
+uv run --no-project --with maturin tools/packages.py build --python 3.9
+uv run --no-project tools/packages.py test --python 3.9
+```
+
+CI builds and tests the bindings for every supported Python version on Linux,
+and for the oldest and newest on Windows and macOS.
 
 ## Code rules
 

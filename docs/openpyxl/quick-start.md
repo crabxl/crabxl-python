@@ -6,8 +6,8 @@ description: Create, read and edit a workbook with CrabXL for Python.
 ## Create a workbook
 
 ```python
-from crabxl.openpyxl import Workbook
-from crabxl.openpyxl.styles import Font
+from crabxl_openpyxl import Workbook
+from crabxl_openpyxl.styles import Font
 
 book = Workbook()
 sheet = book.active
@@ -23,7 +23,7 @@ book.save("sales.xlsx")
 ## Read a workbook
 
 ```python
-from crabxl.openpyxl import load_workbook
+from crabxl_openpyxl import load_workbook
 
 book = load_workbook("sales.xlsx")
 for month, amount in book["Sales"].iter_rows(min_row=2, values_only=True):
@@ -37,7 +37,7 @@ CrabXL does not calculate formulas. To get the cached result of a formula, set
 ## Edit a workbook
 
 ```python
-from crabxl.openpyxl import load_workbook
+from crabxl_openpyxl import load_workbook
 
 book = load_workbook("sales.xlsx")
 sheet = book["Sales"]

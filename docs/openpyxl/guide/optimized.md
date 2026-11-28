@@ -13,7 +13,7 @@ amounts of data with (near) constant memory consumption.
 Introducing `ReadOnlyWorksheet`:
 
 ```python
-from crabxl.openpyxl import load_workbook
+from crabxl_openpyxl import load_workbook
 
 wb = load_workbook(filename="large_file.xlsx", read_only=True)
 ws = wb["big_data"]
@@ -55,7 +55,7 @@ Here again, the regular `Worksheet` has been replaced
 by a faster alternative, the `WriteOnlyWorksheet`.
 
 ```python
->>> from crabxl.openpyxl import Workbook
+>>> from crabxl_openpyxl import Workbook
 >>> wb = Workbook(write_only=True)
 >>> ws = wb.create_sheet()
 >>>
@@ -70,12 +70,12 @@ by a faster alternative, the `WriteOnlyWorksheet`.
 If you want to have cells with styles or comments then use a `WriteOnlyCell`
 
 ```python
->>> from crabxl.openpyxl import Workbook
+>>> from crabxl_openpyxl import Workbook
 >>> wb = Workbook(write_only = True)
 >>> ws = wb.create_sheet()
->>> from crabxl.openpyxl.cell import WriteOnlyCell
->>> from crabxl.openpyxl.comments import Comment
->>> from crabxl.openpyxl.styles import Font
+>>> from crabxl_openpyxl.cell import WriteOnlyCell
+>>> from crabxl_openpyxl.comments import Comment
+>>> from crabxl_openpyxl.styles import Font
 >>> cell = WriteOnlyCell(ws, value="hello world")
 >>> cell.font = Font(name='Courier', size=36)
 >>> cell.comment = Comment(text="A comment", author="Author's Name")

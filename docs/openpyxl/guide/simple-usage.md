@@ -14,7 +14,7 @@ To start, let's load in CrabXL and create a new workbook. and get the active she
 We'll also enter our tree data.
 
 ```python
->>> from crabxl.openpyxl import Workbook
+>>> from crabxl_openpyxl import Workbook
 ```
 
 ```python
@@ -33,7 +33,7 @@ Next we'll enter this data onto the worksheet. As this is a list of lists, we ca
 Now we should make our heading Bold to make it stand out a bit more, to do that we'll need to create a `Font` and apply it to all the cells in our header row.
 
 ```python
->>> from crabxl.openpyxl.styles import Font
+>>> from crabxl_openpyxl.styles import Font
 ```
 
 ```python
@@ -46,7 +46,7 @@ Now we should make our heading Bold to make it stand out a bit more, to do that 
 It's time to make some charts. First, we'll start by importing the appropriate packages from `chart` then define some basic attributes
 
 ```python
->>> from crabxl.openpyxl.chart import BarChart, Series, Reference
+>>> from crabxl_openpyxl.chart import BarChart, Series, Reference
 ```
 
 ```python

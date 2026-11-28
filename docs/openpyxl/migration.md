@@ -5,8 +5,9 @@ description: Replace openpyxl with CrabXL and learn the differences.
 
 ## Change the import
 
-CrabXL uses the openpyxl 3.1.5 module layout and call names. Change the import
-and keep the rest of your code.
+crabxl-openpyxl uses the openpyxl 3.1.5 module layout and call names. Install
+it with `pip install crabxl-openpyxl`, change the import and keep the rest of
+your code.
 
 ```python
 # Before
@@ -14,11 +15,11 @@ import openpyxl
 from openpyxl.styles import Font
 
 # After
-import crabxl.openpyxl as openpyxl
-from crabxl.openpyxl.styles import Font
+import crabxl_openpyxl as openpyxl
+from crabxl_openpyxl.styles import Font
 ```
 
-Each public `openpyxl.<module>` has a `crabxl.openpyxl.<module>` with the same classes
+Each public `openpyxl.<module>` has a `crabxl_openpyxl.<module>` with the same classes
 and functions.
 
 ## What is the same
@@ -62,7 +63,7 @@ public API pass.
 The native `crabxl` API is not a drop-in replacement. It changes these
 behaviors on purpose:
 
-| Task | `crabxl.openpyxl` (as openpyxl) | `crabxl` |
+| Task | `crabxl_openpyxl` (as openpyxl) | `crabxl` |
 |---|---|---|
 | Open for editing | `load_workbook(path)` | `Workbook.open(path)` |
 | Formula and cached result | Two loads, one with `data_only=True` | `rng.formula` and `rng.value` from one load |
