@@ -93,10 +93,12 @@ def test(versions):
             suites.append("tests/api")
         print(f"Testing CPython {version} with {', '.join(packages)}", flush=True)
         with tempfile.TemporaryDirectory(prefix="crabxl-test-") as directory:
-            env = {**os.environ, "VIRTUAL_ENV": directory}
             subprocess.run(
                 ["uv", "venv", "--quiet", "--python", interpreter(version), directory],
                 check=True,
+            )
+            python = Path(directory) / (
+                "Scripts/python.exe" if os.name == "nt" else "bin/python"
             )
             # The test group comes from the workspace pyproject.toml.
             subprocess.run(
@@ -106,16 +108,15 @@ def test(versions):
                     "install",
                     "--quiet",
                     "--no-sources",
+                    # setup-uv sets UV_PYTHON, which would win over VIRTUAL_ENV.
+                    "--python",
+                    str(python),
                     *packages,
                     "--group",
                     "test",
                 ],
                 cwd=ROOT,
-                env=env,
                 check=True,
-            )
-            python = Path(directory) / (
-                "Scripts/python.exe" if os.name == "nt" else "bin/python"
             )
             # Run from a copy so the checkout's sources cannot shadow the wheels.
             with tempfile.TemporaryDirectory(prefix="crabxl-tests-") as copy:
