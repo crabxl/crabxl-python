@@ -6,7 +6,7 @@ import datetime as dt
 import os
 import re
 from collections.abc import Buffer, Callable, Iterable, Iterator, Sequence
-from typing import IO, TYPE_CHECKING, Any, Literal, cast, overload, override
+from typing import IO, TYPE_CHECKING, Any, Literal, Self, cast, overload, override
 
 from crabxl_bindings import _native
 from crabxl_bindings._native import ApiWorkbook
@@ -29,7 +29,7 @@ from ._features import (
     ValidationValue,
 )
 from ._values import CellInput, Formula, Value
-from .errors import ConversionError, InvalidInputError, NotFoundError
+from .errors import ConversionError, FileFormatError, InvalidInputError, NotFoundError
 from .styles import Color, Style
 
 if TYPE_CHECKING:
@@ -76,14 +76,15 @@ _CELL = re.compile(r"^\$?([A-Za-z]{1,3})\$?([0-9]{1,7})$")
 _NORMAL_CELL = re.compile(r"[A-Z]{1,3}[1-9][0-9]{0,6}")
 
 
-def _date(text: str | None) -> dt.datetime | None:
+def _date(name: str, text: str | None) -> dt.datetime | None:
     if text is None:
         return None
     try:
         value = dt.datetime.fromisoformat(text)
     except ValueError:
-        # shortcut: unreadable dates read as None, upgrade if files need them kept
-        return None
+        raise FileFormatError(
+            f"The {name} date of the document properties is not a date: {text!r}"
+        ) from None
     return value if value.tzinfo else value.replace(tzinfo=dt.UTC)
 
 
@@ -221,7 +222,7 @@ class Workbook:
         data_loss: Literal["reject", "allow"] = "reject",
         numbers: Numbers = "float",
         dates: Dates = "native",
-    ) -> Workbook:
+    ) -> Self:
         """Open a workbook.
 
         :param limits: Input safety limits. Use ``"strict"`` for files from
@@ -257,7 +258,7 @@ class Workbook:
         """Whether the workbook is closed."""
         return self._native.is_closed()
 
-    def __enter__(self) -> Workbook:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(
@@ -339,7 +340,8 @@ class Workbook:
     def properties(self) -> Properties:
         """The document properties."""
         text = self._native.properties()
-        created, modified = _date(text.pop("created")), _date(text.pop("modified"))
+        created = _date("created", text.pop("created"))
+        modified = _date("modified", text.pop("modified"))
         return Properties(**text, created=created, modified=modified)
 
     @properties.setter
@@ -1186,7 +1188,8 @@ class Charts:
 
 
 class DefinedNames:
-    """The defined names of a workbook."""
+    """The defined names of a workbook. Iteration includes names limited to
+    one sheet; ``in``, indexing and :meth:`remove` use workbook-wide names."""
 
     __slots__ = ("_book",)
 
@@ -1205,7 +1208,8 @@ class DefinedNames:
 
     def __contains__(self, name: object) -> bool:
         return isinstance(name, str) and any(
-            d.name.casefold() == name.casefold() for d in self._all()
+            d.name.casefold() == name.casefold() and d.sheet is None
+            for d in self._all()
         )
 
     def __getitem__(self, name: str) -> DefinedName:

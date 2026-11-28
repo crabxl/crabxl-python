@@ -125,21 +125,26 @@ class Reader:
     @property
     def sheet_names(self) -> list[str]:
         """The names of every sheet, in tab order."""
+        self._check()
         names: list[str] = self._native.sheet_names()
         return names
+
+    def _check(self) -> None:
+        if self._closed:
+            raise StateError("The reader is closed")
 
     @property
     def worksheets(self) -> WorksheetReaders:
         """The worksheets by name or position."""
-        if self._closed:
-            raise StateError("The reader is closed")
+        self._check()
         return WorksheetReaders(self)
 
     def close(self) -> None:
-        """Release the reader. Open iterators stop."""
+        """Close the reader. Open iterators stop, and later use raises
+        StateError."""
         self._closed = True
 
-    def __enter__(self) -> Reader:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(

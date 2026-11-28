@@ -92,7 +92,7 @@ class Writer:
         self._done = True
         self._native.abort()
 
-    def __enter__(self) -> Writer:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(

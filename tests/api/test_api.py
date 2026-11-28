@@ -475,3 +475,20 @@ def test_writer_streams_and_aborts_on_error(tmp_path: os.PathLike[str]) -> None:
 def test_saves_are_byte_stable() -> None:
     book = sample()
     assert book.to_bytes() == book.to_bytes()
+
+
+def test_defined_name_lookups_agree() -> None:
+    book = xl.Workbook()
+    book.worksheets.add("S")
+    book.defined_names.add(xl.DefinedName("Local", "S!$A$1", sheet="S"))
+    assert "Local" not in book.defined_names
+    assert [name.name for name in book.defined_names] == ["Local"]
+    with pytest.raises(xl.NotFoundError):
+        book.defined_names["Local"]
+
+
+def test_closed_reader_raises() -> None:
+    with xl.Reader.open(sample().to_bytes()) as reader:
+        assert reader.sheet_names == ["Data"]
+    with pytest.raises(xl.StateError):
+        reader.sheet_names

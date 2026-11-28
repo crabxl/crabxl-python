@@ -19,9 +19,16 @@ packages [crabxl-openpyxl](../crabxl-openpyxl/CHANGELOG.md) and
   submodules and classes are the same objects.
 - The native module is the new package crabxl-bindings, a dependency of
   crabxl, so the crabxl wheel is pure Python.
-- `Reader.open` and `Writer.create` are typed to return the class they are
-  called on, so a subclass gets its own type.
+- `Workbook.open`, `Reader.open`, `Writer.create` and every `with` block are
+  typed to return the class they are called on, so a subclass gets its own
+  type.
 - `DataValidation.list` is typed to accept numbers, which it saves as text.
+- Reading `Workbook.properties` raises `FileFormatError` when the file holds
+  an unreadable created or modified date, instead of returning `None` as if
+  the date were missing.
+- `name in book.defined_names` checks workbook-wide names only, like indexing
+  and `remove`. Names limited to one sheet are still in the iteration.
+- A closed `Reader` raises `StateError` from `sheet_names` too.
 
 ### Fixed
 

@@ -6,7 +6,8 @@ Three entry points cover the three ways of working with a file:
 * :class:`Reader` reads large files row by row in bounded memory.
 * :class:`Writer` writes large files row by row in bounded memory.
 
-The openpyxl-compatible interface is in :mod:`crabxl.openpyxl`.
+The openpyxl interface is the package crabxl-openpyxl; install
+``crabxl[openpyxl]`` to import it as :mod:`crabxl.openpyxl`.
 """
 
 from ._features import (
