@@ -18,7 +18,7 @@ test = [
     "Pillow>=11.3,<12; python_version < '3.10'",
     "lxml>=6.1.3",
 ]
-dev = [{ include-group = "test" }, "ruff>=0.16.10,<0.17"]
+dev = [{ include-group = "test" }, "ruff>=0.17.6,<0.18"]
 
 [tool.ruff]
 target-version = "py39"
