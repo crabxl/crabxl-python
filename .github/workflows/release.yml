@@ -187,7 +187,7 @@ jobs:
     needs: [validate, pure, publish-bindings]
     if: >-
       always() && needs.validate.outputs.pure != '[]' && needs.pure.result == 'success'
-      && needs.publish-bindings.result != 'failure' && needs.publish-bindings.result != 'cancelled'
+      && (needs.validate.outputs.bindings != 'true' || needs.publish-bindings.result == 'success')
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -224,8 +224,8 @@ jobs:
     needs: [validate, publish-bindings, publish]
     if: >-
       always() && needs.validate.outputs.releases != '[]'
-      && needs.publish-bindings.result != 'failure' && needs.publish-bindings.result != 'cancelled'
-      && needs.publish.result != 'failure' && needs.publish.result != 'cancelled'
+      && (needs.validate.outputs.bindings != 'true' || needs.publish-bindings.result == 'success')
+      && (needs.validate.outputs.pure == '[]' || needs.publish.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       contents: write
