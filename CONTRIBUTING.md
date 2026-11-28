@@ -47,7 +47,6 @@ offers two packages over it: `crabxl`, the native typed API, and
 | `tests/adapter` | Tests of crabxl-openpyxl. Files named `test_upstream_*.py` contain selected openpyxl tests. |
 | `third_party/` | Provenance and licenses of the code and tests from openpyxl. |
 | `docs/` | Public user documentation. |
-| `internal/` | Maintainer records: [status](internal/STATUS.md), roadmap, architecture, design decisions and [releases](internal/releases.md). |
 | `tools/` | Release, wheel and provenance scripts. |
 
 ## Development setup
@@ -167,8 +166,7 @@ CI checks them with Vale.
 ## Releases
 
 Maintainers make releases with the release workflow. You do not need to change
-version numbers. [internal/releases.md](internal/releases.md) describes the
-process.
+version numbers.
 
 ## License
 

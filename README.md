@@ -9,7 +9,7 @@
 [![CI](https://github.com/crabxl/crabxl-python/actions/workflows/python.yml/badge.svg)](https://github.com/crabxl/crabxl-python/actions/workflows/python.yml)
 [![License](https://img.shields.io/github/license/crabxl/crabxl-python)](LICENSE)
 
-[Documentation](https://docs.crabxl.com/docs/python) · [Rust engine](https://github.com/crabxl/crabxl) · [Status](internal/STATUS.md) · [Report an issue](https://github.com/crabxl/crabxl-python/issues)
+[Documentation](https://docs.crabxl.com/docs/python) · [Rust engine](https://github.com/crabxl/crabxl) · [Report an issue](https://github.com/crabxl/crabxl-python/issues)
 
 </div>
 
