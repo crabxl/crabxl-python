@@ -95,8 +95,8 @@ class DataValidation:
     """The title and message shown when the rule rejects a value."""
 
     @classmethod
-    def list(cls, choices: Sequence[str], *, ranges: Ranges) -> DataValidation:
-        """A drop-down list of fixed choices."""
+    def list(cls, choices: Sequence[str | float], *, ranges: Ranges) -> DataValidation:
+        """A drop-down list of fixed choices. Numbers become their text."""
         return cls("list", _ranges(ranges), tuple(str(choice) for choice in choices))
 
     @classmethod
@@ -400,6 +400,8 @@ class Chart:
         title: str | None = None,
         legend: bool = True,
     ) -> None:
+        # super() fails in a slotted dataclass before Python 3.14.
+        object.__init__(self)
         object.__setattr__(self, "kind", kind)
         object.__setattr__(self, "series", tuple(series))
         object.__setattr__(self, "title", title)

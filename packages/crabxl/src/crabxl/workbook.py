@@ -6,7 +6,7 @@ import datetime as dt
 import os
 import re
 from collections.abc import Buffer, Callable, Iterable, Iterator, Sequence
-from typing import IO, TYPE_CHECKING, Any, Literal, cast, overload
+from typing import IO, TYPE_CHECKING, Any, Literal, cast, overload, override
 
 from crabxl_bindings import _native
 from crabxl_bindings._native import ApiWorkbook
@@ -200,6 +200,7 @@ class Workbook:
 
     def __init__(self, *, dates: Dates = "native") -> None:
         """A new workbook with no sheets. Add a worksheet before you save."""
+        super().__init__()
         self._native = _native.ApiWorkbook.create(dates == "serial")
         self._sheets = {}
 
@@ -286,7 +287,7 @@ class Workbook:
         if isinstance(target, (str, os.PathLike)):
             self._native.save_path(os.fspath(target), compression, recalculate_on_open)
         elif hasattr(target, "write"):
-            target.write(
+            _ = target.write(
                 self.to_bytes(
                     compression=compression, recalculate_on_open=recalculate_on_open
                 )
@@ -300,7 +301,7 @@ class Workbook:
         self, *, compression: int | None = None, recalculate_on_open: bool = False
     ) -> bytes:
         """The workbook as XLSX bytes."""
-        return bytes(self._native.save_bytes(compression, recalculate_on_open))
+        return self._native.save_bytes(compression, recalculate_on_open)
 
     def calculate(self) -> None:
         """Calculate every formula and store the results as cached values."""
@@ -350,6 +351,7 @@ class Workbook:
         values["modified"] = _w3cdtf(properties.modified)
         self._native.set_properties(values)
 
+    @override
     def __repr__(self) -> str:
         if self.closed:
             return "<crabxl.Workbook closed>"
@@ -363,6 +365,7 @@ class Worksheets:
     __slots__ = ("_book",)
 
     def __init__(self, book: Workbook) -> None:
+        super().__init__()
         self._book = book
 
     @property
@@ -421,6 +424,7 @@ class Worksheets:
         """Move a sheet to a zero-based tab position."""
         self._book._native.move_sheet(name, index)
 
+    @override
     def __repr__(self) -> str:
         return f"<crabxl.Worksheets {self.names!r}>"
 
@@ -435,6 +439,7 @@ class Worksheet:
     __slots__ = ("_book", "_name")
 
     def __init__(self, book: Workbook, name: str) -> None:
+        super().__init__()
         self._book = book
         self._name = name
 
@@ -450,14 +455,14 @@ class Worksheet:
     @name.setter
     def name(self, name: str) -> None:
         self._native.rename_sheet(self._name, name)
-        self._book._sheets.pop(self._name, None)
+        _ = self._book._sheets.pop(self._name, None)
         self._book._sheets[name] = self
         self._name = name
 
     @property
     def visibility(self) -> Visibility:
         """Whether the sheet tab shows."""
-        return self._native.visibility(self._name)  # type: ignore[return-value]
+        return self._native.visibility(self._name)
 
     @visibility.setter
     def visibility(self, visibility: Visibility) -> None:
@@ -602,6 +607,7 @@ class Worksheet:
         """Whether the sheet is protected."""
         return self._native.is_protected(self._name)
 
+    @override
     def __repr__(self) -> str:
         return f"<crabxl.Worksheet {self._name!r}>"
 
@@ -621,6 +627,7 @@ class Range:
     __slots__ = ("_sheet", "_ref")
 
     def __init__(self, sheet: Worksheet, ref: str) -> None:
+        super().__init__()
         self._sheet = sheet
         self._ref = ref
 
@@ -760,7 +767,7 @@ class Range:
     def note(self, note: Note | None) -> None:
         cell = self._cell("note")
         if note is None:
-            self._native.remove_note(self._sheet.name, cell)
+            _ = self._native.remove_note(self._sheet.name, cell)
         else:
             self._native.set_note(self._sheet.name, cell, note.text, note.author)
 
@@ -771,7 +778,7 @@ class Range:
         if found is None:
             return None
         kind, target, tooltip = found
-        return Hyperlink(target, kind, tooltip)  # type: ignore[arg-type]
+        return Hyperlink(target, kind, tooltip)
 
     @hyperlink.setter
     def hyperlink(self, link: Hyperlink | None) -> None:
@@ -783,9 +790,11 @@ class Range:
                 self._sheet.name, cell, link.kind, link.target, link.tooltip
             )
 
+    @override
     def __repr__(self) -> str:
         return f"<crabxl.Range {self._sheet.name}!{self._ref}>"
 
+    @override
     def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, Range)
@@ -797,6 +806,7 @@ class Range:
             == (self._sheet.name, self._ref)
         )
 
+    @override
     def __hash__(self) -> int:
         return hash((self._sheet.name, self._ref))
 
@@ -807,6 +817,7 @@ class RowSpan:
     __slots__ = ("_sheet", "_span")
 
     def __init__(self, sheet: Worksheet, span: str) -> None:
+        super().__init__()
         self._sheet = sheet
         self._span = span
 
@@ -846,6 +857,7 @@ class RowSpan:
         """Delete the rows. References into them become ``#REF!``."""
         self._sheet._native.delete_rows(self._sheet.name, self._span)
 
+    @override
     def __repr__(self) -> str:
         return f"<crabxl.RowSpan {self._sheet.name}!{self._span}>"
 
@@ -856,6 +868,7 @@ class ColumnSpan:
     __slots__ = ("_sheet", "_span")
 
     def __init__(self, sheet: Worksheet, span: str) -> None:
+        super().__init__()
         self._sheet = sheet
         self._span = span
 
@@ -895,6 +908,7 @@ class ColumnSpan:
         """Delete the columns. See :meth:`RowSpan.delete`."""
         self._sheet._native.delete_columns(self._sheet.name, self._span)
 
+    @override
     def __repr__(self) -> str:
         return f"<crabxl.ColumnSpan {self._sheet.name}!{self._span}>"
 
@@ -908,6 +922,7 @@ class Merges:
     __slots__ = ("_sheet",)
 
     def __init__(self, sheet: Worksheet) -> None:
+        super().__init__()
         self._sheet = sheet
 
     def _refs(self) -> list[str]:
@@ -937,6 +952,7 @@ class Tables:
     __slots__ = ("_sheet",)
 
     def __init__(self, sheet: Worksheet) -> None:
+        super().__init__()
         self._sheet = sheet
 
     def _all(self) -> list[Table]:
@@ -981,6 +997,7 @@ class Validations:
     __slots__ = ("_sheet",)
 
     def __init__(self, sheet: Worksheet) -> None:
+        super().__init__()
         self._sheet = sheet
 
     def __iter__(self) -> Iterator[DataValidation]:
@@ -1046,6 +1063,7 @@ class ConditionalFormats:
     __slots__ = ("_sheet",)
 
     def __init__(self, sheet: Worksheet) -> None:
+        super().__init__()
         self._sheet = sheet
 
     def __iter__(self) -> Iterator[ConditionalFormat]:
@@ -1097,6 +1115,7 @@ class Images:
     __slots__ = ("_sheet",)
 
     def __init__(self, sheet: Worksheet) -> None:
+        super().__init__()
         self._sheet = sheet
 
     def __iter__(self) -> Iterator[PlacedImage]:
@@ -1124,6 +1143,7 @@ class Charts:
     __slots__ = ("_sheet",)
 
     def __init__(self, sheet: Worksheet) -> None:
+        super().__init__()
         self._sheet = sheet
 
     def __iter__(self) -> Iterator[PlacedChart]:
@@ -1171,6 +1191,7 @@ class DefinedNames:
     __slots__ = ("_book",)
 
     def __init__(self, book: Workbook) -> None:
+        super().__init__()
         self._book = book
 
     def _all(self) -> list[DefinedName]:

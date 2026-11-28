@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import dataclasses
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal, override
 
 __all__ = [
     "Alignment",
@@ -87,6 +87,7 @@ class Color:
         """The automatic color chosen by the application."""
         return cls(0, "auto")
 
+    @override
     def __str__(self) -> str:
         return f"#{self.value}" if self.kind == "rgb" else f"{self.kind}:{self.value}"
 
@@ -126,6 +127,8 @@ class Font:
         underline: Underline | Literal["none"] | None = None,
         color: ColorLike | None = None,
     ) -> None:
+        # super() fails in a slotted dataclass before Python 3.14.
+        object.__init__(self)
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "size", size)
         object.__setattr__(self, "bold", bold)
@@ -136,9 +139,9 @@ class Font:
         )
         object.__setattr__(self, "color", _color(color))
 
-    def replace(self, **changes: object) -> Font:
+    def replace(self, **changes: Any) -> Font:
         """A copy with some attributes changed."""
-        return dataclasses.replace(self, **changes)  # type: ignore[arg-type]
+        return dataclasses.replace(self, **changes)
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,6 +151,8 @@ class Fill:
     color: Color
 
     def __init__(self, color: ColorLike) -> None:
+        # super() fails in a slotted dataclass before Python 3.14.
+        object.__init__(self)
         object.__setattr__(self, "color", _color(color))
 
     @classmethod
@@ -183,6 +188,8 @@ class Side:
     def __init__(
         self, style: BorderStyle = "thin", color: ColorLike | None = None
     ) -> None:
+        # super() fails in a slotted dataclass before Python 3.14.
+        object.__init__(self)
         object.__setattr__(self, "style", style)
         object.__setattr__(self, "color", _color(color))
 
@@ -240,9 +247,9 @@ class Alignment:
                 "Indent is 0 to 250; rotation is 0 to 180, or 255 for vertical text"
             )
 
-    def replace(self, **changes: object) -> Alignment:
+    def replace(self, **changes: Any) -> Alignment:
         """A copy with some attributes changed."""
-        return dataclasses.replace(self, **changes)  # type: ignore[arg-type]
+        return dataclasses.replace(self, **changes)
 
 
 @dataclass(frozen=True, slots=True)

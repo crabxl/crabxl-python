@@ -110,17 +110,23 @@ extraPaths = ["packages/crabxl/src", "packages/crabxl-bindings/python"]
 # The modules of the package call each other's private members, such as the
 # native handle; the public API has no private names.
 reportPrivateUsage = false
+# A setter may accept more than its getter returns, such as a hex string for
+# a Color or a Formula for a value.
+reportPropertyTypeMismatch = false
 # Rules that strict mode leaves off.
 reportCallInDefaultInitializer = "error"
 reportImplicitOverride = "error"
 reportImplicitStringConcatenation = "error"
 reportImportCycles = "error"
 reportMissingSuperCall = "error"
-reportPropertyTypeMismatch = "error"
-reportShadowedImports = "error"
 reportUninitializedInstanceVariable = "error"
 reportUnnecessaryTypeIgnoreComment = "error"
 reportUnusedCallResult = "error"
+
+[tool.pyrefly]
+project-includes = ["packages/crabxl/src/crabxl"]
+search-path = ["packages/crabxl/src", "packages/crabxl-bindings/python"]
+python-version = "3.13"
 
 [tool.ty.src]
 include = ["packages/crabxl/src/crabxl"]

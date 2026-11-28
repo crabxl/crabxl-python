@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Callable, Iterable, Iterator
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Self, cast, override
 
 from crabxl_bindings import _native
 from crabxl_bindings._native import ApiWriter
@@ -44,12 +44,16 @@ class Writer:
     """
 
     __slots__ = ("_native", "_target", "_names", "_done", "_frozen", "_widths")
-    _native: ApiWriter
-    _target: Target
-    _names: list[str]
-    _done: bool
-    _frozen: dict[str, str]
-    _widths: dict[tuple[str, int], float]
+
+    def __init__(self, native: ApiWriter, target: Target, /) -> None:
+        """Use :meth:`Writer.create`."""
+        super().__init__()
+        self._native = native
+        self._target = target
+        self._names: list[str] = []
+        self._done = False
+        self._frozen: dict[str, str] = {}
+        self._widths: dict[tuple[str, int], float] = {}
 
     @classmethod
     def create(
@@ -58,22 +62,15 @@ class Writer:
         *,
         compression: int | None = None,
         temp_directory: str | os.PathLike[str] | None = None,
-    ) -> Writer:
+    ) -> Self:
         """Write to a path (replaced atomically on finish) or a binary file.
 
         :param compression: ZIP level 0 (store) to 9. The default is 6.
         :param temp_directory: Where the row spools go.
         """
-        writer = cls.__new__(cls)
         path = os.fspath(target) if isinstance(target, (str, os.PathLike)) else None
         temp = None if temp_directory is None else os.fspath(temp_directory)
-        writer._native = _native.ApiWriter.create(path, compression, temp)
-        writer._target = target
-        writer._names = []
-        writer._done = False
-        writer._frozen = {}
-        writer._widths = {}
-        return writer
+        return cls(_native.ApiWriter.create(path, compression, temp), target)
 
     @property
     def worksheets(self) -> WorksheetWriters:
@@ -88,7 +85,7 @@ class Writer:
         if isinstance(self._target, (str, os.PathLike)):
             self._native.finish()
         else:
-            self._target.write(bytes(self._native.finish_bytes()))
+            _ = self._target.write(self._native.finish_bytes())
 
     def abort(self) -> None:
         """Discard everything written. The target is not touched."""
@@ -117,6 +114,7 @@ class WorksheetWriters:
     __slots__ = ("_writer",)
 
     def __init__(self, writer: Writer) -> None:
+        super().__init__()
         self._writer = writer
 
     @property
@@ -150,6 +148,7 @@ class AddOnly[T]:
     __slots__ = ("_add",)
 
     def __init__(self, add: Callable[[T], None]) -> None:
+        super().__init__()
         self._add = add
 
     def add(self, item: T) -> None:
@@ -163,6 +162,7 @@ class WorksheetWriter:
     __slots__ = ("_writer", "name")
 
     def __init__(self, writer: Writer, name: str) -> None:
+        super().__init__()
         self._writer = writer
         #: The sheet name.
         self.name = name
@@ -228,6 +228,7 @@ class WorksheetWriter:
             self.name, list(rule.ranges), rule.value, rule.style
         )
 
+    @override
     def __repr__(self) -> str:
         return f"<crabxl.WorksheetWriter {self.name!r}>"
 
@@ -238,6 +239,7 @@ class ColumnSpanWriter:
     __slots__ = ("_sheet", "_span", "_first", "_last")
 
     def __init__(self, sheet: WorksheetWriter, span: str) -> None:
+        super().__init__()
         self._sheet = sheet
         self._span = span
         first, _, last = span.partition(":")
@@ -257,5 +259,6 @@ class ColumnSpanWriter:
         for column in range(self._first, self._last + 1):
             writer._widths[(self._sheet.name, column)] = characters
 
+    @override
     def __repr__(self) -> str:
         return f"<crabxl.ColumnSpanWriter {self._sheet.name}!{self._span}>"

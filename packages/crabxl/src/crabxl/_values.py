@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime as _dt
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import TYPE_CHECKING, ClassVar, Final
+from typing import TYPE_CHECKING, ClassVar, Final, cast, override
 
 if TYPE_CHECKING:
     from .styles import Font
@@ -28,7 +28,10 @@ class Formula:
     text: str
 
     def __init__(self, text: str) -> None:
-        if not isinstance(text, str):  # pyright: ignore[reportUnnecessaryIsInstance]
+        # super() fails in a slotted dataclass before Python 3.14.
+        object.__init__(self)
+        given = cast("object", text)  # Checked at run time for untyped callers.
+        if not isinstance(given, str):
             raise TypeError("A formula is text")
         body = text[1:] if text.startswith("=") else text
         if not body.strip():
@@ -37,6 +40,7 @@ class Formula:
             raise InvalidInputError("A formula cannot be empty")
         object.__setattr__(self, "text", body)
 
+    @override
     def __str__(self) -> str:
         return f"={self.text}"
 
@@ -66,15 +70,13 @@ class ErrorValue:
     code: str
 
     def __post_init__(self) -> None:
-        if not (
-            isinstance(self.code, str)  # pyright: ignore[reportUnnecessaryIsInstance]
-            and self.code.startswith("#")
-            and len(self.code) > 1
-        ):
+        code = cast("object", self.code)  # Checked at run time for untyped callers.
+        if not (isinstance(code, str) and code.startswith("#") and len(code) > 1):
             from .errors import InvalidInputError
 
             raise InvalidInputError(f"{self.code!r} is not an error code")
 
+    @override
     def __str__(self) -> str:
         return self.code
 
@@ -121,8 +123,11 @@ class RichText:
     runs: tuple[TextRun, ...]
 
     def __init__(self, runs: tuple[TextRun, ...] | list[TextRun]) -> None:
+        # super() fails in a slotted dataclass before Python 3.14.
+        object.__init__(self)
         object.__setattr__(self, "runs", tuple(runs))
 
+    @override
     def __str__(self) -> str:
         return "".join(run.text for run in self.runs)
 

@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING, Self, overload, override
 
 from crabxl_bindings import _native
 from crabxl_bindings._native import ApiReader
@@ -30,7 +30,8 @@ class Row(Sequence[Value]):
 
     __slots__ = ("_index", "_values", "_formulas")
 
-    def __init__(
+    # One Row per row read: skip the empty object.__init__ call.
+    def __init__(  # pyright: ignore[reportMissingSuperCall]
         self,
         index: int,
         values: tuple[Value, ...],
@@ -62,23 +63,29 @@ class Row(Sequence[Value]):
     def __getitem__(self, index: int) -> Value: ...
     @overload
     def __getitem__(self, index: slice) -> tuple[Value, ...]: ...
+    @override
     def __getitem__(self, index: int | slice) -> Value | tuple[Value, ...]:
         return self._values[index]
 
+    @override
     def __len__(self) -> int:
         return len(self._values)
 
+    @override
     def __iter__(self) -> Iterator[Value]:
         return iter(self._values)
 
+    @override
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Row):
             return (self._index, self._values) == (other._index, other._values)
         return isinstance(other, tuple) and self._values == other
 
+    @override
     def __hash__(self) -> int:
         return hash((self._index, self._values))
 
+    @override
     def __repr__(self) -> str:
         return f"Row(number={self.number}, values={self._values!r})"
 
@@ -90,8 +97,12 @@ class Reader:
     """
 
     __slots__ = ("_native", "_closed")
-    _native: ApiReader
-    _closed: bool
+
+    def __init__(self, native: ApiReader, /) -> None:
+        """Use :meth:`Reader.open`."""
+        super().__init__()
+        self._native = native
+        self._closed = False
 
     @classmethod
     def open(
@@ -101,16 +112,15 @@ class Reader:
         limits: Limits = "default",
         numbers: Numbers = "float",
         dates: Dates = "native",
-    ) -> Reader:
+    ) -> Self:
         """Open a workbook for reading. See :meth:`crabxl.Workbook.open` for
         the options."""
         path, data = _open(cls, source)
-        reader = cls.__new__(cls)
-        reader._native = _native.ApiReader.open(
-            path, data, limits, numbers == "exact", dates == "serial"
+        return cls(
+            _native.ApiReader.open(
+                path, data, limits, numbers == "exact", dates == "serial"
+            )
         )
-        reader._closed = False
-        return reader
 
     @property
     def sheet_names(self) -> list[str]:
@@ -148,6 +158,7 @@ class WorksheetReaders:
     __slots__ = ("_reader",)
 
     def __init__(self, reader: Reader) -> None:
+        super().__init__()
         self._reader = reader
 
     @property
@@ -182,6 +193,7 @@ class WorksheetReader:
     __slots__ = ("_reader", "name")
 
     def __init__(self, reader: Reader, name: str) -> None:
+        super().__init__()
         self._reader = reader
         #: The sheet name.
         self.name = name
@@ -226,5 +238,6 @@ class WorksheetReader:
         for batch in self.iter_batches(1024, columns=columns, skip=skip, limit=limit):
             yield from batch
 
+    @override
     def __repr__(self) -> str:
         return f"<crabxl.WorksheetReader {self.name!r}>"
